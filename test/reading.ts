@@ -179,6 +179,16 @@ try {
   await tab.waitForSelector('#line .ml-word.ml-known[data-ml-lemma="猫"]');
   await furigana('unknown');
   assert.deepEqual(await readings(), ['猫:none', '魚:"さかな"', '食べなかった:"たべなかった"']);
+  await tab.keyboard.press('Escape');
+  await tab.mouse.move(0, 0);
+  await tab.waitForFunction(() => !CSS.highlights.get('minerr-sentence')?.size);
+  await tab.hover('#line .ml-word[data-ml-lemma="魚"]');
+  await tab.waitForFunction(() => CSS.highlights.get('minerr-sentence')?.size === 1);
+  assert.deepEqual(await tab.evaluate(() => [...(CSS.highlights.get('minerr-sentence') ?? [])].map(range => range.toString())),
+    ['猫が魚を食べなかった。'], 'a word with furigana is still part of its sentence');
+  await tab.mouse.move(0, 0);
+  await tab.waitForTimeout(400);
+  await tab.keyboard.press('Escape');
   await furigana('hover');
   await tab.mouse.move(0, 0);
   assert.deepEqual(await readings(), ['猫:none', '魚:none', '食べなかった:none']);

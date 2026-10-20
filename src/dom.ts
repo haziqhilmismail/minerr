@@ -7,7 +7,9 @@ export function byId<T extends HTMLElement>(id: string, type: new () => T): T {
 
 // Inline for the text flow: inline boxes, display: contents, and ruby (<ruby> has display: ruby).
 // An inline-block (a button or a badge) is a box of its own, so its text does not join the text around it.
-export const isInline = (element: Element) => /^(inline|contents|ruby(-[a-z-]+)?)$/.test(getComputedStyle(element).display);
+// A Minerr word is always part of the text, also when the furigana style makes it an inline-block.
+export const isInline = (element: Element) => element.classList.contains('ml-word')
+  || /^(inline|contents|ruby(-[a-z-]+)?)$/.test(getComputedStyle(element).display);
 
 // Plays the media. A pause, a seek, or a new source can interrupt play(); that is not an error.
 export const play = (media: HTMLMediaElement): void => { media.play().catch(() => undefined); };

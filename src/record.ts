@@ -24,7 +24,8 @@ export function toBase64(buffer: ArrayBuffer): string {
 
 // A seek or a play that never ends (a stalled network) ends the recording 5 seconds after the length of the part.
 async function record(video: HTMLVideoElement, start: number, end: number): Promise<MediaFile | null> {
-  const timeout = AbortSignal.timeout((end - start + 5) * 1000);
+  // The line plays at the speed of the video, so a slow speed needs more time.
+  const timeout = AbortSignal.timeout(((end - start) / video.playbackRate + 5) * 1000);
   const gaveUp = once(timeout, 'abort');
   video.pause();
   video.currentTime = start;
