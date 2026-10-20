@@ -182,6 +182,15 @@ try {
 
   const options = await context.newPage();
   await options.goto(`chrome-extension://${extensionId}/options.html`);
+  const shown = await highlighted(tab);
+  assert.ok(shown?.length, 'the tab has an i+1 highlight');
+  assert.equal(await options.isChecked('#iplusone'), true);
+  await options.uncheck('#iplusone');
+  await waitHighlighted(tab, null);
+  assert.deepEqual(await worker.evaluate(() => chrome.storage.local.get('iPlusOne')), { iPlusOne: false });
+  await options.check('#iplusone');
+  await waitHighlighted(tab, shown);
+  console.log('options i+1 checkbox off: no highlight; on: highlight back');
   await options.setInputFiles('#dict-file', dictionary);
   await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'));
   await options.close();

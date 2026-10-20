@@ -10,7 +10,7 @@ import { LAPIS_MODEL } from './src/lapis.ts';
 import { PITCH } from './src/meta.ts';
 import { pitchColors } from './src/pitch-colors.ts';
 import { sentenceHighlight } from './src/sentence-hover.ts';
-import type { Setting } from './src/settings.ts';
+import { iPlusOne, type Setting } from './src/settings.ts';
 import { call, messageOf } from './src/rpc.ts';
 import {
   forgetStatusMove, getAllStatuses, importStatuses, moveStatusKeys, onStatusChange, parseStatusFile, STATUS_NAMES, STATUSES, statusFile, WORD_CSS,
@@ -347,7 +347,7 @@ async function bindCheckbox(id: string, { get, set, onChange }: Setting<boolean>
   box.onchange = () => set(box.checked);
   onChange(value => { box.checked = value; });
 }
-await Promise.all([bindCheckbox('pitch-colors', pitchColors), bindCheckbox('sentence-highlight', sentenceHighlight)]);
+await Promise.all([bindCheckbox('pitch-colors', pitchColors), bindCheckbox('sentence-highlight', sentenceHighlight), bindCheckbox('iplusone', iPlusOne)]);
 byId('pitch-legend', HTMLElement).append(...Object.values(PITCH).map(({ label, color }) => el('li', {}, swatch(color), label)));
 
 await Promise.all([bindRadios('hoverMode', hoverMode), bindRadios('theme', theme), bindRadios('furigana', furiganaMode), bindVideoOptions(bindRadios)]);

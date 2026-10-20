@@ -218,6 +218,8 @@ To turn the highlight off or on:
 1. Click the Minerr button in the Chrome toolbar.
 2. Click the **Highlight i+1 sentences** switch.
 
+Or, on the options page, use **Highlight i+1 sentences** in **Word popup**.
+
 When you turn Minerr off, the highlight also goes away.
 
 ## Comprehension score
