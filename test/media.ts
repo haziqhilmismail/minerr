@@ -171,11 +171,12 @@ try {
   await waitHighlighted(dark, ['猫が魚を食べた。']);
   await shot(dark, 'iplusone-dark.png');
 
+  await setStorage({ 'w:今日': 'known', 'w:雨': 'known' });
   const youtube = await context.newPage();
   await youtube.setViewportSize({ width: 902, height: 528 });
   await youtube.goto('https://www.youtube.com/watch?v=testvideo');
   await youtube.locator('.minerr-subs-line .ml-word[data-ml-lemma="雨"]').waitFor({ timeout: 20000 });
-  await waitHighlighted(youtube, ['猫が魚を食べなかった']);
+  await waitHighlighted(youtube, ['猫が魚を食べなかった今日は雨']);
   console.log('i+1 highlight in the YouTube overlay:', await highlighted(youtube));
   const youtubeTab = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, youtube.url());
   const youtubeMenu = await context.newPage();
@@ -186,6 +187,8 @@ try {
   console.log('toolbar menu on mirrored YouTube captions: the score of the lines that showed');
   await shot(youtube, 'iplusone-youtube.png');
   await youtube.close();
+  await worker.evaluate(() => chrome.storage.local.remove(['w:今日', 'w:雨']));
+  await waitHighlighted(tab, ['猫が魚を食べた。']);
 
   const options = await context.newPage();
   await options.goto(`chrome-extension://${extensionId}/options.html`);

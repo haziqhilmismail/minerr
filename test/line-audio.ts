@@ -95,10 +95,10 @@ try {
   };
   await tab.evaluate(() => { const video = document.querySelector('video'); if (video) video.currentTime = 206; });
   await word(0).waitFor({ timeout: 20000 });
-  assert.equal(await line.innerText(), 'だけ登山口\nこっちだ。さあ、気をつけよう。おはよう');
+  assert.equal(await line.innerText(), 'だけ登山口こっちだ。さあ、気をつけよう。おはよう');
 
   const mirrored = await add(0, 'a');
-  assert.deepEqual([at(mirrored, 'Sentence'), at(mirrored, 'SentenceAudio')], ['だけ<b>登山口</b>', '']);
+  assert.deepEqual([at(mirrored, 'Sentence'), at(mirrored, 'SentenceAudio')], ['だけ<b>登山口</b>こっちだ。', '']);
   console.log('server down when the video opened: the YouTube caption rows give the card of the bug report', mirrored);
 
   await listen(whisper, 8766);
