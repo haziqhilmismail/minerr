@@ -24,27 +24,35 @@ interface PlayerState extends Captions {
   pot: string | null;
 }
 
+// The player of a video with Japanese captions, and the token of its caption requests.
+export interface TabPlayer extends Captions {
+  pot: string;
+}
+
 // Minerr studies Japanese: its Japanese track is never a machine translation (as STUDY_LANG in server/media.py).
 const STUDY_LANG = 'ja';
 const WAIT_MS = 1000;
 // ponytail: the tab waits up to one minute for the player (a long ad can play first), then the overlay copies the captions.
-const TRIES = 60;
+const PLAYER_WAIT_MS = 60_000;
 const SHOW_EVERY = 5;
 
-// The track of the uploader in lang first, then the automatic track, as server/media.py pick_track.
+// The track of the uploader in lang first, then the automatic track, as server/media.py pick_track; ja before ja-JP, as the server.
 // The automatic Japanese track of a video that YouTube dubbed into Japanese is not the language of the video.
 function trackIn({ tracks, dubbed }: Captions, lang: string): CaptionTrack | null {
-  const spoken = lang !== STUDY_LANG || !dubbed.includes(lang);
-  const matching = tracks.filter(t => (t.languageCode === lang || t.languageCode.startsWith(`${lang}-`)) && (spoken || t.kind !== 'asr'));
+  const asrAllowed = lang !== STUDY_LANG || !dubbed.includes(lang);
+  const matching = tracks.filter(t => (t.languageCode === lang || t.languageCode.startsWith(`${lang}-`)) && (asrAllowed || t.kind !== 'asr'));
   return matching.sort((a, b) => Number(a.kind === 'asr') - Number(b.kind === 'asr') || a.languageCode.length - b.languageCode.length)[0] ?? null;
 }
 
 // The URL of the best track in lang, or null. A language other than Japanese can be a translation of the Japanese track (tlang).
-export function trackUrl(captions: Captions, lang: string): string | null {
+export function trackUrl(captions: Captions, lang: string): URL | null {
   const own = trackIn(captions, lang);
-  if (own) return own.baseUrl;
+  if (own) return new URL(own.baseUrl);
   const japanese = lang === STUDY_LANG ? null : trackIn(captions, STUDY_LANG);
-  return japanese && `${japanese.baseUrl}&tlang=${encodeURIComponent(lang)}`;
+  if (!japanese) return null;
+  const url = new URL(japanese.baseUrl);
+  url.searchParams.set('tlang', lang);
+  return url;
 }
 
 function toTrack(value: unknown): CaptionTrack[] {
@@ -73,7 +81,7 @@ function toPlayerState(event: MessageEvent): PlayerState | null {
   };
 }
 
-const post = (message: object) => window.postMessage(message, location.origin);
+const post = (message: YoutubePageMessage) => window.postMessage(message, location.origin);
 
 // The state of the player, or null when src/youtube-main.ts does not answer.
 function ask(): Promise<PlayerState | null> {
@@ -93,10 +101,11 @@ function ask(): Promise<PlayerState | null> {
   });
 }
 
-// The tracks of the video and a token for them, or null if the video has no Japanese track.
+// The player of the video, or null if the video has no Japanese track. wanted() is false when the user opened another video.
 // Without a token yet (the captions are off), the tab makes the player show the Japanese track: the player then asks for it with a token.
-async function playerWithToken(videoId: string, wanted: () => boolean): Promise<(Captions & { pot: string }) | null> {
-  for (let i = 0; i < TRIES && wanted(); i++) {
+export async function findTabPlayer(videoId: string, wanted: () => boolean): Promise<TabPlayer | null> {
+  const deadline = Date.now() + PLAYER_WAIT_MS;
+  for (let i = 0; Date.now() < deadline && wanted(); i++) {
     const state = await ask();
     // After a navigation in the page, the player can have the last video for a moment.
     if (state?.videoId === videoId) {
@@ -110,12 +119,12 @@ async function playerWithToken(videoId: string, wanted: () => boolean): Promise<
   return null;
 }
 
-// The captions of the video in lang (ja or en), or null. wanted() is false when the user opened another video.
-export async function tabCaptions(videoId: string, lang: string, wanted: () => boolean): Promise<SubtitleSegment[] | null> {
-  const player = await playerWithToken(videoId, wanted);
-  const url = player && trackUrl(player, lang);
-  if (!player || !url) return null;
-  const response = await fetch(`${url}&fmt=json3&c=WEB&potc=1&pot=${encodeURIComponent(player.pot)}`);
+// The captions of the video in lang (ja or en), or null.
+export async function tabCaptions(player: TabPlayer, lang: string): Promise<SubtitleSegment[] | null> {
+  const url = trackUrl(player, lang);
+  if (!url) return null;
+  for (const [name, value] of Object.entries({ fmt: 'json3', c: 'WEB', potc: '1', pot: player.pot })) url.searchParams.set(name, value);
+  const response = await fetch(url);
   const text = response.ok ? await response.text() : '';
   // YouTube answers an empty body when it does not accept the token.
   return text ? parseCaptions('json3', text) : null;
