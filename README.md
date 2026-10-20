@@ -304,6 +304,26 @@ More settings in **Video**:
 - **Open the first unknown word after a pause of the play mode.** The popup of the first unknown word of the line opens.
 - **Pause while the mouse is on the subtitles.** The video pauses when the mouse moves onto the subtitle line. It also stays paused while the popup of a subtitle word is open. The video plays again when the mouse goes away and the popup closes. This setting is on by default.
 
+## Subtitle browser
+
+The subtitle browser is a list of all lines of the video, at the right side of the video. It needs subtitles with times.
+
+1. Press `G` on the video. The list opens.
+2. Click a line, or its time, to go to that line.
+3. Move the mouse over a word in the list to open its popup. A card from a word in the list gets the sentence and the audio of that line.
+4. Press `G` again to close the list.
+
+Click a filter at the top of the list:
+
+| Filter | The list shows |
+| --- | --- |
+| **All** | All lines. |
+| **1 unknown word** | The lines with exactly one unknown word, as the i+1 highlight counts them. |
+| **Learning** | The lines with a word that has the status learning. |
+| **Bookmarks** | The lines that you bookmarked. |
+
+To bookmark the current line, press `B`, or click **★** in the list. Press `B` again to remove the bookmark. Minerr keeps the bookmarks of each video. The bookmarks of a YouTube video belong to its video ID, and the bookmarks of a file belong to its name and size.
+
 ## Subtitle display
 
 Open the options page and go to **Video** to change these settings. They apply to the subtitle overlay on all video pages.
@@ -326,6 +346,8 @@ These keys work on a video with the Minerr subtitle overlay: on YouTube, in the 
 | `Alt+D` | Go forward 5 seconds. | |
 | `C` | Copy the current line. | |
 | `J` | Join the next line to the current line. A card then gets both lines as the sentence, and the audio of both. Press `J` again to stop. | Needs subtitles with times. |
+| `G` | Open or close the subtitle browser. | Needs subtitles with times. |
+| `B` | Bookmark the current line, or remove its bookmark. | Needs subtitles with times. |
 | `.` | Go one frame forward. The video pauses. | Needs subtitles with times. |
 | `,` | Go one frame back. The video pauses. | Needs subtitles with times. |
 | `Alt+O` | Show the subtitles 0.1 seconds later. | Needs subtitles with times. |
@@ -502,6 +524,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/overlay.ts` | The subtitle overlay line, for YouTube and the player. |
 | `src/playback.ts`, `src/videokeys.ts` | Pure rules for timed lines (jumps, play modes, gaps, text clean-up), and the table of the video keys. |
 | `src/videosettings.ts`, `src/videooptions.ts` | The video settings, and their part of the options page. |
+| `src/linelist.ts` | The subtitle browser: the list of all lines, its filters, and the bookmarks. |
 | `src/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
 | `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 

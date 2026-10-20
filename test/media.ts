@@ -459,6 +459,38 @@ try {
   await player.keyboard.press('j');
   await player.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べた。');
 
+  await setStorage({ 'w:魚': 'unknown', 'w:雨': 'learning', 'w:今日': 'unknown', 'w:降る': 'unknown' });
+  await player.keyboard.press('g');
+  const browser = player.locator('.minerr-lines');
+  await browser.waitFor();
+  const visibleRows = () => browser.locator('li:not([hidden]) .text').allInnerTexts();
+  assert.deepEqual(await visibleRows(), ['猫が魚を食べた。', '今日は雨が降っている。']);
+  await browser.locator('li time').nth(1).click();
+  assert.equal(await videoTime(), 3, 'a click on a line goes to it');
+  await player.keyboard.press('b');
+  await toast.filter({ hasText: 'Bookmarked the line.' }).waitFor();
+  await browser.getByRole('button', { name: 'Bookmarks' }).click();
+  assert.deepEqual(await visibleRows(), ['今日は雨が降っている。']);
+  await browser.locator('li .ml-word[data-ml-lemma="雨"].ml-learning').first().waitFor();
+  await browser.getByRole('button', { name: 'Learning' }).click();
+  assert.deepEqual(await visibleRows(), ['今日は雨が降っている。']);
+  await browser.getByRole('button', { name: '1 unknown word' }).click();
+  await player.waitForFunction(() => [...document.querySelectorAll('.minerr-lines li:not([hidden]) .text')].map(n => n.textContent).join() === '猫が魚を食べた。');
+  const bookmarkKey = await worker.evaluate(async () => Object.keys(await chrome.storage.local.get(null)).filter(key => key.startsWith('bm:')));
+  assert.equal(bookmarkKey.length, 1);
+  assert.deepEqual(await worker.evaluate(key => chrome.storage.local.get(key), bookmarkKey[0] ?? ''), { [bookmarkKey[0] ?? '']: [3] });
+  await browser.locator('li .ml-word[data-ml-lemma="魚"]').hover();
+  await popup.locator('li', { hasText: 'fish (fixture)' }).waitFor();
+  await player.keyboard.press('a');
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+  assert.deepEqual(clips.at(-1), { sha256: uploads[0]?.sha256, start: 0, end: 3.5 }, 'a word in the browser gets the audio of its row');
+  await shot(player, 'player-browser.png');
+  await player.keyboard.press('Escape');
+  await player.mouse.move(0, 0);
+  await player.keyboard.press('g');
+  await browser.waitFor({ state: 'hidden' });
+  console.log('subtitle browser: click to seek, bookmarks, filters, and a card from a row');
+
   const [download] = await Promise.all([player.waitForEvent('download'), player.click('#save')]);
   const saved = readFileSync(await download.path(), 'utf8');
   console.log('saved subtitles:', download.suggestedFilename(), JSON.stringify(saved));

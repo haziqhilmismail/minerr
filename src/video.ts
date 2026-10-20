@@ -2,6 +2,7 @@
 import type { SubtitleSegment } from './captions.ts';
 import { modePause, played, setHold } from './autopause.ts';
 import type { CardLine } from './lineaudio.ts';
+import { createLineList } from './linelist.ts';
 import { createOverlay, wordStatuses } from './overlay.ts';
 import {
   autoPause, cleanSegments, cleanText, GAP_LEAD, GAP_MODES, gapEnd, type GapMode, jumpTarget, PLAY_MODES, type PlayMode,
@@ -37,6 +38,8 @@ const FRAME = 1 / 30;
 const TIMED_HINT = 'This key needs subtitles with times. Generate them with WhisperX, or start the Minerr server for the YouTube subtitles.';
 
 const { layer, line, show, toast } = createOverlay();
+const list = createLineList(index => goTo(index), index => toggleBookmark(index));
+layer.append(list.panel);
 let target: Target = { video: () => null };
 // The lines from the page, and the lines that the overlay uses: the same, or without bracketed text.
 let given: Lines = { kind: 'none' };
@@ -59,6 +62,9 @@ let lastTime = 0;
 // The line that the play mode paused at its end: it stays on the screen until the video plays or seeks.
 let heldIndex = -1;
 let secondShown: SecondDisplay = 'show';
+// The segments in the subtitle browser, and the start times of the bookmarked lines of the video.
+let listed: SubtitleSegment[] | null = null;
+let bookmarks = new Set<number>();
 // The first of two lines that J joined, for one card with both; it ends when the video leaves the two lines.
 let combined: number | null = null;
 
@@ -91,6 +97,7 @@ function render(): void {
   const time = lineTime();
   const second = found && !target.blocked?.() && secondShown !== 'off' ? found.second?.find(s => s.start <= time && time < s.end)?.text : '';
   show(shownLines().map(segment => segment.text).join('\n'), second ?? '');
+  list.setCurrent(shownIndex);
 }
 
 function crossGap(playing: HTMLVideoElement): void {
@@ -142,14 +149,55 @@ const cleaned = (value: Lines): Lines => {
   return { ...value, segments: cleanSegments(value.segments), second: value.second && cleanSegments(value.second) };
 };
 
+const bookmarkKey = (id: string) => `bm:${id}`;
+
+function useLines(next: Lines): void {
+  lines = next;
+  const segments = lines.kind === 'timed' ? lines.segments : [];
+  if (segments !== listed) {
+    listed = segments;
+    list.setLines(segments, bookmarks);
+  }
+  follow();
+}
+
 export function setLines(next: Lines): void {
   const id = (value: Lines) => (value.kind === 'timed' ? value.id : null);
-  if (id(next) !== id(given)) {
+  const nextId = id(next);
+  if (nextId !== id(given)) {
     offset = 0;
     hinted = false;
+    bookmarks = new Set();
+    if (nextId) {
+      chrome.storage.local.get(bookmarkKey(nextId)).then(stored => {
+        const starts: unknown = stored[bookmarkKey(nextId)];
+        if (id(given) !== nextId || !Array.isArray(starts)) return;
+        bookmarks = new Set(starts.filter(start => typeof start === 'number'));
+        list.setBookmarks(bookmarks);
+      });
+    }
   }
   given = next;
-  lines = cleaned(next);
+  useLines(cleaned(next));
+}
+
+function goTo(index: number): void {
+  const segment = timed()?.segments[index];
+  if (segment) seek(segment.start + offset);
+}
+
+function toggleBookmark(index: number): void {
+  const found = timed();
+  const segment = found?.segments[index];
+  if (!found || !segment) return void toast('Go to a line first, then bookmark it.');
+  if (!bookmarks.delete(segment.start)) bookmarks.add(segment.start);
+  chrome.storage.local.set({ [bookmarkKey(found.id)]: [...bookmarks] });
+  toast(bookmarks.has(segment.start) ? 'Bookmarked the line.' : 'Removed the bookmark.');
+  list.setBookmarks(bookmarks);
+}
+
+function toggleList(): void {
+  list.toggle();
   follow();
 }
 
@@ -219,6 +267,12 @@ const ACTIONS: Record<VideoAction, () => boolean | void> = {
   smaller: () => resize(-SCALE_STEP),
   obscure: toggleObscured,
   combine,
+  browser: toggleList,
+  // render first: a seek just now changed the time, and the seeked event that renders comes later.
+  bookmark: () => {
+    render();
+    toggleBookmark(shownIndex);
+  },
   second: () => {
     const next = secondShown === 'off' ? 'show' : 'off';
     secondDisplay.set(next);
@@ -246,10 +300,11 @@ window.addEventListener('keydown', event => {
 function cardLine(): CardLine | null {
   const found = timed();
   const word = document.querySelector('.ml-word[data-ml-active]');
-  const shown = shownLines();
+  const row = word && list.panel.contains(word) ? list.rowIndex(word) : null;
+  const shown = row === null ? shownLines() : found?.segments.slice(row, row + 1) ?? [];
   const [first] = shown;
   const last = shown.at(-1);
-  if (!found || !first || !last || !word || !line.contains(word)) return null;
+  if (!found || !first || !last || !word || (row === null && !line.contains(word))) return null;
   const text = shown.map(segment => segment.text).join('\n');
   return { start: first.start + offset, end: last.end + offset, text, combined: shown.length > 1, audio: found.audio };
 }
@@ -285,8 +340,7 @@ subEffect.watch(value => { effect = value; showObscured(); });
 subObscured.watch(value => { obscured = value; showObscured(); });
 cleanSubs.watch(value => {
   clean = value;
-  lines = cleaned(given);
-  follow();
+  useLines(cleaned(given));
 });
 gapMode.watch(value => { gap = value; });
 playMode.watch(value => { mode = value; });
