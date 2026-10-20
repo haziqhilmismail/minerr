@@ -200,7 +200,7 @@ try {
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
   const sentence = at(ankiRequests.find(r => at(r, 'action') === 'addNote'), 'params', 'note', 'fields', 'Sentence');
   console.log('card sentence from the overlay:', sentence);
-  assert.equal(sentence, '猫が魚を<b>食べなかった</b>');
+  assert.equal(sentence, '猫が魚を<b>食べなかった</b>今日は雨', 'the rows of mirrored captions are one sentence');
   await tab.keyboard.press('Escape');
   await tab.mouse.move(0, 0);
 

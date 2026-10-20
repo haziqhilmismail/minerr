@@ -251,9 +251,9 @@ test('real JMdict Yomitan zip parses with 食べる -> "to eat"', async () => {
   assert.ok(first.glossary.some(g => /\beat\b/.test(g)), JSON.stringify(first.glossary));
 });
 
-test('captionText joins the caption lines with line breaks and drops empty lines', async () => {
+test('captionText joins the caption lines into one text and drops empty lines', async () => {
   const { captionText } = await import('../src/captions.ts');
-  assert.equal(captionText([' 猫が好きです ', '', '魚も好き']), '猫が好きです\n魚も好き');
+  assert.equal(captionText([' だけ登山口 ', '', 'こっちだ。']), 'だけ登山口こっちだ。');
   assert.equal(captionText([]), '');
 });
 

@@ -7,8 +7,9 @@ export interface SubtitleSegment {
   text: string;
 }
 
-// lines are the text of the caption lines from top to bottom; empty lines drop out.
-export const captionText = (lines: string[]): string => lines.map(line => line.trim()).filter(Boolean).join('\n');
+// lines are the text of the caption lines from top to bottom; empty lines drop out. The lines join without a break:
+// YouTube cuts its automatic captions into rows in mid-sentence, and a line break ends the sentence of a card.
+export const captionText = (lines: string[]): string => lines.map(line => line.trim()).filter(Boolean).join('');
 
 // segments are sorted by start.
 export const segmentAt = (segments: SubtitleSegment[], time: number): SubtitleSegment | null =>
