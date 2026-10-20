@@ -213,6 +213,34 @@ try {
   await tab.keyboard.press('Escape');
   console.log('sentence highlight: the sentence of the hovered or popup word; Alt+Shift+S turns it off and on; popup shows the count on the page; saved', join(work, 'sentence.png'));
 
+  const select = (from: string, to: string) => tab.evaluate(([start, end]) => {
+    const range = new Range();
+    range.setStartBefore(document.querySelector(start ?? '') ?? document.body);
+    range.setEndAfter(document.querySelector(end ?? '') ?? document.body);
+    getSelection()?.removeAllRanges();
+    getSelection()?.addRange(range);
+  }, [from, to]);
+  const statuses = () => tab.$$eval('#line .ml-word', spans => spans.map(span => `${span.textContent}:${span.className.replace('ml-word ml-', '')}`));
+  await tab.mouse.move(0, 0);
+  await select('#line .ml-word[data-ml-lemma="猫"]', '#line .ml-word[data-ml-lemma="魚"]');
+  await tab.keyboard.press('3');
+  await toast.filter({ hasText: 'Marked 2 words as known.' }).waitFor();
+  await tab.waitForSelector('#line .ml-word.ml-known[data-ml-lemma="魚"]');
+  assert.deepEqual(await statuses(), ['猫:known', '魚:known', '食べなかった:unknown']);
+  assert.equal(await popup.isVisible(), false);
+  await tab.keyboard.press('1');
+  await toast.filter({ hasText: 'Marked 2 words as unknown.' }).waitFor();
+  await tab.waitForSelector('#line .ml-word.ml-unknown[data-ml-lemma="魚"]');
+  assert.deepEqual(await options.evaluate(() => chrome.storage.local.get(['w:猫', 'w:魚'])), {});
+  await select('#line .ml-word[data-ml-lemma="食べる"]', '#line .ml-word[data-ml-lemma="食べる"]');
+  await tab.keyboard.press('4');
+  await toast.filter({ hasText: 'Marked 1 word as ignored.' }).waitFor();
+  await tab.waitForSelector('#line .ml-word.ml-ignored[data-ml-lemma="食べる"]');
+  assert.equal(await tab.$$eval('#wrap .ml-word.ml-ignored', spans => spans.length), 3, 'the same lemma elsewhere on the page changes too');
+  await options.evaluate(() => chrome.storage.local.remove('w:食べる'));
+  await tab.evaluate(() => getSelection()?.removeAllRanges());
+  console.log('bulk status: a status key sets every word of the selection, with a short confirmation');
+
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('READING E2E PASS');
 } finally {

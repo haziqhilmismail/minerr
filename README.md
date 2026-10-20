@@ -116,6 +116,13 @@ When the popup is open, use these keys:
 
 The keys do not work when the focus is in a text field.
 
+### Mark words in bulk
+
+1. Select text on the page with the mouse.
+2. Press a status key, `1` to `4`.
+
+Minerr sets each word that the selection touches to that status. A short message at the bottom of the page shows the number of words, for example `Marked 5 words as known.` The selection wins over an open popup.
+
 ### Close the popup or turn Minerr off
 
 - To close the popup, press `Esc`, click outside it, or click **✕** in its top-right corner.

@@ -1,4 +1,4 @@
-// Key names for the key tables of the page and the popup.
+// Key names and the rules of the key tables of the page and the popup.
 
 export const isEditable = (target: EventTarget | null) => target instanceof HTMLElement
   && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
@@ -9,4 +9,14 @@ export function chord(event: Pick<KeyboardEvent, 'key' | 'code' | 'altKey' | 'sh
   const letter = /^Key([A-Z])$/.exec(event.code)?.[1];
   const name = event.altKey && letter ? letter.toLowerCase() : event.key.length === 1 ? event.key.toLowerCase() : event.key;
   return `${event.altKey ? 'alt+' : ''}${event.altKey && event.shiftKey ? 'shift+' : ''}${name}`;
+}
+
+// What a status key (1-4) changes: the words of a text selection, else the word of the open popup,
+// else the one unknown word of the subtitle line. null: the page gets the key.
+export type StatusTarget = 'selection' | 'popup' | 'line' | null;
+
+export function statusTarget({ selectedWords, popupOpen, lineUnknowns }: { selectedWords: number; popupOpen: boolean; lineUnknowns: number }): StatusTarget {
+  if (selectedWords > 0) return 'selection';
+  if (popupOpen) return 'popup';
+  return lineUnknowns === 1 ? 'line' : null;
 }

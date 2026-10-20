@@ -50,7 +50,9 @@ export function onStatusChange(listener: (changed: Map<string, Status>) => void)
 }
 
 export function setStatuses(lemmas: string[], status: Status): Promise<void> {
-  return chrome.storage.local.set(Object.fromEntries(lemmas.map(lemma => [wordKey(lemma), status])));
+  return status === 'unknown'
+    ? chrome.storage.local.remove(lemmas.map(wordKey))
+    : chrome.storage.local.set(Object.fromEntries(lemmas.map(lemma => [wordKey(lemma), status])));
 }
 
 export async function getStatuses(lemmas: string[]): Promise<Map<string, Status>> {

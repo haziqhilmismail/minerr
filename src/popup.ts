@@ -8,9 +8,8 @@ import { call, messageOf } from './rpc.ts';
 import { sentenceAround } from './sentence.ts';
 import { installSentenceHover, setPopupWord } from './sentence-hover.ts';
 import { watchActive } from './site.ts';
-import { getStatuses, onStatusChange, setStatus, STATUS_NAMES, STATUSES } from './status.ts';
-import { isEditable } from './chord.ts';
-import './keys.ts';
+import { getStatuses, onStatusChange, setStatus, STATUSES } from './status.ts';
+import { installKeys } from './keys.ts';
 
 // The sentence around the word inside its nearest block ancestor, with the word in <b>.
 function sentenceHtml(span: HTMLElement): string {
@@ -100,14 +99,6 @@ async function addCard(): Promise<void> {
   }
 }
 
-const HOTKEYS: Record<string, () => void> = {
-  ...Object.fromEntries(STATUS_NAMES.map(status => [STATUSES[status].hotkey, () => {
-    if (current) setStatus(current.view.lemma, status);
-  }])),
-  a: addCard,
-  Escape: close,
-};
-
 installSentenceHover();
 
 let enabled = true;
@@ -159,15 +150,12 @@ window.addEventListener('keydown', event => {
   if (event.key === 'Shift' && !event.repeat && hovered) consider(hovered, true, false);
 }, true);
 
-// Capture on window so page shortcuts (YouTube uses 1-4 to seek) do not also fire.
-window.addEventListener('keydown', event => {
-  if (!current || event.ctrlKey || event.metaKey || event.altKey || isEditable(event.target)) return;
-  const action = HOTKEYS[event.key.length === 1 ? event.key.toLowerCase() : event.key];
-  if (!action) return;
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  action();
-}, true);
+installKeys({
+  isOpen: () => current !== null,
+  setStatus: status => { if (current) setStatus(current.view.lemma, status); },
+  addCard,
+  close,
+});
 
 onStatusChange(changed => {
   const status = current && changed.get(current.view.lemma);
