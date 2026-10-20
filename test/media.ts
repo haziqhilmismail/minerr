@@ -30,7 +30,9 @@ const dictionary = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
 ]);
 
 const ankiRequests: unknown[] = [];
-const ankiReplies: Record<string, () => unknown> = { createDeck: () => 1, modelNames: () => ['Basic'], createModel: () => ({}), addNote: () => 1700000000000 };
+const ankiReplies: Record<string, (params: unknown) => unknown> = {
+  createDeck: () => 1, modelNames: () => ['Basic'], createModel: () => ({}), addNote: () => 1700000000000, storeMediaFile: params => at(params, 'filename'),
+};
 const anki = createServer((req, res) => {
   let body = '';
   req.on('data', chunk => { body += chunk; });
@@ -41,7 +43,7 @@ const anki = createServer((req, res) => {
     const handler = typeof action === 'string' ? ankiReplies[action] : undefined;
     if (!handler) throw new Error(`The mock has no action ${String(action)}`);
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ result: handler(), error: null }));
+    res.end(JSON.stringify({ result: handler(at(request, 'params')), error: null }));
   });
 });
 await listen(anki, 8765);
@@ -51,6 +53,8 @@ const JOB_STATES = [{ state: 'queued' }, { state: 'transcribing', progress: 40 }
   { state: 'transcribing', progress: 40 }, { state: 'done', progress: 100, segments: SEGMENTS }];
 const uploads: { type: string | undefined; filename: string | undefined; sha256: string; size: number }[] = [];
 let jobPolls = 0;
+const clips: unknown[] = [];
+const CLIP = Buffer.from('ID3 fake mp3');
 const whisper = createServer((req, res) => {
   const chunks: Buffer[] = [];
   req.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -66,6 +70,11 @@ const whisper = createServer((req, res) => {
       return reply(200, { id: 'file1', sha256 });
     }
     if (req.url === '/jobs/file1') return reply(200, JOB_STATES[Math.min(jobPolls++, JOB_STATES.length - 1)]);
+    if (req.method === 'POST' && req.url === '/clip') {
+      clips.push(JSON.parse(Buffer.concat(chunks).toString()));
+      res.writeHead(200, { 'Content-Type': 'audio/mpeg' });
+      return res.end(CLIP);
+    }
     reply(404, { error: 'Not found.' });
   });
 });
@@ -230,8 +239,23 @@ try {
   console.log('player card sentence:', at(note, 'fields', 'Sentence'), 'picture:', `${picture.length} base64 chars, saved to`, join(out, 'player-card.jpg'));
   assert.equal(at(note, 'fields', 'Sentence'), '猫が<b>魚</b>を食べた');
   assert.ok(picture.startsWith('/9j/'), 'picture is base64 JPEG');
+  const recorded = at(ankiRequests.find(r => at(r, 'action') === 'storeMediaFile'), 'params');
+  console.log('player card audio without the server:', at(recorded, 'filename'), String(at(recorded, 'data')).length, 'base64 chars');
+  assert.match(String(at(recorded, 'filename')), /^minerr-\d+\.webm$/);
+  assert.ok(String(at(recorded, 'data')).startsWith('GkXf'), 'the recorded line audio is a WebM file');
+  assert.equal(at(note, 'fields', 'SentenceAudio'), `[sound:${String(at(recorded, 'filename'))}]`);
+  const webm = join(out, 'player-line.webm');
+  writeFileSync(webm, Buffer.from(String(at(recorded, 'data')), 'base64'));
+  const pcm = execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', webm, '-ac', '1', '-ar', '8000', '-f', 's16le', 'pipe:1']);
+  console.log('recorded line audio:', pcm.length / 16000, 's, saved to', webm);
+  assert.ok(Math.abs(pcm.length / 16000 - 3.5) < 0.4, 'the recording is the line (0 to 3 s) with 0.5 s after it');
+  assert.deepEqual(clips, [], 'the player has no server audio of a file that it did not send');
+  assert.equal(await player.evaluate(() => document.querySelector('video')?.currentTime), 1, 'the video goes back after the recording');
   await player.keyboard.press('Escape');
   await player.mouse.move(0, 0);
+
+  const videoTime = () => player.evaluate(() => document.querySelector('video')?.currentTime ?? -1);
+  const toast = player.locator('.minerr-subs-toast');
 
   await player.setInputFiles('#video-file', clip);
   await status.filter({ hasText: 'No subtitles.' }).waitFor();
@@ -252,6 +276,66 @@ try {
   await line.locator('.ml-word[data-ml-lemma="雨"]').waitFor();
   assert.equal(await line.innerText(), '今日は雨が降っている。');
   console.log('WhisperX overlay at 4 s:', await line.innerText());
+  await line.locator('.ml-word[data-ml-lemma="雨"]').hover();
+  await popup.locator('.add').waitFor();
+  await player.keyboard.press('a');
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+  const clipNote = at(ankiRequests.filter(r => at(r, 'action') === 'addNote').at(-1), 'params', 'note');
+  assert.deepEqual(clips, [{ sha256: uploads[0]?.sha256, start: 2.5, end: 7 }], 'the server cuts the line with 0.5 s on each side');
+  const stored = at(ankiRequests.filter(r => at(r, 'action') === 'storeMediaFile').at(-1), 'params');
+  assert.match(String(at(stored, 'filename')), /^minerr-\d+\.mp3$/);
+  assert.equal(at(stored, 'data'), CLIP.toString('base64'));
+  assert.equal(at(clipNote, 'fields', 'SentenceAudio'), `[sound:${String(at(stored, 'filename'))}]`);
+  console.log('player card audio from the server:', clips);
+  await player.keyboard.press('Escape');
+  await player.mouse.move(0, 0);
+  await seek(1);
+  await player.keyboard.press('j');
+  await player.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べた。\n今日は雨が降っている。');
+  await line.locator('.ml-word[data-ml-lemma="雨"]').hover();
+  await popup.locator('.add').waitFor();
+  await player.keyboard.press('a');
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+  const joined = at(ankiRequests.filter(r => at(r, 'action') === 'addNote').at(-1), 'params', 'note');
+  assert.equal(at(joined, 'fields', 'Sentence'), '猫が魚を食べた。 今日は<b>雨</b>が降っている。');
+  assert.deepEqual(clips.at(-1), { sha256: uploads[0]?.sha256, start: 0, end: 7 }, 'the audio spans both lines');
+  console.log('J joined two lines: the card has both lines and their audio');
+  await player.keyboard.press('Escape');
+  await player.mouse.move(0, 0);
+  await player.keyboard.press('j');
+  await player.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べた。');
+
+  await setStorage({ 'w:魚': 'unknown', 'w:雨': 'learning', 'w:今日': 'unknown', 'w:降る': 'unknown' });
+  await player.keyboard.press('g');
+  const browser = player.locator('.minerr-lines');
+  await browser.waitFor();
+  const visibleRows = () => browser.locator('li:not([hidden]) .text').allInnerTexts();
+  assert.deepEqual(await visibleRows(), ['猫が魚を食べた。', '今日は雨が降っている。']);
+  await browser.locator('li time').nth(1).click();
+  assert.equal(await videoTime(), 3, 'a click on a line goes to it');
+  await player.keyboard.press('b');
+  await toast.filter({ hasText: 'Bookmarked the line.' }).waitFor();
+  await browser.getByRole('button', { name: 'Bookmarks' }).click();
+  assert.deepEqual(await visibleRows(), ['今日は雨が降っている。']);
+  await browser.locator('li .ml-word[data-ml-lemma="雨"].ml-learning').first().waitFor();
+  await browser.getByRole('button', { name: 'Learning' }).click();
+  assert.deepEqual(await visibleRows(), ['今日は雨が降っている。']);
+  await browser.getByRole('button', { name: '1 unknown word' }).click();
+  await player.waitForFunction(() => [...document.querySelectorAll('.minerr-lines li:not([hidden]) .text')].map(n => n.textContent).join() === '猫が魚を食べた。');
+  const bookmarkKey = await worker.evaluate(async () => Object.keys(await chrome.storage.local.get(null)).filter(key => key.startsWith('bm:')));
+  assert.equal(bookmarkKey.length, 1);
+  assert.deepEqual(await worker.evaluate(key => chrome.storage.local.get(key), bookmarkKey[0] ?? ''), { [bookmarkKey[0] ?? '']: [3] });
+  await browser.locator('li .ml-word[data-ml-lemma="魚"]').hover();
+  await popup.locator('li', { hasText: 'fish (fixture)' }).waitFor();
+  await player.keyboard.press('a');
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+  assert.deepEqual(clips.at(-1), { sha256: uploads[0]?.sha256, start: 0, end: 3.5 }, 'a word in the browser gets the audio of its row');
+  await shot(player, 'player-browser.png');
+  await player.keyboard.press('Escape');
+  await player.mouse.move(0, 0);
+  await player.keyboard.press('g');
+  await browser.waitFor({ state: 'hidden' });
+  console.log('subtitle browser: click to seek, bookmarks, filters, and a card from a row');
 
   const [download] = await Promise.all([player.waitForEvent('download'), player.click('#save')]);
   const saved = readFileSync(await download.path(), 'utf8');

@@ -4,18 +4,20 @@ import type { Group, Tag } from './yomitan.ts';
 
 const ENDPOINT = 'http://127.0.0.1:8765';
 const MODEL = 'Minerr';
-const FIELDS = ['Word', 'Reading', 'Sentence', 'Definition', 'Image'];
+const FIELDS = ['Word', 'Reading', 'Sentence', 'Definition', 'Image', 'SentenceAudio'];
 
 export const DEFAULT_DECK = 'Minerr';
 export const DEFAULT_KNOWN_QUERY = `deck:"${DEFAULT_DECK}" prop:ivl>=21`;
 export const DEFAULT_KNOWN_FIELD = 'Word';
 
 // The word of a new note and its HTML: sentence has the word in <b>, definition is from definitionHtml.
+// audio is the audio of the subtitle line of the word; the service worker adds it for a word in video subtitles.
 export interface CardFields {
   word: string;
   reading: string;
   sentence: string;
   definition: string;
+  audio?: MediaFile;
 }
 
 export async function getDeck(): Promise<string> {
@@ -45,7 +47,7 @@ export function parseNoteType(value: unknown): NoteType {
 export const getNoteType = async (): Promise<NoteType> => parseNoteType((await chrome.storage.local.get('noteType')).noteType);
 export const setNoteType = (noteType: NoteType): Promise<void> => chrome.storage.local.set({ noteType });
 
-export const MARKERS = ['word', 'reading', 'furigana', 'sentence', 'definition', 'image', 'url', 'title'] as const;
+export const MARKERS = ['word', 'reading', 'furigana', 'sentence', 'definition', 'image', 'audio', 'url', 'title'] as const;
 export type Marker = (typeof MARKERS)[number];
 // The HTML that replaces each marker.
 export type MarkerValues = Record<Marker, string>;
@@ -61,8 +63,8 @@ export const unknownMarkers = (template: string): string[] =>
 export const renderField = (template: string, values: MarkerValues): string =>
   template.replace(MARKER, (text, name: string) => (isMarker(name) ? values[name] : text));
 
-// image is the HTML of the screenshot, or '' if no field uses {image}.
-export function markerValues(card: CardFields, page: PageInfo, image: string): MarkerValues {
+// image is the HTML of the screenshot, or '' if no field uses {image}; audio is the [sound:...] tag of the line audio, or ''.
+export function markerValues(card: CardFields, page: PageInfo, image: string, audio = ''): MarkerValues {
   const word = escapeHtml(card.word);
   const reading = escapeHtml(card.reading);
   return {
@@ -72,6 +74,7 @@ export function markerValues(card: CardFields, page: PageInfo, image: string): M
     sentence: card.sentence,
     definition: card.definition,
     image,
+    audio,
     url: escapeHtml(page.url),
     title: escapeHtml(page.title),
   };
@@ -85,6 +88,7 @@ const FIELD_NAMES: Record<Marker, string[]> = {
   sentence: ['sentence', 'example', 'context'],
   definition: ['meaning', 'definition', 'definitions', 'glossary', 'wordmeaning', 'maindefinition', 'vocabmeaning', 'back'],
   image: ['picture', 'image', 'screenshot', 'photo'],
+  audio: ['sentenceaudio', 'audio', 'sound'],
   url: ['url', 'source', 'link'],
   title: ['title'],
 };
@@ -128,6 +132,7 @@ const CSS = `
 .definition .tags { margin-bottom: .6em; }
 .dict { display: block; color: var(--muted); font-size: .7rem; }
 ${TAG_CSS}
+.audio { margin-top: .5rem; }
 .image { margin-top: 1.5rem; }
 .image img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: .5rem; }
 `;
@@ -139,6 +144,7 @@ export const RECOGNITION = {
   Back: `{{FrontSide}}
 <hr id="answer">
 <div class="headword"><ruby>{{Word}}{{#Reading}}<rt>{{Reading}}</rt>{{/Reading}}</ruby></div>
+{{#SentenceAudio}}<div class="audio">{{SentenceAudio}}</div>{{/SentenceAudio}}
 {{#Definition}}<div class="definition">{{Definition}}</div>{{/Definition}}
 {{#Image}}<div class="image">{{Image}}</div>{{/Image}}`,
 };
@@ -201,19 +207,23 @@ export async function modelFieldNames(model: string): Promise<string[]> {
   return names;
 }
 
-// Creates the note type, or converges an existing one to the current templates and CSS.
+// Creates the note type, or converges an existing one to the current fields, templates, and CSS.
 // It writes only what differs: AnkiConnect refuses note type writes while an Anki editor window is open.
-// An existing note type that lacks one of FIELDS is not migrated; addNote then fails with the AnkiConnect error.
+// A field that is missing (a note type from an earlier version) gets added; Minerr never removes or renames a field.
 async function ensureModel(): Promise<void> {
   if (!(await modelNames()).includes(MODEL)) {
     await invoke('createModel', NOTE_TYPE);
     return;
   }
   const { Name, Front, Back } = RECOGNITION;
-  const [templates, styling] = await Promise.all([
+  const [fields, templates, styling] = await Promise.all([
+    modelFieldNames(MODEL),
     invoke('modelTemplates', { modelName: MODEL }),
     invoke('modelStyling', { modelName: MODEL }),
   ]);
+  for (const fieldName of FIELDS.filter(name => !fields.includes(name))) {
+    await invoke('modelFieldAdd', { modelName: MODEL, fieldName, index: FIELDS.indexOf(fieldName) });
+  }
   if (at(templates, Name, 'Front') !== Front || at(templates, Name, 'Back') !== Back) {
     await invoke('updateModelTemplates', { model: { name: MODEL, templates: { [Name]: { Front, Back } } } });
   }
@@ -223,32 +233,39 @@ async function ensureModel(): Promise<void> {
 // Once per service worker lifetime; a failed attempt (Anki closed) clears it so the next add tries again.
 let modelReady: Promise<void> | null = null;
 
-// A JPEG file for AnkiConnect: data is base64.
-interface Picture {
+// A media file for AnkiConnect: data is base64. The screenshot is a JPEG; the line audio is an MP3 or a WebM.
+export interface MediaFile {
   filename: string;
   data: string;
 }
 
-async function builtinNote(card: CardFields, picture: Picture) {
+// Stores file in the media folder of Anki and returns the name that Anki gave it.
+async function store(file: MediaFile): Promise<string> {
+  const stored = await invoke('storeMediaFile', file);
+  if (!isString(stored)) unexpected('storeMediaFile');
+  return stored;
+}
+
+const soundTag = async (audio: MediaFile | undefined) => (audio ? `[sound:${await store(audio)}]` : '');
+
+async function builtinNote(card: CardFields, picture: MediaFile) {
   modelReady ??= ensureModel().catch(error => { modelReady = null; throw error; });
   await modelReady;
+  const SentenceAudio = await soundTag(card.audio);
   return {
     modelName: MODEL,
-    fields: { Word: card.word, Reading: card.reading, Sentence: card.sentence, Definition: card.definition, Image: '' },
+    fields: { Word: card.word, Reading: card.reading, Sentence: card.sentence, Definition: card.definition, Image: '', SentenceAudio },
     picture: [{ ...picture, fields: ['Image'] }],
   };
 }
 
-// The screenshot goes to the media folder only if a field uses {image}; {image} then becomes an <img> of the stored file.
-async function customNote({ model, fields }: Extract<NoteType, { kind: 'custom' }>, card: CardFields, page: PageInfo, picture: Picture) {
+// A file goes to the media folder only if a field uses its marker: {image} becomes an <img>, {audio} a [sound:...] tag.
+async function customNote({ model, fields }: Extract<NoteType, { kind: 'custom' }>, card: CardFields, page: PageInfo, picture: MediaFile) {
   const templates = Object.entries(fields);
-  let image = '';
-  if (templates.some(([, template]) => template.includes('{image}'))) {
-    const stored = await invoke('storeMediaFile', picture);
-    if (!isString(stored)) unexpected('storeMediaFile');
-    image = `<img src="${escapeHtml(stored)}">`;
-  }
-  const values = markerValues(card, page, image);
+  const uses = (marker: Marker) => templates.some(([, template]) => template.includes(`{${marker}}`));
+  const image = uses('image') ? `<img src="${escapeHtml(await store(picture))}">` : '';
+  const sound = uses('audio') ? await soundTag(card.audio) : '';
+  const values = markerValues(card, page, image, sound);
   return { modelName: model, fields: Object.fromEntries(templates.map(([name, template]) => [name, renderField(template, values)])) };
 }
 

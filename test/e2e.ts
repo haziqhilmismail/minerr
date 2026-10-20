@@ -211,7 +211,7 @@ try {
   assert.ok(ankiRequests.every(r => at(r, 'version') === 6));
   assert.deepEqual(at(added[0], 'params'), { deck: 'Minerr' });
   assert.equal(at(added[2], 'params', 'modelName'), 'Minerr');
-  assert.deepEqual(at(added[2], 'params', 'inOrderFields'), ['Word', 'Reading', 'Sentence', 'Definition', 'Image']);
+  assert.deepEqual(at(added[2], 'params', 'inOrderFields'), ['Word', 'Reading', 'Sentence', 'Definition', 'Image', 'SentenceAudio']);
   const note = at(added[3], 'params', 'note');
   const picture = at(note, 'picture', 0);
   const data = at(picture, 'data');
@@ -225,6 +225,7 @@ try {
     Sentence: '猫が魚を<b>食べなかった</b>。',
     Definition: DEFINITION,
     Image: '',
+    SentenceAudio: '',
   });
   assert.deepEqual(at(picture, 'fields'), ['Image']);
   assert.ok(data.startsWith('/9j/'), 'picture is base64 JPEG');
@@ -338,6 +339,9 @@ try {
   const Back = at(created, 'cardTemplates', 0, 'Back');
   let storedTemplates: unknown = { Recognition: { Front: 'old front', Back: 'old back' } };
   let storedCss: unknown = 'old css';
+  const storedFields = ['Word', 'Reading', 'Sentence', 'Definition', 'Image'];
+  ankiReplies.modelFieldNames = () => storedFields;
+  ankiReplies.modelFieldAdd = params => { storedFields.push(String(at(params, 'fieldName'))); return null; };
   ankiReplies.modelNames = () => ['Basic', 'Minerr'];
   ankiReplies.modelTemplates = () => storedTemplates;
   ankiReplies.modelStyling = () => ({ css: storedCss });
@@ -362,7 +366,8 @@ try {
   const stale = await addAfterRestart();
   const staleActions = stale.map(r => at(r, 'action')).sort();
   console.log('AnkiConnect actions after a restart with an old note type:', staleActions);
-  assert.deepEqual(staleActions, ['addNote', 'createDeck', 'modelNames', 'modelStyling', 'modelTemplates', 'updateModelStyling', 'updateModelTemplates']);
+  assert.deepEqual(staleActions, ['addNote', 'createDeck', 'modelFieldAdd', 'modelFieldNames', 'modelNames', 'modelStyling', 'modelTemplates', 'updateModelStyling', 'updateModelTemplates']);
+  assert.deepEqual(at(stale.find(r => at(r, 'action') === 'modelFieldAdd'), 'params'), { modelName: 'Minerr', fieldName: 'SentenceAudio', index: 5 });
   const templates = at(stale.find(r => at(r, 'action') === 'updateModelTemplates'), 'params', 'model');
   const styling = at(stale.find(r => at(r, 'action') === 'updateModelStyling'), 'params', 'model');
   assert.equal(at(templates, 'name'), 'Minerr');
@@ -372,7 +377,7 @@ try {
 
   const current = (await addAfterRestart()).map(r => at(r, 'action')).sort();
   console.log('AnkiConnect actions after a restart with the current note type:', current);
-  assert.deepEqual(current, ['addNote', 'createDeck', 'modelNames', 'modelStyling', 'modelTemplates']);
+  assert.deepEqual(current, ['addNote', 'createDeck', 'modelFieldNames', 'modelNames', 'modelStyling', 'modelTemplates']);
 
   ankiReplies.modelStyling = () => ({ css: 'edited in Anki' });
   ankiReplies.updateModelStyling = () => { throw new Error('Close the affected editor before this API write, even if its content is saved.'); };
@@ -455,7 +460,8 @@ try {
   });
   console.log('custom note type: addNote with the rendered fields, no note type writes');
 
-  ankiReplies.modelFieldNames = () => ['Expression', 'ExpressionReading', 'Sentence', 'MainDefinition', 'Picture', 'Source'];
+  ankiReplies.modelFieldNames = params => (at(params, 'modelName') === 'Minerr' ? storedFields
+    : ['Expression', 'ExpressionReading', 'Sentence', 'MainDefinition', 'Picture', 'Source']);
   await options.reload();
   await options.locator('#note-type-status', { hasText: 'Updated the fields from Anki' }).waitFor();
   assert.deepEqual(at(await storedNoteType(), 'fields'), {
@@ -470,10 +476,10 @@ try {
   assert.equal(await options.inputValue('#known-field'), 'Word');
   assert.equal(await options.isVisible('#note-fields'), false);
   const builtin = await addTaberu();
-  assert.deepEqual(builtin.map(r => at(r, 'action')).sort(), ['addNote', 'createDeck', 'modelNames', 'modelStyling', 'modelTemplates']);
+  assert.deepEqual(builtin.map(r => at(r, 'action')).sort(), ['addNote', 'createDeck', 'modelFieldNames', 'modelNames', 'modelStyling', 'modelTemplates']);
   const builtinNote = at(builtin.find(r => at(r, 'action') === 'addNote'), 'params', 'note');
   assert.equal(at(builtinNote, 'modelName'), 'Minerr');
-  assert.deepEqual(at(builtinNote, 'fields'), { Word: '食べる', Reading: 'たべる', Sentence: '猫が魚を<b>食べなかった</b>。', Definition: DEFINITION, Image: '' });
+  assert.deepEqual(at(builtinNote, 'fields'), { Word: '食べる', Reading: 'たべる', Sentence: '猫が魚を<b>食べなかった</b>。', Definition: DEFINITION, Image: '', SentenceAudio: '' });
   assert.deepEqual(at(builtinNote, 'picture', 0, 'fields'), ['Image']);
   console.log('back to the built-in note type: the Minerr note type and a picture again');
 

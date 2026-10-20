@@ -1,5 +1,7 @@
 import { byId } from './src/dom.ts';
 import { call, type Message, messageOf } from './src/rpc.ts';
+import type { PageStats } from './src/stats.ts';
+import { STATUS_NAMES, STATUSES } from './src/status.ts';
 import type { Snapshot, Source } from './src/subtitles.ts';
 import { applyTheme } from './src/theme.ts';
 import { iPlusOne } from './src/settings.ts';
@@ -33,6 +35,7 @@ const generate = byId('generate', HTMLButtonElement);
 const progress = byId('progress', HTMLProgressElement);
 const server = byId('server', HTMLElement);
 const elsewhere = byId('elsewhere', HTMLElement);
+const attach = byId('attach', HTMLButtonElement);
 const sourceButtons = [...document.querySelectorAll('[data-source]')].filter(button => button instanceof HTMLButtonElement);
 const isSource = (value: unknown): value is Source => value === 'youtube' || value === 'whisperx';
 
@@ -74,6 +77,7 @@ async function refresh(): Promise<void> {
   checkServer();
   if (watchTabId === undefined) {
     elsewhere.hidden = false;
+    attach.hidden = !/^https?:/.test(tab?.url ?? '');
     return;
   }
   try {
@@ -82,6 +86,60 @@ async function refresh(): Promise<void> {
     elsewhere.textContent = 'Reload the YouTube tab, then open this menu again.';
     elsewhere.hidden = false;
   }
+}
+
+const scoreEmpty = byId('score-empty', HTMLElement);
+const scoreLabel = byId('score-label', HTMLElement);
+const scoreBasis = byId('score-basis', HTMLElement);
+
+// tabId is null for sentences that the tab cannot show.
+function sentenceItem(text: string, index: number, tabId: number | null): HTMLLIElement {
+  const item = document.createElement('li');
+  if (tabId === null) {
+    item.textContent = text;
+    return item;
+  }
+  const button = Object.assign(document.createElement('button'), { textContent: text, title: 'Show this sentence in the tab' });
+  button.addEventListener('click', () => call({ type: 'pageStatsShow', index }, tabId).catch(error => { scoreBasis.textContent = messageOf(error); }));
+  item.append(button);
+  return item;
+}
+
+const sourceText = (stats: PageStats) => (stats.source === 'video'
+  ? { empty: 'Play the video with Japanese subtitles. The score uses the subtitle lines that the overlay showed.', where: `in ${stats.lines} subtitle lines`, showable: false }
+  : { empty: 'This page has no Japanese words.', where: 'on this page', showable: true });
+
+function showStats(stats: PageStats, tabId: number): void {
+  const { score, sentences } = stats;
+  const { empty, where, showable } = sourceText(stats);
+  if (!score) {
+    scoreEmpty.textContent = empty;
+    return;
+  }
+  scoreEmpty.hidden = true;
+  byId('score', HTMLElement).hidden = false;
+  byId('score-percent', HTMLElement).textContent = `${score.percent}%`;
+  scoreLabel.textContent = score.rating.label;
+  scoreLabel.style.color = score.rating.color;
+  byId('score-counts', HTMLElement).replaceChildren(...STATUS_NAMES.map(status => {
+    const dot = Object.assign(document.createElement('span'), { className: 'dot' });
+    dot.style.background = STATUSES[status].color;
+    const item = document.createElement('li');
+    item.append(dot, `${STATUSES[status].label} ${score.unique[status]}`);
+    return item;
+  }));
+  scoreBasis.textContent = `${score.words} words ${where}. Known and ignored words are understood.`;
+  byId('sentences-title', HTMLElement).textContent = sentences.length
+    ? `Recommended sentences (${sentences.length})`
+    : 'No recommended sentences. No sentence has exactly one unknown word.';
+  byId('sentences', HTMLElement).replaceChildren(...sentences.map((text, index) => sentenceItem(text, index, showable ? tabId : null)));
+}
+
+async function showTabStats(): Promise<void> {
+  const tabId = tab?.id;
+  const stats = tabId === undefined ? null : await call({ type: 'pageStats' }, tabId).catch(() => null);
+  if (stats && tabId !== undefined) showStats(stats, tabId);
+  else scoreEmpty.textContent = 'Minerr cannot read this tab. Pages of Chrome and of extensions have no score. If the tab was open before Minerr started, reload it.';
 }
 
 async function act(message: Message<'subsGenerate'> | Message<'subsUse'>): Promise<void> {
@@ -93,6 +151,10 @@ async function act(message: Message<'subsGenerate'> | Message<'subsUse'>): Promi
   }
 }
 
+attach.addEventListener('click', async () => {
+  if (tab?.id === undefined) return;
+  elsewhere.textContent = await call({ type: 'videoAttach' }, tab.id).catch((error: unknown) => messageOf(error));
+});
 generate.addEventListener('click', () => {
   generate.disabled = true;
   act({ type: 'subsGenerate' });
@@ -115,11 +177,15 @@ if (siteHost) {
   siteSwitch.addEventListener('change', async () => { siteSwitch.checked = await toggleSiteOf(siteHost); });
   byId('site-toggle', HTMLElement).hidden = false;
 }
-byId('player', HTMLButtonElement).addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('player.html') }));
+const PAGES = { player: 'player.html', reader: 'reader.html', paste: 'reader.html?paste', words: 'words.html' };
+for (const [id, page] of Object.entries(PAGES)) {
+  byId(id, HTMLButtonElement).addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL(page) }));
+}
 byId('options', HTMLAnchorElement).addEventListener('click', event => {
   event.preventDefault();
   chrome.runtime.openOptionsPage();
 });
 
+showTabStats();
 refresh();
 setInterval(refresh, POLL_MS);

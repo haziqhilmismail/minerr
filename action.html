@@ -54,6 +54,18 @@
     background: var(--card); font-weight: 700; text-align: left; }
   .player:hover { border-color: var(--muted); }
   .player span { display: block; color: var(--muted); font-size: 13px; font-weight: 400; }
+  #score-section { margin-bottom: 10px; }
+  .score { display: flex; align-items: baseline; gap: 10px; }
+  .score strong { font-size: 28px; line-height: 1.1; }
+  .score span { font-weight: 700; }
+  .counts { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 6px 0 0; padding: 0; list-style: none; font-size: 13px; }
+  .dot { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; vertical-align: 1px; }
+  h3 { margin: 12px 0 4px; font-size: 13px; }
+  #sentences { max-height: 168px; margin: 0; padding: 0; overflow: auto; list-style: none; }
+  #sentences button { width: 100%; padding: 4px 6px; border: 0; border-radius: 6px; background: none; text-align: left; font-size: 13px; }
+  #sentences button:hover { background: var(--raised); }
+  .links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .links .player { margin-top: 0; }
 </style>
 <header>
   <h1>Minerr</h1>
@@ -67,9 +79,21 @@
   <span><strong>Minerr on this site</strong><span class="muted" id="site-name"></span></span>
   <input type="checkbox" role="switch" id="site">
 </label>
+<section aria-labelledby="score-title" id="score-section">
+  <h2 id="score-title">Comprehension</h2>
+  <p id="score-empty" class="muted">Reading this tab…</p>
+  <div id="score" hidden>
+    <p class="score"><strong id="score-percent"></strong><span id="score-label"></span></p>
+    <ul id="score-counts" class="counts" aria-label="Different words by status"></ul>
+    <p id="score-basis" class="muted"></p>
+    <h3 id="sentences-title"></h3>
+    <ol id="sentences" aria-labelledby="sentences-title"></ol>
+  </div>
+</section>
 <section aria-labelledby="subs-title">
   <h2 id="subs-title">Subtitles</h2>
   <p id="elsewhere" class="muted" hidden>Subtitles work on YouTube watch pages. Open a video, then open this menu again.</p>
+  <button class="player" id="attach" hidden>Subtitles for the video of this page<span>Show the Minerr overlay on the largest video of the page.</span></button>
   <div id="controls" hidden>
     <div class="sources" role="group" aria-label="Subtitle source">
       <button data-source="youtube" aria-pressed="true">YouTube captions</button>
@@ -81,6 +105,11 @@
     <p id="job" role="status"></p>
   </div>
 </section>
-<button class="player" id="player">Play a local video<span>Mine a video file from this computer.</span></button>
+<div class="links">
+  <button class="player" id="player">Play a local video<span>Mine a video file from this computer.</span></button>
+  <button class="player" id="reader">Read a file<span>Read an .epub, .txt, or .srt file.</span></button>
+  <button class="player" id="paste">Paste text<span>Read the text that you copy.</span></button>
+  <button class="player" id="words">Word browser<span>Find and change the status of words.</span></button>
+</div>
 <p id="server">Checking the WhisperX server…</p>
 <script src="action.js" type="module"></script>

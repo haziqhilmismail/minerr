@@ -1,8 +1,9 @@
 import { addNote, fieldValues, getDeck, getNoteType, modelFieldNames, modelNames, version } from './src/anki.ts';
+import { cardMedia, widenSentence } from './src/lineaudio.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
 import { getStatuses, setStatus, setStatuses } from './src/status.ts';
 import { minerrEnabled } from './src/settings.ts';
-import { cachedSegments, getJob, health, startJob } from './src/whisper.ts';
+import { cachedSegments, getJob, health, siteCaptions, startJob } from './src/whisper.ts';
 
 let creating: Promise<void> | null = null;
 
@@ -39,8 +40,11 @@ async function capture(windowId: number): Promise<string> {
 async function addCard({ card }: Message<'addCard'>, sender: chrome.runtime.MessageSender): Promise<number> {
   if (!sender.tab) throw new Error('Add cards from a tab.');
   const image = await capture(sender.tab.windowId);
+  // After the screenshot, because the tab may play the line again to record it.
+  const { line, audio } = await cardMedia(sender.tab.id);
+  const sentence = line?.combined ? widenSentence(line.text, card.sentence) : card.sentence;
   const { url = '', title = '' } = sender.tab;
-  const noteId = await addNote({ deck: await getDeck(), noteType: await getNoteType(), card, page: { url, title }, jpegDataUrl: image });
+  const noteId = await addNote({ deck: await getDeck(), noteType: await getNoteType(), card: { ...card, sentence, ...(audio ? { audio } : {}) }, page: { url, title }, jpegDataUrl: image });
   const statuses = await getStatuses([card.word]);
   if (statuses.get(card.word) === 'unknown') await setStatus(card.word, 'learning');
   return noteId;
@@ -71,6 +75,7 @@ serve(
     whisperStart: ({ url }) => startJob(url),
     whisperJob: ({ id }) => getJob(id),
     whisperCached: ({ videoId }) => cachedSegments(videoId),
+    siteCaptions: ({ url, lang }) => siteCaptions(url, lang),
   },
   target => target === undefined,
 );

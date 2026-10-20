@@ -1,3 +1,5 @@
+import { at, isList, isString } from './parse.ts';
+
 // One subtitle line and its time span in seconds, with the end exclusive.
 export interface SubtitleSegment {
   start: number;
@@ -51,3 +53,22 @@ function srtStamp(time: number): string {
 
 export const toSrt = (segments: SubtitleSegment[]): string =>
   segments.map(({ start, end, text }, i) => `${i + 1}\n${srtStamp(start)} --> ${srtStamp(end)}\n${text}\n`).join('\n');
+
+// YouTube's json3 format: events with a start and a duration in ms, and the text in segs.
+// Automatic captions roll, so an event stays on the screen after the next one starts; a line ends where the next one starts.
+function parseJson3(file: string): SubtitleSegment[] {
+  const events = at(JSON.parse(file), 'events');
+  const lines = (isList(events) ? events : []).flatMap(event => {
+    const start = at(event, 'tStartMs');
+    const duration = at(event, 'dDurationMs');
+    const segs = at(event, 'segs');
+    if (typeof start !== 'number' || !isList(segs)) return [];
+    const text = segs.map(seg => at(seg, 'utf8')).filter(isString).join('').trim();
+    return text ? [{ start: start / 1000, end: (start + (typeof duration === 'number' ? duration : 0)) / 1000, text }] : [];
+  }).sort((a, b) => a.start - b.start);
+  return lines.map((line, i) => ({ ...line, end: Math.min(line.end, lines[i + 1]?.start ?? Infinity) })).filter(line => line.end > line.start);
+}
+
+// A subtitle file in a format that the server sends: json3 from YouTube, or SRT or WebVTT.
+export const parseCaptions = (ext: string, file: string): SubtitleSegment[] =>
+  (ext === 'json3' ? parseJson3(file) : parseSubtitles(file));

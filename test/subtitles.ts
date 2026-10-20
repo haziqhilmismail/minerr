@@ -27,7 +27,9 @@ const dictionary = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
 ]);
 
 const ankiRequests: unknown[] = [];
-const ankiReplies: Record<string, () => unknown> = { createDeck: () => 1, modelNames: () => ['Basic'], createModel: () => ({}), addNote: () => 1700000000000 };
+const ankiReplies: Record<string, (params: unknown) => unknown> = {
+  createDeck: () => 1, modelNames: () => ['Basic'], createModel: () => ({}), addNote: () => 1700000000000, storeMediaFile: params => at(params, 'filename'),
+};
 const anki = createServer((req, res) => {
   let body = '';
   req.on('data', chunk => { body += chunk; });
@@ -38,7 +40,7 @@ const anki = createServer((req, res) => {
     const handler = typeof action === 'string' ? ankiReplies[action] : undefined;
     if (!handler) throw new Error(`The mock has no action ${String(action)}`);
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ result: handler(), error: null }));
+    res.end(JSON.stringify({ result: handler(at(request, 'params')), error: null }));
   });
 });
 await listen(anki, 8765);
@@ -49,6 +51,15 @@ const SEGMENTS = [
 ];
 const JOB_STATES = [{ state: 'queued' }, { state: 'downloading' }, { state: 'transcribing', progress: 50 },
   { state: 'transcribing', progress: 50 }, { state: 'done', segments: SEGMENTS }];
+// The json3 format of YouTube: a window event, two caption events, and an appended line break.
+const JSON3 = JSON.stringify({ events: [
+  { tStartMs: 0, dDurationMs: 9000, id: 1 },
+  { tStartMs: 0, dDurationMs: 2500, segs: [{ utf8: '猫が' }, { utf8: '魚を', tOffsetMs: 400 }, { utf8: '食べた' }] },
+  { tStartMs: 1900, dDurationMs: 600, aAppend: 1, segs: [{ utf8: '\n' }] },
+  { tStartMs: 2000, dDurationMs: 4000, segs: [{ utf8: '今日は雨' }] },
+  { tStartMs: 6000, dDurationMs: 1000, segs: [{ utf8: '［音楽］' }] },
+  { tStartMs: 10000, dDurationMs: 1000, segs: [{ utf8: '雨が降る' }] },
+] });
 const whisperRequests: string[] = [];
 let cached = false;
 let jobPolls = 0;
@@ -65,6 +76,14 @@ const whisper = createServer((req, res) => {
     if (req.method === 'POST' && req.url === '/jobs') return reply(200, { id: 'job1' });
     if (req.url === '/jobs/job1') return reply(200, JOB_STATES[Math.min(jobPolls++, JOB_STATES.length - 1)]);
     if (req.url === '/subs/testvideo' && cached) return reply(200, SEGMENTS);
+    if (req.method === 'POST' && req.url === '/clip') {
+      res.writeHead(200, { 'Content-Type': 'audio/mpeg' });
+      return res.end('ID3 clip');
+    }
+    if (req.method === 'POST' && req.url === '/captions' && body.includes('timedvideo') && body.includes('"ja"')) return reply(200, { ext: 'json3', text: JSON3 });
+    if (req.method === 'POST' && req.url === '/captions' && body.includes('timedvideo') && body.includes('"en"')) {
+      return reply(200, { ext: 'vtt', text: 'WEBVTT\n\n00:00.000 --> 00:02.000\nThe cat ate the fish.\n' });
+    }
     reply(404, { error: 'Not found.' });
   });
 });
@@ -141,6 +160,15 @@ try {
   const words = await line.locator('.ml-word').evaluateAll(spans => spans.map(s => `${s.textContent}=${s.dataset.mlLemma}`));
   console.log('overlay words:', words);
   assert.deepEqual(words, ['猫=猫', '魚=魚', '食べなかった=食べる', '今日=今日', '雨=雨']);
+
+  await tab.evaluate(() => {
+    const seen: string[] = [];
+    Object.assign(window, { seen });
+    document.addEventListener('keydown', event => seen.push(event.key));
+  });
+  await tab.keyboard.press('d');
+  await tab.locator('.minerr-subs-toast', { hasText: 'This key needs subtitles with times.' }).waitFor();
+  assert.deepEqual(await tab.evaluate(() => Reflect.get(window, 'seen')), ['d'], 'on mirrored captions YouTube gets the key');
 
   await tab.evaluate(() => {
     const segment = document.querySelectorAll('.ytp-caption-segment')[1];
@@ -221,6 +249,10 @@ try {
   await line.locator('.ml-word[data-ml-lemma="雨"]').waitFor();
   assert.equal(await line.innerText(), '今日は雨が降っています。');
   console.log('WhisperX overlay after a seek to 4 s:', await line.innerText());
+  await tab.keyboard.press('ArrowLeft');
+  await line.locator('.ml-word[data-ml-lemma="食べる"]').waitFor();
+  assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 0);
+  assert.deepEqual(await tab.evaluate(() => Reflect.get(window, 'seen')), ['d'], 'with timed lines Minerr takes the key, not YouTube');
 
   await action.click('[data-source="youtube"]');
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べなかった\n魚が好き');
@@ -235,8 +267,94 @@ try {
     document.dispatchEvent(new Event('yt-navigate-finish'));
   });
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べなかった\n今日は雨');
+  for (let i = 0; i < 50 && !whisperRequests.includes('GET /subs/othervideo'); i++) await tab.waitForTimeout(100);
   assert.ok(whisperRequests.includes('GET /subs/othervideo'));
   console.log('after navigation to a video with no WhisperX subtitles: YouTube captions again');
+
+  await tab.evaluate(() => {
+    history.pushState({}, '', '/watch?v=timedvideo');
+    document.dispatchEvent(new Event('yt-navigate-finish'));
+  });
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べた');
+  assert.ok(whisperRequests.includes('POST /captions {"url":"https://www.youtube.com/watch?v=timedvideo","lang":"ja"}'));
+  await tab.locator('.minerr-subs-second', { hasText: 'The cat ate the fish.' }).waitFor();
+  console.log('YouTube second track: the English subtitles show under the Japanese line');
+  await tab.keyboard.press('ArrowRight');
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '今日は雨');
+  assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 2);
+  console.log('YouTube subtitles with times from the server: the overlay follows them, and ArrowRight goes to the next line');
+  await tab.hover('.minerr-subs-line .ml-word[data-ml-lemma="雨"]');
+  await popup.locator('.add').waitFor();
+  await tab.keyboard.press('a');
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+  assert.ok(whisperRequests.includes('POST /clip {"url":"https://www.youtube.com/watch?v=timedvideo","start":1.5,"end":6.5}'));
+  const lastNote = at(ankiRequests.filter(r => at(r, 'action') === 'addNote').at(-1), 'params', 'note');
+  const stored = ankiRequests.filter(r => at(r, 'action') === 'storeMediaFile');
+  assert.equal(stored.length, 1, 'only the card from the timed line stores audio');
+  assert.equal(at(stored[0], 'params', 'data'), Buffer.from('ID3 clip').toString('base64'));
+  assert.equal(at(lastNote, 'fields', 'SentenceAudio'), `[sound:${String(at(stored[0], 'params', 'filename'))}]`);
+  const firstNote = at(ankiRequests.find(r => at(r, 'action') === 'addNote'), 'params', 'note');
+  assert.equal(at(firstNote, 'fields', 'SentenceAudio'), '', 'a card from mirrored captions has no line audio');
+  console.log('YouTube card: the server cut the line audio from the video');
+  await tab.keyboard.press('Escape');
+  await tab.mouse.move(0, 0);
+
+  const setStorage = (items: Record<string, unknown>) => worker.evaluate(value => chrome.storage.local.set(value), items);
+  const lineStyle = () => line.evaluate(node => ({ filter: getComputedStyle(node).filter, color: getComputedStyle(node).color }));
+  const playVideo = (time: number) => tab.evaluate(t => {
+    const video = document.querySelector('video');
+    if (!video) throw new Error('The page has no video');
+    video.currentTime = t;
+    return video.play();
+  }, time);
+  const pauseVideo = () => tab.evaluate(() => document.querySelector('video')?.pause());
+  await setStorage({ subObscured: true, pauseOnHover: false });
+  await tab.locator('.minerr-subs[data-obscure="blur"][data-paused]').waitFor();
+  assert.equal((await lineStyle()).filter, 'none', 'a paused video shows the text');
+  await playVideo(2.2);
+  await tab.locator('.minerr-subs[data-obscure="blur"]:not([data-paused])').waitFor();
+  assert.match((await lineStyle()).filter, /^blur/);
+  await line.hover();
+  assert.equal((await lineStyle()).filter, 'none', 'hover shows the text');
+  await tab.mouse.move(0, 0);
+  await setStorage({ subEffect: 'hide' });
+  await tab.locator('.minerr-subs[data-obscure="hide"]').waitFor();
+  assert.deepEqual(await lineStyle(), { filter: 'none', color: 'rgba(0, 0, 0, 0)' });
+  await tab.keyboard.press('w');
+  await tab.locator('.minerr-subs:not([data-obscure])').waitFor();
+  assert.deepEqual(await worker.evaluate(() => chrome.storage.local.get('subObscured')), { subObscured: false });
+  await pauseVideo();
+  console.log('obscured subtitles: blurred or hidden while the video plays, shown on hover and pause; W turns it off');
+
+  await tab.evaluate(() => { const video = document.querySelector('video'); if (video) video.currentTime = 6.5; });
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '［音楽］');
+  await setStorage({ cleanSubs: true });
+  await line.waitFor({ state: 'hidden' });
+  console.log('bracketed text removed: the line ［音楽］ does not show');
+
+  const crossGap = async () => {
+    const started = Date.now();
+    await playVideo(6.5);
+    await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '雨が降る', null, { timeout: 8000 });
+    const rate = await tab.evaluate(() => document.querySelector('video')?.playbackRate);
+    await pauseVideo();
+    return { seconds: (Date.now() - started) / 1000, rate };
+  };
+  await setStorage({ gapMode: 'skip' });
+  const skipped = await crossGap();
+  await setStorage({ gapMode: 'x4' });
+  await tab.evaluate(() => { const video = document.querySelector('video'); if (video) video.currentTime = 6.5; });
+  await playVideo(6.5);
+  await tab.waitForFunction(() => document.querySelector('video')?.playbackRate === 4);
+  await pauseVideo();
+  const fast = await crossGap();
+  await setStorage({ gapMode: 'off' });
+  const normal = await crossGap();
+  console.log('a 4 s gap with no line: skip', skipped, 'x4', fast, 'normal', normal);
+  assert.ok(skipped.seconds < 1.5, 'skip jumps to 0.5 s before the next line');
+  assert.ok(fast.seconds < 2.5 && fast.rate === 1, 'x4 crosses the gap faster and plays the line at the normal speed');
+  assert.ok(normal.seconds > 3.2, 'without a gap mode the gap plays at the normal speed');
+  await setStorage({ cleanSubs: false });
 
   await new Promise(resolve => whisper.close(resolve));
   whisper.closeAllConnections();

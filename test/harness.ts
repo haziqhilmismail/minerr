@@ -1,9 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
-import type { Server } from 'node:http';
+import { createServer, type Server } from 'node:http';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 import type { MetaRow } from '../src/meta.ts';
+import { at } from '../src/parse.ts';
 import type { TagRow, TermRow } from '../src/yomitan.ts';
 
 const here = import.meta.dirname;
@@ -42,4 +43,26 @@ export function useCjkFonts(work: string): void {
   writeFileSync(conf, `<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig>
 <include ignore_missing="yes">/etc/fonts/fonts.conf</include><dir>${process.env.CJK_FONT_DIR}</dir></fontconfig>`);
   process.env.FONTCONFIG_FILE = conf;
+}
+
+// A mock AnkiConnect on port 8765. replies maps an action to its result; a test can change it. requests records every request.
+export async function mockAnki() {
+  const requests: unknown[] = [];
+  const replies: Record<string, (params: unknown) => unknown> = {
+    createDeck: () => 1, modelNames: () => ['Basic'], createModel: () => ({}), addNote: () => 1700000000000,
+    storeMediaFile: params => at(params, 'filename'),
+  };
+  const server = createServer((req, res) => {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      const request: unknown = JSON.parse(body);
+      requests.push(request);
+      const handler = replies[String(at(request, 'action'))];
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify(handler ? { result: handler(at(request, 'params')), error: null } : { result: null, error: 'The mock has no such action' }));
+    });
+  });
+  await listen(server, 8765);
+  return { requests, replies, server };
 }

@@ -16,6 +16,7 @@ import {
 } from './src/status.ts';
 import { TAG_CSS } from './src/tags.ts';
 import { applyTheme, theme } from './src/theme.ts';
+import { bindVideoOptions } from './src/videooptions.ts';
 
 applyTheme();
 
@@ -316,6 +317,6 @@ async function bindCheckbox(id: string, { get, set, onChange }: Setting<boolean>
 await Promise.all([bindCheckbox('pitch-colors', pitchColors), bindCheckbox('sentence-highlight', sentenceHighlight)]);
 byId('pitch-legend', HTMLElement).append(...Object.values(PITCH).map(({ label, color }) => el('li', {}, swatch(color), label)));
 
-await Promise.all([bindRadios('hoverMode', hoverMode), bindRadios('theme', theme), bindRadios('furigana', furiganaMode)]);
+await Promise.all([bindRadios('hoverMode', hoverMode), bindRadios('theme', theme), bindRadios('furigana', furiganaMode), bindVideoOptions(bindRadios)]);
 
 await Promise.all([showDictionaries(), showModels(), showCounts()]);

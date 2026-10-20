@@ -18,6 +18,9 @@
   section > .help:first-of-type { margin: -8px 0 16px; }
   .field { margin-bottom: 16px; }
   .field > label { display: block; margin-bottom: 4px; font-weight: 600; }
+  .check { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
+  input[type="number"] { width: 8em; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--field); color: inherit; font: inherit; }
   input[type="text"] { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
     background: var(--field); color: inherit; font: inherit; }
   button { padding: 7px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--card);
@@ -154,6 +157,7 @@
         <dt>{sentence}</dt><dd>The sentence, with the word in bold</dd>
         <dt>{definition}</dt><dd>The definitions with their tags</dd>
         <dt>{image}</dt><dd>The screenshot of the tab</dd>
+        <dt>{audio}</dt><dd>The audio of the subtitle line, for a word in video subtitles</dd>
         <dt>{url}</dt><dd>The address of the page</dd>
         <dt>{title}</dt><dd>The title of the page</dd>
       </dl>
@@ -210,8 +214,84 @@
         <tr><td><kbd>N</kbd></td><td>Open the popup of the next unknown word of the subtitle line</td><td></td></tr>
         <tr><td><kbd>Alt+Shift+D</kbd></td><td>Turn Minerr off or on for this site</td><td></td></tr>
         <tr><td><kbd>Alt+Shift+S</kbd></td><td>Turn the sentence highlight on or off</td><td></td></tr>
+        <tr><td><kbd>PageDown</kbd> <kbd>Space</kbd> <kbd>↓</kbd></td><td>Reader: next page</td><td></td></tr>
+        <tr><td><kbd>PageUp</kbd> <kbd>Shift+Space</kbd> <kbd>↑</kbd></td><td>Reader: previous page</td><td></td></tr>
+        <tr><td><kbd>→</kbd> <kbd>←</kbd></td><td>Reader: next and previous page. In vertical text, ← is the next page.</td><td></td></tr>
       </tbody>
     </table>
+    <h3 id="video-keys-heading">Video keys</h3>
+    <p class="help">These keys work on a video with the Minerr subtitle overlay: on YouTube, in the video player, and on other sites. They do not work in a text field. On YouTube, Minerr takes a key only while the overlay shows subtitles. Some keys need subtitles with times, for example from WhisperX or a subtitle file.</p>
+    <table aria-labelledby="video-keys-heading">
+      <thead><tr><th scope="col">Key</th><th scope="col">Action</th><th scope="col">Note</th></tr></thead>
+      <tbody id="video-keys"></tbody>
+    </table>
+  </section>
+
+  <section aria-labelledby="video-heading">
+    <h2 id="video-heading">Video</h2>
+    <p class="help">The subtitle overlay on YouTube, in the video player, and on other sites.</p>
+    <div class="field">
+      <label for="audio-padding">Sentence audio padding (ms)</label>
+      <input id="audio-padding" type="number" min="0" max="3000" step="100" aria-describedby="audio-padding-help">
+      <p id="audio-padding-help" class="help">A card from a subtitle line gets the audio of the line, and this much audio before and after it.</p>
+    </div>
+    <div class="field">
+      <p id="play-mode-heading" style="font-weight: 600">Play mode</p>
+      <div class="segmented" role="radiogroup" aria-labelledby="play-mode-heading" aria-describedby="play-mode-help" style="margin-top: 4px">
+        <label><input type="radio" name="playMode" value="normal">Normal</label>
+        <label><input type="radio" name="playMode" value="before">Pause before each line</label>
+        <label><input type="radio" name="playMode" value="after">Pause after each line</label>
+        <label><input type="radio" name="playMode" value="iPlusOne">Pause after i+1 lines</label>
+      </div>
+      <p id="play-mode-help" class="help">An i+1 line has exactly one unknown word. The play mode needs subtitles with times.</p>
+    </div>
+    <div class="field">
+      <p id="auto-resume-heading" style="font-weight: 600">Play again after a pause of the play mode</p>
+      <div class="segmented" role="radiogroup" aria-labelledby="auto-resume-heading" style="margin-top: 4px">
+        <label><input type="radio" name="autoResume" value="off">No</label>
+        <label><input type="radio" name="autoResume" value="3">After 3 s</label>
+        <label><input type="radio" name="autoResume" value="6">After 6 s</label>
+        <label><input type="radio" name="autoResume" value="10">After 10 s</label>
+      </div>
+    </div>
+    <div class="field">
+      <label class="check"><input id="auto-lookup" type="checkbox">Open the first unknown word after a pause of the play mode</label>
+    </div>
+    <div class="field">
+      <label class="check"><input id="pause-on-hover" type="checkbox" aria-describedby="pause-on-hover-help">Pause while the mouse is on the subtitles</label>
+      <p id="pause-on-hover-help" class="help">The video also stays paused while the popup of a subtitle word is open. It plays again when the mouse goes away and the popup closes.</p>
+    </div>
+    <div class="field">
+      <label class="check"><input id="sub-obscured" type="checkbox" aria-describedby="sub-obscured-help">Obscure the subtitles</label>
+      <p id="sub-obscured-help" class="help">The text shows when you move the mouse onto it or pause the video. Press W on a video to turn this on or off.</p>
+      <div class="segmented" role="radiogroup" aria-label="Obscure effect" style="margin-top: 8px">
+        <label><input type="radio" name="subEffect" value="blur">Blur</label>
+        <label><input type="radio" name="subEffect" value="hide">Hide</label>
+      </div>
+    </div>
+    <div class="field">
+      <p id="second-heading" style="font-weight: 600">Second subtitles</p>
+      <div class="segmented" role="radiogroup" aria-labelledby="second-heading" aria-describedby="second-help" style="margin-top: 4px">
+        <label><input type="radio" name="secondDisplay" value="show">Show</label>
+        <label><input type="radio" name="secondDisplay" value="hover">On hover or pause</label>
+        <label><input type="radio" name="secondDisplay" value="off">Off</label>
+      </div>
+      <p id="second-help" class="help">A second subtitle track, for example English, shows under the line. On YouTube, Minerr gets the English subtitles from the server. Press Shift+W on a video to show or hide them.</p>
+    </div>
+    <div class="field">
+      <label class="check"><input id="clean-subs" type="checkbox" aria-describedby="clean-subs-help">Remove bracketed text</label>
+      <p id="clean-subs-help" class="help">Removes text in brackets, for example （笑） or [音楽], from the lines. A line with only bracketed text does not show.</p>
+    </div>
+    <div class="field">
+      <p id="gap-heading" style="font-weight: 600">Parts with no subtitles</p>
+      <div class="segmented" role="radiogroup" aria-labelledby="gap-heading" aria-describedby="gap-help" style="margin-top: 4px">
+        <label><input type="radio" name="gapMode" value="off">Normal speed</label>
+        <label><input type="radio" name="gapMode" value="x2">2× speed</label>
+        <label><input type="radio" name="gapMode" value="x4">4× speed</label>
+        <label><input type="radio" name="gapMode" value="skip">Skip</label>
+      </div>
+      <p id="gap-help" class="help">For a part of 1.5 seconds or more with no line. The last 0.5 seconds before the next line play at the normal speed. Needs subtitles with times.</p>
+    </div>
   </section>
 
   <section aria-labelledby="hover-heading">
