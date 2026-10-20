@@ -306,7 +306,9 @@ If you start the server after you open the video, the tab finds the server in so
 
 The server uses the subtitles of the uploader first. If the video has none, it uses the automatic subtitles of YouTube. The overlay then shows the subtitles at the times of the video, also when the YouTube captions are off. If the video has no Japanese subtitles, the overlay copies the YouTube captions as before.
 
-The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.captions.ja.json`. The file of a video with no Japanese subtitles contains `{}`. After one day, the server asks YouTube again, because YouTube can add automatic subtitles some hours after the upload. To download the subtitles again at once, delete the file.
+The Japanese subtitles are never a machine translation. YouTube translates its automatic captions into every language, so an English video has "Japanese" captions too. Minerr does not use them: the overlay shows no Japanese subtitles on such a video. The second subtitles, for example English, can be a translation.
+
+The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.captions.ja.v2.json`. The file of a video with no Japanese subtitles contains `{}`. After one day, the server asks YouTube again, because YouTube can add automatic subtitles some hours after the upload. To download the subtitles again at once, delete the file.
 
 ## Generate subtitles with WhisperX
 

@@ -120,16 +120,24 @@ def clip(source, start, end):
     return result.stdout
 
 
+# Minerr studies Japanese: its Japanese track is never a machine translation. Other tracks (the English second track) can be.
+STUDY_LANG = 'ja'
+
+
 def pick_track(info, lang):
     """The URL and format of the best subtitle track in lang: a track of the uploader first, then the automatic
-    track in the language of the video, then any automatic one (YouTube translates it)."""
+    track in the language of the video. For a language other than STUDY_LANG, then any automatic one (YouTube translates it).
+    YouTube translates its automatic captions into every language, so an English video has an automatic 'ja' track."""
     def best(tracks):
         usable = [t for t in tracks or [] if t.get('ext') in CAPTION_EXTS and t.get('url')]
         return min(usable, key=lambda t: CAPTION_EXTS.index(t['ext']), default=None)
     own = info.get('subtitles') or {}
     auto = info.get('automatic_captions') or {}
     names = sorted((name for name in own if name == lang or name.startswith(f'{lang}-')), key=len)
-    for tracks in [*(own[name] for name in names), auto.get(f'{lang}-orig'), auto.get(lang)]:
+    spoken = (info.get('language') or '').split('-')[0] == lang
+    # The plain automatic track is speech recognition only in the language of the video; in another language it is a translation.
+    auto_ok = lang != STUDY_LANG or spoken
+    for tracks in [*(own[name] for name in names), auto.get(f'{lang}-orig'), auto.get(lang) if auto_ok else None]:
         track = best(tracks)
         if track:
             return track['url'], track['ext']
