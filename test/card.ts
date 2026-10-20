@@ -107,7 +107,7 @@ try {
   assert.equal(at(note, 'deckName'), 'Minerr');
   const fields = at(note, 'fields');
   assert.deepEqual(Object.keys(fields ?? {}), [...LAPIS_FIELDS]);
-  const definition = '<ol><li><span class="tag tag-partOfSpeech" title="Ichidan verb">v1</span> to eat (fixture)<span class="dict">Fixture</span></li></ol>';
+  const definition = '<div style="text-align: left;" class="yomitan-glossary"><ol><li data-dictionary="Fixture"><i>(v1, Fixture)</i> to eat (fixture)</li></ol></div>';
   assert.deepEqual(fields, {
     Expression: '食べる', ExpressionFurigana: '食[た]べる', ExpressionReading: 'たべる', ExpressionAudio: `[sound:${wordFile}]`, SelectionText: '',
     MainDefinition: definition, DefinitionPicture: '', Sentence: '猫が魚を<b>食べなかった</b>。', SentenceFurigana: '', SentenceAudio: '',

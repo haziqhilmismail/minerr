@@ -6,7 +6,7 @@ import {
 import type { Entry } from './meta.ts';
 import { at, isList, isRecordOf, isString, isStringList } from './parse.ts';
 import { TAG_CSS, tagClass } from './tags.ts';
-import type { Group, Tag } from './yomitan.ts';
+import type { Group, Sense, Tag } from './yomitan.ts';
 
 const ENDPOINT = 'http://127.0.0.1:8765';
 const MODEL = 'Minerr';
@@ -95,10 +95,21 @@ export function markerValues(card: CardFields, page: PageInfo, media: MediaHtml)
   };
 }
 
-// The senses of the first dictionary of the entry.
+// Senses as Yomitan {glossary} writes them: Lapis counts the <li data-dictionary> items to hide the Glossary copy of MainDefinition.
+function yomitanGlossary(senses: Sense[]): string {
+  const items = senses.map(({ dict, tags, glossary }) => {
+    const label = `<i>(${[...tags.map(tag => tag.name), dict].map(escapeHtml).join(', ')})</i> `;
+    const lines = glossary.map(line => escapeHtml(line).replaceAll('\n', '<br>'));
+    const body = lines.length <= 1 ? lines.join('') : `<ul>${lines.map(line => `<li>${line}</li>`).join('')}</ul>`;
+    return `<li data-dictionary="${escapeHtml(dict)}">${label}${body}</li>`;
+  });
+  return `<div style="text-align: left;" class="yomitan-glossary"><ol>${items.join('')}</ol></div>`;
+}
+
+// The senses of the first dictionary of the entry, as Yomitan {single-glossary-<dictionary>}.
 function mainDefinition(entry: Entry | null): string {
   const dict = entry?.senses[0]?.dict;
-  return entry ? definitionHtml({ ...entry, senses: entry.senses.filter(sense => sense.dict === dict) }) : '';
+  return entry ? yomitanGlossary(entry.senses.filter(sense => sense.dict === dict)) : '';
 }
 
 // Yomitan {frequencies}.
@@ -121,7 +132,7 @@ export function lapisFields(card: CardFields, page: PageInfo, media: MediaHtml):
     SentenceFurigana: '',
     SentenceAudio: values.audio,
     Picture: values.image,
-    Glossary: values.definition,
+    Glossary: entry ? yomitanGlossary(entry.senses) : values.definition,
     Hint: '',
     IsWordAndSentenceCard: '',
     IsClickCard: '',

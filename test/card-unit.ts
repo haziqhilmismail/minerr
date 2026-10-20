@@ -61,7 +61,8 @@ test('pitchCategories names each pattern one time, with kifuku for a verb or an 
 
 test('lapisFields fills every field of the Lapis note type in order', async () => {
   const { lapisFields } = await import('../src/anki.ts');
-  const fields = lapisFields({ ...CARD, selection: '食べなかった' }, { url: 'https://example.com/?a=1&b=2', title: 'Cats & fish' },
+  const entry: Entry = { ...TABERU, senses: [...TABERU.senses.slice(0, 2), { dict: 'Jitendex', tags: [], glossary: ['to eat (Jitendex)', 'a <b>\nline'] }] };
+  const fields = lapisFields({ ...CARD, entry, selection: '食べなかった' }, { url: 'https://example.com/?a=1&b=2', title: 'Cats & fish' },
     { image: '<img src="minerr-1.jpg">', audio: '[sound:minerr-1.mp3]', wordaudio: '[sound:minerr-word-ab.mp3]' });
   assert.deepEqual(Object.entries(fields), Object.entries({
     Expression: '食べる',
@@ -69,14 +70,16 @@ test('lapisFields fills every field of the Lapis note type in order', async () =
     ExpressionReading: 'たべる',
     ExpressionAudio: '[sound:minerr-word-ab.mp3]',
     SelectionText: '食べなかった',
-    MainDefinition: '<div class="tags"><span class="tag tag-popular" title="high priority term">⭐</span></div><ol>'
-      + '<li><span class="tag tag-partOfSpeech" title="Ichidan verb">v1</span> to eat</li><li>to live on<span class="dict">JMdict</span></li></ol>',
+    MainDefinition: '<div style="text-align: left;" class="yomitan-glossary"><ol>'
+      + '<li data-dictionary="JMdict"><i>(v1, JMdict)</i> to eat</li><li data-dictionary="JMdict"><i>(JMdict)</i> to live on</li></ol></div>',
     DefinitionPicture: '',
     Sentence: '猫が魚を<b>食べなかった</b>。',
     SentenceFurigana: '',
     SentenceAudio: '[sound:minerr-1.mp3]',
     Picture: '<img src="minerr-1.jpg">',
-    Glossary: '<ol><li>all definitions</li></ol>',
+    Glossary: '<div style="text-align: left;" class="yomitan-glossary"><ol>'
+      + '<li data-dictionary="JMdict"><i>(v1, JMdict)</i> to eat</li><li data-dictionary="JMdict"><i>(JMdict)</i> to live on</li>'
+      + '<li data-dictionary="Jitendex"><i>(Jitendex)</i> <ul><li>to eat (Jitendex)</li><li>a &lt;b&gt;<br>line</li></ul></li></ol></div>',
     Hint: '',
     IsWordAndSentenceCard: '',
     IsClickCard: '',
