@@ -175,6 +175,10 @@ for (const button of sourceButtons) {
     if (isSource(source)) act({ type: 'subsUse', source });
   });
 }
+// The browser shortcut of a command, as the user set it on the Chrome shortcuts page.
+const shortcuts = new Map((await chrome.commands.getAll()).map(({ name, shortcut }) => [name, shortcut]));
+const shortcutOf = (command: string) => `Shortcut: ${shortcuts.get(command) || 'not set'}.`;
+byId('enabled-hint', HTMLElement).textContent = `In all tabs. ${shortcutOf('toggle-minerr')}`;
 const enabled = byId('enabled', HTMLInputElement);
 enabled.addEventListener('change', () => minerrEnabled.set(enabled.checked));
 minerrEnabled.watch(on => { enabled.checked = on; });
@@ -188,7 +192,7 @@ if (siteHost) {
     siteSwitch.checked = pageTextOn;
     byId('site-state', HTMLElement).textContent = pageTextOn ? 'On' : 'Off';
   };
-  byId('site-name', HTMLElement).textContent = `Alt+Shift+D on ${siteOf(siteHost)}. Video subtitles work without it.`;
+  byId('site-name', HTMLElement).textContent = `${siteOf(siteHost)}. ${shortcutOf('toggle-site')} Video subtitles work without it.`;
   show();
   siteSwitch.addEventListener('change', async () => {
     pageTextOn = await toggleSiteOf(siteHost);

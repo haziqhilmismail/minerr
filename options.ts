@@ -10,7 +10,7 @@ import { LAPIS_MODEL } from './src/lapis.ts';
 import { PITCH } from './src/meta.ts';
 import { pitchColors } from './src/pitch-colors.ts';
 import { sentenceHighlight } from './src/sentence-hover.ts';
-import { iPlusOne, type Setting } from './src/settings.ts';
+import { iPlusOne, type Setting, wordJoins } from './src/settings.ts';
 import { call, messageOf } from './src/rpc.ts';
 import {
   forgetStatusMove, getAllStatuses, importStatuses, moveStatusKeys, onStatusChange, parseStatusFile, STATUS_NAMES, STATUSES, statusFile, WORD_CSS,
@@ -116,6 +116,14 @@ drop.ondrop = event => {
   const file = event.dataTransfer?.files[0];
   if (file && !fileInput.disabled) importFile(file);
 };
+
+function joinRow(word: string): HTMLLIElement {
+  const remove = el('button', { type: 'button', className: 'delete', textContent: 'Remove' });
+  remove.onclick = async () => wordJoins.set((await wordJoins.get()).filter(other => other !== word));
+  return el('li', {}, el('div', {}, el('span', { className: 'name', textContent: word })), remove);
+}
+const noJoins = el('li', { className: 'empty', textContent: 'No word overrides. Select a word on a page and press Alt+J to add one.' });
+wordJoins.watch(joins => byId('word-joins', HTMLElement).replaceChildren(...(joins.length ? joins.map(joinRow) : [noJoins])));
 
 const deck = byId('deck', HTMLInputElement);
 const deckSaved = byId('deck-saved', HTMLElement);
@@ -292,6 +300,19 @@ byId('legend', HTMLElement).prepend(...Object.values(STATUSES).map(({ hotkey, la
   el('td', {}, el('kbd', { textContent: hotkey })),
   el('td', {}, swatch(color), `Mark as ${label.toLowerCase()}`),
   el('td', { className: 'sample' }, el('span', { className: `ml-word ${className}`, textContent: '単語' })))));
+
+// The browser shortcuts (manifest.json commands), as Chrome has them now. The user can change them on the Chrome shortcuts page.
+async function showShortcuts(): Promise<void> {
+  const rows = (await chrome.commands.getAll()).map(({ name, shortcut, description }) => el('tr', {},
+    el('td', {}, el('kbd', { textContent: shortcut || 'Not set' })),
+    // Chrome gives the command of the toolbar button no description.
+    el('td', { textContent: name === '_execute_action' ? 'Open the Minerr toolbar menu' : description ?? '' }), el('td')));
+  byId('browser-keys', HTMLElement).replaceChildren(...rows);
+}
+showShortcuts();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) showShortcuts(); });
+// An extension page cannot open a chrome:// link, but it can open a tab with that URL.
+byId('shortcuts', HTMLButtonElement).onclick = () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
 
 const statusCounts = byId('status-counts', HTMLElement);
 const statusMessage = byId('status-message', HTMLElement);

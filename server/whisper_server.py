@@ -260,7 +260,8 @@ def handler(jobs, health, port=PORT):
             if not LANG.fullmatch(lang):
                 raise ValueError('Send a language code such as ja.')
             key = media.media_key(url)
-            path = CACHE / f'{key}.captions.{lang}.json'
+            # .v2: files of earlier versions can hold a machine translation as the Japanese track.
+            path = CACHE / f'{key}.captions.{lang}.v2.json'
             found = read_json(path)
             # A new video can get its automatic subtitles some hours after the upload, so "none" expires.
             if found == {} and time.time() - path.stat().st_mtime > NONE_SECONDS:

@@ -5,6 +5,7 @@ import { onStatusChange, WORD_CSS } from './status.ts';
 import { parseWords, recolor, RUBY_TEXT, wordFragment } from './words.ts';
 import { installFurigana } from './furigana.ts';
 import { installPitchColors } from './pitch-colors.ts';
+import { wordJoins } from './settings.ts';
 import { VIDEO, watchActive } from './site.ts';
 
 // The YouTube caption window is hidden; src/subtitles.ts shows its text in an overlay.
@@ -12,7 +13,7 @@ const SKIP = `script, style, noscript, textarea, input, select, svg, .ml-word, .
 const BATCH = 100;
 
 // Plain text nodes we inserted between word spans; the observer sees them as additions and must not re-parse them.
-let created = new WeakSet<Node>();
+const created = new WeakSet<Node>();
 // The page text is off until the user turns it on for the site; the text of the subtitle overlay is always read.
 let pageOn = false;
 let started = false;
@@ -114,16 +115,53 @@ function schedule(): void {
   timer ??= setTimeout(flush, 50);
 }
 
-// Gives the page its own text back when the page text goes off: no word spans stay outside the subtitle overlay.
-// No normalize(): it would merge or delete text nodes that the page owns, and frameworks such as Vue keep empty text nodes
-// as anchors. The parse joins adjacent text nodes into one run, so the split text parses as before.
-function unwrapPage(): void {
-  for (const span of document.querySelectorAll('.ml-word')) {
-    if (span.parentNode && !span.closest(VIDEO)) span.replaceWith(span.textContent ?? '');
+// Gives root its text back: each word span becomes text, and the text nodes that we made merge again, so a word that the
+// next parse joins is in one node. Only our nodes merge. No normalize(): it would merge or delete text nodes that the page
+// owns, and frameworks such as Vue keep empty text nodes as anchors. keep: the nodes that stay as they are.
+function unwrap(root: Element, keep: (node: Node) => boolean = () => false): void {
+  const ours = new Set<Text>();
+  for (const span of root.querySelectorAll('.ml-word')) {
+    if (keep(span)) continue;
+    const text = document.createTextNode(span.textContent ?? '');
+    span.replaceWith(text);
+    ours.add(text);
   }
-  // The new text nodes are page text, for the next time the page text goes on.
-  created = new WeakSet();
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) if (isText(node) && created.has(node) && !keep(node)) ours.add(node);
+  for (const node of ours) {
+    for (let next = node.nextSibling; node.isConnected && next instanceof Text && ours.has(next); next = node.nextSibling) {
+      node.appendData(next.data);
+      next.remove();
+    }
+    // The text is page text again, for the next parse.
+    created.delete(node);
+  }
 }
+
+const inVideo = (node: Node) => node.parentElement?.closest(VIDEO) != null;
+
+// Parses again the blocks with the text of a word override that the user added or removed, so the page shows the change.
+function reparse(texts: string[]): void {
+  const cache = new Map<Element, Element>();
+  const blocks = new Map<Element, boolean>();
+  for (const span of document.querySelectorAll('.ml-word')) {
+    const block = blockOf(span, cache);
+    if (!blocks.has(block)) blocks.set(block, texts.some(text => block.textContent?.includes(text)));
+  }
+  for (const [block, changed] of blocks) {
+    if (!changed) continue;
+    unwrap(block);
+    collect(block);
+  }
+  schedule();
+}
+
+let joins: string[] | null = null;
+wordJoins.watch(next => {
+  const before = joins;
+  joins = next;
+  if (before) reparse([...next.filter(word => !before.includes(word)), ...before.filter(word => !next.includes(word))]);
+});
 
 new MutationObserver(records => {
   for (const record of records) {
@@ -150,7 +188,8 @@ watchActive(active => {
     collect(document.body, node => ordered.push(node));
     schedule();
   }
-  if (active === 'video') unwrapPage();
+  // When the page text goes off, no word spans stay outside the subtitle overlay.
+  if (active === 'video') unwrap(document.body, inVideo);
 });
 installFurigana();
 installPitchColors();

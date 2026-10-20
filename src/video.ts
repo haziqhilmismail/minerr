@@ -74,7 +74,7 @@ let combined: number | null = null;
 // The line that Play in the sidebar plays: the video pauses at its end. A seek out of the line ends it.
 let playOnce: { index: number; segment: SubtitleSegment } | null = null;
 
-// The host page puts the sidebar in its place, beside the video.
+// The host page puts the sidebar in the page: in the body, or in the element that goes full screen.
 export const sidebar = list.panel;
 export { layer, toast };
 

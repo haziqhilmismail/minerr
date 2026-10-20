@@ -1,7 +1,9 @@
 // Unit tests of the pure video rules: line jumps, keys, play modes, gaps, text clean-up, and card lines.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { choices, FILTER_NAMES, type LineState, shownLines } from '../src/linefilter.ts';
 import { autoPause, cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted, onLine } from '../src/playback.ts';
+import { isStatus } from '../src/status.ts';
 import { keyLabel, keyName, videoKey } from '../src/videokeys.ts';
 
 const LINES = [{ start: 1, end: 3, text: '一' }, { start: 3, end: 5, text: '二' }, { start: 8, end: 10, text: '三' }];
@@ -124,4 +126,38 @@ test('widenSentence puts the popup sentence back into the text of the joined lin
   assert.equal(widenSentence('猫が魚を食べた。\n今日は<雨>だ', '<b>猫</b>が魚を食べた。'), '<b>猫</b>が魚を食べた。 今日は&lt;雨&gt;だ');
   assert.equal(widenSentence('猫が魚を食べた。\n今日は<雨>だ', '今日は&lt;<b>雨</b>&gt;だ'), '猫が魚を食べた。 今日は&lt;<b>雨</b>&gt;だ');
   assert.equal(widenSentence('別の行', '<b>猫</b>だ'), '<b>猫</b>だ', 'a sentence that is not in the lines stays');
+});
+
+test('each sidebar filter shows its lines; Unique 1 unknown word shows the first i+1 line of each unknown word', () => {
+  const line = (words: string, marked = false): LineState => ({
+    marked,
+    words: words.split(' ').filter(Boolean).map(word => {
+      const [key = '', status] = word.split('=');
+      if (!isStatus(status)) throw new Error(word);
+      return { key, status };
+    }),
+  });
+  const lines = [
+    line('猫=known 魚=unknown'),
+    line('魚=unknown 食べる=known'),
+    line('今日=unknown 雨=unknown'),
+    line('雨=learning 降る=known'),
+    line('本=known 読む=ignored'),
+    line(''),
+    line('犬=unknown', true),
+    line('犬=unknown 走る=known'),
+  ];
+  const shown = Object.fromEntries(FILTER_NAMES.map(name => [name, shownLines(lines, name).flatMap((on, index) => (on ? [index] : []))]));
+  assert.deepEqual(shown, {
+    all: [0, 1, 2, 3, 4, 5, 6, 7],
+    unknown: [0, 1, 2, 6, 7],
+    unknown2: [2],
+    iPlusOne: [0, 1, 7],
+    unique: [0, 7],
+    learning: [3],
+    known: [4],
+    bookmarks: [6],
+  });
+  assert.deepEqual(choices(line('猫=known 今日=unknown 猫=known 雨=unknown 今日=unknown 降る=learning').words).map(word => word.key),
+    ['今日', '雨', '猫', '降る'], 'the chooser lists the unknown words first, each word once');
 });

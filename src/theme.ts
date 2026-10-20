@@ -1,6 +1,6 @@
 import { setting } from './settings.ts';
 
-// The color theme of the extension pages and the word popup. The Anki card follows the night mode of Anki instead.
+// The color theme of the extension pages, the word popup, and the subtitle sidebar. The Anki card follows the night mode of Anki instead.
 export const THEMES = ['system', 'light', 'dark'] as const;
 export type Theme = (typeof THEMES)[number];
 

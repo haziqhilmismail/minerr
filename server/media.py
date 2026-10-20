@@ -113,23 +113,34 @@ def keep_audio(path, key):
 
 
 def clip(source, start, end):
-    """MP3 bytes of the audio of source from start to end, in seconds."""
+    """MP3 bytes of the audio of source from start to end, in seconds, at one loudness (EBU R128, -16 LUFS) for each card."""
+    # One pass of loudnorm is within 2 LU of the target on clips of 2 to 8 s; two passes measured no closer, because the
+    # true-peak limit makes loudnorm dynamic again. loudnorm gives 192 kHz, so -ar sets 44.1 kHz.
     result = subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-ss', f'{start:.3f}', '-t', f'{end - start:.3f}', '-i', str(source),
-                             '-vn', '-ac', '1', '-c:a', 'libmp3lame', '-q:a', '4', '-f', 'mp3', 'pipe:1'],
+                             '-vn', '-ac', '1', '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-ar', '44100',
+                             '-c:a', 'libmp3lame', '-q:a', '4', '-f', 'mp3', 'pipe:1'],
                             check=True, capture_output=True, timeout=120)
     return result.stdout
 
 
+# Minerr studies Japanese: its Japanese track is never a machine translation. Other tracks (the English second track) can be.
+STUDY_LANG = 'ja'
+
+
 def pick_track(info, lang):
     """The URL and format of the best subtitle track in lang: a track of the uploader first, then the automatic
-    track in the language of the video, then any automatic one (YouTube translates it)."""
+    track in the language of the video. For a language other than STUDY_LANG, then any automatic one (YouTube translates it).
+    YouTube translates its automatic captions into every language, so an English video has an automatic 'ja' track."""
     def best(tracks):
         usable = [t for t in tracks or [] if t.get('ext') in CAPTION_EXTS and t.get('url')]
         return min(usable, key=lambda t: CAPTION_EXTS.index(t['ext']), default=None)
     own = info.get('subtitles') or {}
     auto = info.get('automatic_captions') or {}
     names = sorted((name for name in own if name == lang or name.startswith(f'{lang}-')), key=len)
-    for tracks in [*(own[name] for name in names), auto.get(f'{lang}-orig'), auto.get(lang)]:
+    spoken = (info.get('language') or '').split('-')[0] == lang
+    # The plain automatic track is speech recognition only in the language of the video; in another language it is a translation.
+    auto_ok = lang != STUDY_LANG or spoken
+    for tracks in [*(own[name] for name in names), auto.get(f'{lang}-orig'), auto.get(lang) if auto_ok else None]:
         track = best(tracks)
         if track:
             return track['url'], track['ext']

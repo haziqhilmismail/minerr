@@ -54,8 +54,17 @@ class PickTrack(unittest.TestCase):
         auto = {'ja': [{'ext': 'vtt', 'url': 'auto-vtt'}, {'ext': 'json3', 'url': 'auto-json3'}], 'ja-orig': [{'ext': 'json3', 'url': 'orig'}]}
         self.assertEqual(pick_track({'subtitles': own, 'automatic_captions': auto}, 'ja'), ('own-vtt', 'vtt'))
         self.assertEqual(pick_track({'subtitles': {}, 'automatic_captions': auto}, 'ja'), ('orig', 'json3'))
-        self.assertEqual(pick_track({'automatic_captions': {'ja': auto['ja']}}, 'ja'), ('auto-json3', 'json3'))
+        self.assertEqual(pick_track({'language': 'ja', 'automatic_captions': {'ja': auto['ja']}}, 'ja'), ('auto-json3', 'json3'))
         self.assertIsNone(pick_track({'subtitles': {'ja': [{'ext': 'ass', 'url': 'x'}]}}, 'ja'))
+
+    def test_japanese_is_never_a_translation_but_the_second_track_can_be(self):
+        english_video = {'language': 'en', 'automatic_captions': {'en-orig': [{'ext': 'json3', 'url': 'en-asr'}],
+                                                                  'ja': [{'ext': 'json3', 'url': 'ja-translated'}],
+                                                                  'en': [{'ext': 'json3', 'url': 'en-asr-2'}]}}
+        self.assertIsNone(pick_track(english_video, 'ja'), 'an English video has no Japanese subtitles, only a translation')
+        japanese_video = {'language': 'ja', 'automatic_captions': {'ja-orig': [{'ext': 'json3', 'url': 'ja-asr'}],
+                                                                   'en': [{'ext': 'json3', 'url': 'en-translated'}]}}
+        self.assertEqual(pick_track(japanese_video, 'en'), ('en-translated', 'json3'), 'the English second track can be a translation')
 
 
 class Track(BaseHTTPRequestHandler):
@@ -370,7 +379,7 @@ class Files(unittest.TestCase):
             body = {'url': 'https://youtu.be/KfQPZZ5JmXw', 'lang': 'ja'}
             self.assertEqual(self.post('/captions', body)[0], 404)
             self.assertEqual(self.post('/captions', body)[0], 404)
-            path = whisper_server.CACHE / 'KfQPZZ5JmXw.captions.ja.json'
+            path = whisper_server.CACHE / 'KfQPZZ5JmXw.captions.ja.v2.json'
             day_ago = time.time() - 24 * 3600 - 60
             os.utime(path, (day_ago, day_ago))
             self.assertEqual(self.post('/captions', body)[0], 404)

@@ -290,7 +290,7 @@ try {
   console.log('check connection:', await options.textContent('#anki-status'));
 
   const background = (page: Page, selector: string) => page.$eval(selector, node => getComputedStyle(node).backgroundColor);
-  const [LIGHT_PAGE, DARK_PAGE, DARK_POPUP] = ['rgb(244, 245, 248)', 'rgb(21, 22, 27)', 'rgb(31, 32, 39)'];
+  const [LIGHT_PAGE, DARK_PAGE, DARK_POPUP] = ['rgb(242, 246, 247)', 'rgb(15, 29, 36)', 'rgb(21, 39, 48)'];
   const action = await context.newPage();
   for (const page of [options, action, tab]) await page.emulateMedia({ colorScheme: 'light' });
   await action.goto(`chrome-extension://${extensionId}/action.html`);

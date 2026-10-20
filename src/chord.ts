@@ -1,10 +1,22 @@
 // Key names and the rules of the key tables of the page and the popup.
 
-// The first node of the composed path: on window, event.target of a field in a shadow root is the shadow host.
-export function isEditable(event: Event): boolean {
-  const [target] = event.composedPath();
-  return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+// The browser shortcuts of manifest.json that the service worker sends to the page of the active tab (src/keys.ts).
+export const PAGE_COMMANDS = ['lookup-selection', 'word-join', 'toggle-site', 'toggle-sentence-highlight'] as const;
+export type PageCommand = (typeof PAGE_COMMANDS)[number];
+export const isPageCommand = (name: string): name is PageCommand => PAGE_COMMANDS.some(command => command === name);
+
+export const isField = (target: unknown): boolean =>
+  target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+
+// The element with the focus, also inside a shadow root.
+export function focused(): Element | null {
+  let element = document.activeElement;
+  while (element?.shadowRoot?.activeElement) element = element.shadowRoot.activeElement;
+  return element;
 }
+
+// The first node of the composed path: on window, event.target of a field in a shadow root is the shadow host.
+export const isEditable = (event: Event): boolean => isField(event.composedPath()[0]);
 
 // The name of the key of event: "alt+shift+d", "alt+s", "n", "1", "Escape". Shift counts only with Alt, as Shift is the
 // popup key. With Alt, the letter comes from the physical key, because Alt changes the character on macOS (Alt+S is ß).

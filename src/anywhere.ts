@@ -30,7 +30,8 @@ function mainVideo(): HTMLVideoElement | null {
 let started: Promise<void> | null = null;
 
 async function start(video: HTMLVideoElement): Promise<void> {
-  const { attach, layer, setLines, toast } = await import('./video.ts');
+  const { attach, layer, setLines, sidebar, toast } = await import('./video.ts');
+  document.body.append(sidebar);
   const url = location.href;
   let primary: SubtitleSegment[] = [];
   let second: SubtitleSegment[] | null = null;

@@ -167,7 +167,32 @@ Minerr sets each word that the selection touches to that status. A short message
 
 When Minerr is off, YouTube shows its own captions again, and the Minerr subtitle overlay is hidden.
 
-Use this when you want to compare Minerr with another dictionary extension, for example Yomitan. To change the shortcut, open `chrome://extensions/shortcuts`.
+Use this when you want to compare Minerr with another dictionary extension, for example Yomitan. To change the shortcut, see [Change a shortcut](#change-a-shortcut).
+
+### Browser shortcuts
+
+Chrome runs these keys for Minerr. Thus a page cannot take them. The table shows the default keys.
+
+| Key | Action |
+| --- | --- |
+| `Alt+Shift+M` | Turn Minerr on or off in all tabs. |
+| `Alt+S` | Look up the selected text. See [Look up selected text](#look-up-selected-text). |
+| `Alt+J` | Make the selected text one word, or remove that word override. See [Word overrides](#word-overrides). |
+| `Alt+Shift+D` | Turn the page text of this site on or off. |
+| No key | Open the Minerr toolbar menu. |
+| No key | Turn the sentence highlight on or off. `Alt+Shift+S` on a page also does this. |
+
+If Chrome, the system, or another extension already uses a key, Minerr does not get that key. The options page shows the keys that Minerr has now, in **Colors and shortcuts**. A key that Minerr does not have shows **Not set**. The toolbar menu also shows the key of **Minerr on** and of the page text switch.
+
+#### Change a shortcut
+
+1. Open the options page.
+2. In **Colors and shortcuts**, click **Change the keys**. Or open `chrome://extensions/shortcuts` in a new tab.
+3. Find **Minerr** in the list.
+4. Click the pencil button of the action.
+5. Press the new key, for example `Alt+K`. The key must start with `Alt` or `Ctrl`.
+
+The new key works at once in all tabs.
 
 ### Turn the page text on or off for a site
 
@@ -306,7 +331,9 @@ If you start the server after you open the video, the tab finds the server in so
 
 The server uses the subtitles of the uploader first. If the video has none, it uses the automatic subtitles of YouTube. The overlay then shows the subtitles at the times of the video, also when the YouTube captions are off. If the video has no Japanese subtitles, the overlay copies the YouTube captions as before.
 
-The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.captions.ja.json`. The file of a video with no Japanese subtitles contains `{}`. After one day, the server asks YouTube again, because YouTube can add automatic subtitles some hours after the upload. To download the subtitles again at once, delete the file.
+The Japanese subtitles are never a machine translation. YouTube translates its automatic captions into every language, so an English video has "Japanese" captions too. Minerr does not use them: the overlay shows no Japanese subtitles on such a video. The second subtitles, for example English, can be a translation.
+
+The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.captions.ja.v2.json`. The file of a video with no Japanese subtitles contains `{}`. After one day, the server asks YouTube again, because YouTube can add automatic subtitles some hours after the upload. To download the subtitles again at once, delete the file.
 
 ## Generate subtitles with WhisperX
 
@@ -406,7 +433,7 @@ Minerr can show its subtitle overlay on the video of a page that is not YouTube.
    - **WhisperX** makes the subtitles from the audio of the page. The server downloads the audio with `yt-dlp`.
 5. To remove the buttons, click **Hide these buttons**. The overlay stays until you reload the page.
 
-The keys, the play modes, the subtitle sidebar, and the sentence audio work as on YouTube. On these sites, the sidebar is a column at the right side of the window.
+The keys, the play modes, the subtitle sidebar, and the sentence audio work as on YouTube. A fixed bar at the top of such a site can stay under the sidebar.
 
 Limits:
 
@@ -424,6 +451,8 @@ The audio comes from one of these sources:
 
 1. The Minerr server cuts the line from its copy of the audio, as an MP3 file. This works for a YouTube video, and for a file that you sent to the server with **Generate with WhisperX**. The first card of a video starts the download of its audio. The later cards of the video get the MP3 file.
 2. If the server is off or has no audio of the video, Minerr records the line in the tab. The video goes back to the start of the line and plays it again. Then the video goes back to where it was. The recording is a WebM file.
+
+Minerr gives all sentence audio one loudness, so a card is not too loud or too quiet. The server sets each MP3 file to -16 LUFS (EBU R128). The tab recording only evens out the level: the start of a recording can be a little louder or quieter. A change of the volume of the video does not change the recording.
 
 The sentence audio needs subtitles with times. A card from the YouTube captions that Minerr copies from the player has no sentence audio.
 
@@ -452,34 +481,49 @@ More settings in **Video**:
 
 ## Subtitle sidebar
 
-The subtitle sidebar shows all lines of the video as cards, beside the video. It does not cover the video. It needs subtitles with times.
+The subtitle sidebar shows all lines of the video as cards. It is a panel at the right side of the window, from the top to the bottom. The page gets narrower and moves to the left of the panel, so the panel does not cover the page. It needs subtitles with times.
 
-- On YouTube, the sidebar is in the column of the recommended videos. The recommended videos come back when you close the sidebar. In theater mode, the column is below the video.
-- In the video player, the sidebar is a column at the right side of the video. It stays there in full screen.
+- On YouTube, the full page moves to the left of the panel, also the bar at the top. In theater mode, the video fills the width at the left of the panel.
+- On YouTube, the recommended videos are hidden while the panel is open. The video gets their width.
+- In YouTube full screen, the panel does not show. It shows again when you leave full screen.
+- In the video player, the panel stays at the right side in full screen too.
+- When you close the panel, the page gets its full width again.
+- The panel has the colors of the Minerr theme (**Theme** on the options page), not the colors of the page.
 
 1. Press `G` on the video. The sidebar opens.
 2. Find a line. Each card shows the time and the line. The words have their status colors, and a word opens its popup on hover, as in the overlay.
 3. Do one of these steps on the card:
    - Click the card, or its time, to go to the line.
    - Click **▶** to play the line one time. The video pauses at the end of the line.
-   - Click **+** to add a card for the unknown word of the line. The card gets the line as the sentence, the audio of the line, and a screenshot of the line. The video pauses at the start of the line for the screenshot.
+   - Click **+** to add a card for a word of the line. The card gets the line as the sentence, the audio of the line, and a screenshot of the line. The video pauses at the start of the line for the screenshot.
    - Click **★** to bookmark the line.
 4. Press `G` again, or click **×**, to close the sidebar.
 
-The **+** button works only on a line with exactly one unknown word. On a line with no unknown word or with two or more, **+** is gray. To add a word from such a line, move the mouse over the word and press `A`. The card also gets the sentence and the audio of that line.
+The word of the card from **+**:
 
-The sidebar follows the video. The card of the current line has a colored bar at its left side, and the list scrolls to keep that card in view. If you scroll the list, the list stays where you put it for 3 seconds.
+- If the line has one unknown word, Minerr adds the card for that word at once.
+- If the line has two or more unknown words, the card shows **Select a target word**. The unknown words come first, then the other words of the line. Click a word to add its card.
+- If the line has no unknown word, the list shows all words of the line.
+- To close the list, click **Cancel**, click **+** again, or press `Esc`. Use `Tab` and `Enter` to select a word with the keyboard.
+
+The sidebar follows the video. The card of the current line has a teal border, and the list scrolls to keep that card in view. While the mouse is on the sidebar, or while a word list of **+** is open, the list does not scroll, and the sidebar shows **Scroll paused**. When the mouse leaves the sidebar, the list goes to the current line.
 
 With only the YouTube captions that Minerr copies from the player, the sidebar shows a message. These captions have no times.
 
-Click a filter at the top of the sidebar:
+Select a filter at the top of the sidebar:
 
 | Filter | The sidebar shows |
 | --- | --- |
-| **All** | All lines. |
+| **All lines** | All lines. |
+| **1+ unknown words** | The lines with one or more unknown words. |
+| **2+ unknown words** | The lines with two or more unknown words. |
 | **1 unknown word** | The lines with exactly one unknown word, as the i+1 highlight counts them. |
+| **Unique 1 unknown word** | The lines with exactly one unknown word, but only the first line of each unknown word. |
 | **Learning** | The lines with a word that has the status learning. |
-| **Bookmarks** | The lines that you bookmarked. |
+| **All known** | The lines with only known or ignored words. |
+| **Bookmarks** | The lines that you bookmarked. The filter shows the number of bookmarks. |
+
+If no line matches the filter, the sidebar shows a message. Click **Clear filter** to show all lines again.
 
 To bookmark the current line, press `B`, or click **★** on its card. Press `B` again to remove the bookmark. Minerr keeps the bookmarks of each video. The bookmarks of a YouTube video belong to its video ID, and the bookmarks of a file belong to its name and size.
 
@@ -762,6 +806,21 @@ Select text on the page, then press `Alt+S`. Minerr looks up the longest diction
 
 `A` in this popup adds a card with the sentence around the selected word.
 
+### Word overrides
+
+Minerr uses an old dictionary to cut text into words. Thus it can cut a new word or a slang word in two. For example, in ちょっとはずいね。 Minerr shows ずい, not はずい (恥ずい). To make such a text one word:
+
+1. Select the text on a page or in a subtitle line, for example はずい.
+2. Press `Alt+J`. A short message confirms the change: `はずい is one word now.`
+
+The words on the open pages change at once. From then on, Minerr reads each match of the text as one word, with the popup and the status of its dictionary entry.
+
+- The text must be one dictionary word. If no dictionary has it, a short message tells you, and Minerr keeps no override.
+- Select the text as it is on the page. Minerr joins only a text that it cuts at the same two ends. It does not cut a word to make the override.
+- An override matches only its exact text. A conjugated form, for example はずかった, keeps the cut of the dictionary.
+
+To remove an override, select the same text and press `Alt+J` again. Or open the options page, find **Word overrides** in **Dictionaries**, and click **Remove**.
+
 ### Popups in a popup
 
 Japanese text in the definitions of a popup is also cut into words. Hold `Shift` and move the mouse onto such a word: a new popup opens over the first one. You can open up to 4 popups in this way. A plain hover in a popup opens nothing, so you can move the mouse over the definitions.
@@ -873,7 +932,7 @@ Minerr does not change a status before you click **Save**.
 
 ## Theme
 
-The options page, the toolbar menu, and the word popup have a light theme and a dark theme.
+The options page, the toolbar menu, the word popup, and the subtitle sidebar have a light theme and a dark theme.
 
 1. Open the options page.
 2. In **Theme**, click **System**, **Light**, or **Dark**.
@@ -892,7 +951,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `background.ts` | The service worker. It routes messages and calls AnkiConnect and the WhisperX server. |
 | `offscreen.ts` | Runs kuromoji and the dictionary lookups in an offscreen document. |
 | `src/rpc.ts` | The messages between the parts of the extension, and the type of the reply to each message. |
-| `src/page.ts` | Finds Japanese text on the page and wraps each word. |
+| `src/page.ts` | Finds Japanese text on the page and wraps each word. After a change of the word overrides, it parses the blocks with that text again. |
 | `src/popup.ts` | The dictionary popup: when it opens, its keys, and the card that it adds. |
 | `src/popup-view.ts` | The content of the popup and its position. |
 | `src/words.ts` | The word spans of parsed text. A word that crosses text nodes gets one span for each part. |
@@ -901,7 +960,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/sentence-hover.ts` | The highlight of the sentence of the word under the mouse. |
 | `src/sentence-text.ts` | The text of the sentence around a word on the page, for the highlight and the card. The walk stops at the sentence ends and at a `<br>`. |
 | `src/site.ts` | The page text on or off for each site, and the state of a page: Minerr off, the video subtitles only, or the page text too. |
-| `src/keys.ts`, `src/chord.ts` | The keys that work on a page without a popup, and the names of the keys. |
+| `src/keys.ts`, `src/chord.ts` | The keys that work on a page without a popup, the browser shortcuts that the service worker sends to the tab, and the names of the keys. |
 | `src/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |
 | `src/subtitles.ts` | The subtitle overlay on YouTube. |
 | `src/status.ts` | The word statuses, their colors, and their storage. |
@@ -913,10 +972,10 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/whisper.ts` | The client for the WhisperX server. |
 | `src/lineaudio.ts`, `src/record.ts` | The sentence audio of a card: the server cuts it, or the tab records the line. |
 | `src/db.ts` | The dictionary storage in IndexedDB. |
-| `src/entry.ts` | The dictionary entry and the status key of each word, and the join of compound nouns. |
+| `src/entry.ts` | The dictionary entry and the status key of each word, and the join of word overrides and compound nouns. |
 | `src/group.ts`, `src/sentence.ts`, `src/yomitan.ts`, `src/zip.ts` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
 | `src/inflection.ts` | Pure function: the parts of an inflected word and their labels, for the popup line. |
-| `src/theme.ts`, `theme.css` | The theme setting, and the palette of the extension pages. |
+| `src/theme.ts`, `src/tokens.ts` | The theme setting, and the design tokens of every surface (see `docs/design.md`). The build writes the tokens and the base rules of the pages (`PAGE_CSS`) to `dist/theme.css`. |
 | `src/hover.ts` | The word popup setting, and the rule that decides when the popup opens. |
 | `action.html`, `action.ts` | The toolbar popup. |
 | `player.html`, `player.ts` | The video player page. Content scripts do not run on extension pages, so the page loads `src/page.ts`, `src/popup.ts`, `src/iplusone.ts`, and `src/stats.ts` itself. |
@@ -926,7 +985,8 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/playback.ts`, `src/videokeys.ts` | Pure rules for timed lines (jumps, play modes, gaps, text clean-up), and the table of the video keys. |
 | `src/videosettings.ts`, `src/videooptions.ts` | The video settings, and their part of the options page. |
 | `src/anywhere.ts` | The subtitle overlay on the largest video of a page that is not YouTube, with its buttons. |
-| `src/linelist.ts` | The subtitle sidebar: a card for each line, its filters, and the bookmarks. The host page puts it beside the video. |
+| `src/linelist.ts` | The subtitle sidebar: a full-height panel at the right side of the window, a card for each line, the word list of **+**, and the bookmarks. |
+| `src/linefilter.ts` | The filters of the subtitle sidebar. |
 | `src/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
 | `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 | `server/whisper_server.py`, `server/media.py` | The local server: WhisperX jobs and the HTTP routes, and the video side (cache keys, `yt-dlp`, the audio cache, and line clips). |
