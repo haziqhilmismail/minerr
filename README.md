@@ -229,6 +229,43 @@ The card has a light theme and a night mode theme. It also fits phone screens. I
 
 Minerr keeps the note type up to date. Each time its background service worker starts, the first card that you add sets the templates and the CSS to the current version. If you change the templates or the CSS in Anki, Minerr replaces your changes. Minerr does not change the fields. If you want your own design, make a copy of the note type in Anki and edit the copy.
 
+## Use your own note type
+
+You can add cards to a note type that you made in Anki, as with the field templates of Yomitan.
+
+1. Open Anki.
+2. Open the options page.
+3. In **Anki**, click **Check connection**. Minerr gets the list of your note types.
+4. In **Note type**, select your note type. Minerr shows one text field for each field of the note type.
+5. In each text field, write the content of the field with markers. Minerr saves each change at once.
+
+Minerr replaces each marker when it adds a card:
+
+| Marker | Content |
+| --- | --- |
+| `{word}` | The dictionary form of the word, for example 食べる. |
+| `{reading}` | The reading from the dictionary, for example たべる. |
+| `{furigana}` | The word with its reading in the furigana syntax of Anki, for example `食べる[たべる]`. Use it with `{{furigana:Field}}` in the card template. |
+| `{sentence}` | The sentence from the page. The word is in `<b>`. |
+| `{definition}` | The tags and the definitions, as in the `Definition` field of the built-in note type. |
+| `{image}` | The screenshot of the tab, as `<img src="...">`. Minerr stores the file in the media folder of Anki. |
+| `{url}` | The address of the page. |
+| `{title}` | The title of the page. |
+
+The text around the markers stays as you write it. It can contain HTML, for example `<a href="{url}">{title}</a>`. You can put more than one marker in a field. You can leave a field empty.
+
+If a field contains an unknown marker, for example `{Word}`, the options page shows an error and does not save the change. The markers are in lower case.
+
+When you select a note type, Minerr suggests a marker for each field from the name of the field. For example, a field with the name `Expression` gets `{word}`, and a field with the name `Picture` gets `{image}`. Examine the suggestions, and change them if necessary.
+
+The **Preview** shows the fields of a card for 食べる, as Anki shows them.
+
+With your own note type, Minerr does not make or change a note type. If you add, remove, or rename a field in Anki, open the options page again or click **Check connection**. Minerr then updates the list of fields. A new field gets a suggested marker.
+
+The **Word field** in **Known words** changes to the field that contains `{word}`.
+
+To use the Minerr note type again, select **Minerr (built-in)**.
+
 ## Theme
 
 The options page, the toolbar menu, and the word popup have a light theme and a dark theme.

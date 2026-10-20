@@ -24,6 +24,23 @@ const site = createServer((req, res) => {
 });
 const pageUrl = `http://127.0.0.1:${await listen(site, 0)}/watch`;
 
+// A mock AnkiConnect for the Anki section. It closes before the popup shots, so the popup shows the error of a closed Anki.
+const ANKI: Record<string, unknown> = {
+  version: 6,
+  modelNames: ['Basic', 'Japanese sentences'],
+  modelFieldNames: ['Expression', 'Reading', 'Sentence', 'Meaning', 'Picture', 'Source'],
+};
+const anki = createServer((req, res) => {
+  let body = '';
+  req.on('data', chunk => { body += chunk; });
+  req.on('end', () => {
+    const action = String(JSON.parse(body).action);
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(action in ANKI ? { result: ANKI[action], error: null } : { result: null, error: `no mock for ${action}` }));
+  });
+});
+await listen(anki, 8765);
+
 const { context, worker, extensionId } = await launch(join(work, 'profile'));
 const shot = async (target: Page | Locator, name: string, fullPage = false) => {
   await target.screenshot({ path: join(out, name), fullPage });
@@ -50,6 +67,22 @@ try {
   await shot(options, 'options-light.png', true);
   await options.emulateMedia({ colorScheme: 'dark' });
   await shot(options, 'options-dark.png', true);
+  await options.emulateMedia({ colorScheme: 'light' });
+
+  const ankiSection = options.locator('section[aria-labelledby="anki-heading"]');
+  await options.selectOption('#note-type', 'Japanese sentences');
+  await options.getByLabel('Source', { exact: true }).fill('<a href="{url}">{title}</a>');
+  await shot(ankiSection, 'options-note-type-light.png');
+  await options.getByLabel('Reading', { exact: true }).fill('{Reading}');
+  await shot(ankiSection, 'options-note-type-error-light.png');
+  await options.getByLabel('Reading', { exact: true }).fill('{reading}');
+  await options.click('label:has(input[name="theme"][value="dark"])');
+  await shot(ankiSection, 'options-note-type-dark.png');
+  await shot(options, 'options-forced-dark.png', true);
+  await options.selectOption('#note-type', '');
+  await options.click('label:has(input[name="theme"][value="system"])');
+  anki.close();
+  anki.closeAllConnections();
 
   await worker.evaluate(() => chrome.storage.local.set({
     'w:魚': 'learning', 'w:雨': 'learning', 'w:食べる': 'known', 'w:今日': 'known', 'w:本': 'known', 'w:家': 'ignored',
@@ -78,7 +111,14 @@ try {
     await tab.mouse.move(0, 0);
     await tab.keyboard.press('Escape');
   }
+
+  await worker.evaluate(() => chrome.storage.local.set({ theme: 'dark' }));
+  await tab.emulateMedia({ colorScheme: 'light' });
+  await tab.hover('#light .ml-word[data-ml-lemma="食べる"]');
+  await popup.locator('li').first().waitFor();
+  await shot(tab, 'popup-forced-dark-on-light.png');
 } finally {
   await context.close();
   site.close();
+  anki.close();
 }

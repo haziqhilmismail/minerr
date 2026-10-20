@@ -15,6 +15,8 @@ interface Protocol {
   addCard: { request: { card: CardFields }; reply: number };
   importKnown: { request: { query: string; field: string }; reply: number };
   ankiVersion: { request: {}; reply: number };
+  ankiModels: { request: {}; reply: string[] };
+  ankiModelFields: { request: { model: string }; reply: string[] };
   whisperHealth: { request: {}; reply: Health };
   whisperStart: { request: { url: string }; reply: { id: string } };
   whisperJob: { request: { id: string }; reply: Job | null };

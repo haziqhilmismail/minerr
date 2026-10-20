@@ -238,3 +238,44 @@ test('resolveTheme follows the system only for the system theme', async () => {
     'system+light=light', 'system+dark=dark', 'light+light=light', 'light+dark=light', 'dark+light=dark', 'dark+dark=dark',
   ]);
 });
+
+test('renderField fills each marker in one pass and escapes the plain text values one time', async () => {
+  const { markerValues, renderField } = await import('../src/anki.ts');
+  const card = { word: '食べる', reading: 'たべる', sentence: '猫が魚を<b>食べなかった</b>。', definition: '<ol><li>to eat</li></ol>' };
+  const values = markerValues(card, { url: 'https://example.com/?a=1&b=2', title: 'Tom & Jerry <3 {word}' }, '<img src="minerr-1.jpg">');
+  assert.equal(renderField('<div>{word}</div> {furigana} [{reading}]', values), '<div>食べる</div> 食べる[たべる] [たべる]');
+  assert.equal(renderField('{sentence}{definition}{image}', values), '猫が魚を<b>食べなかった</b>。<ol><li>to eat</li></ol><img src="minerr-1.jpg">');
+  assert.equal(renderField('<a href="{url}">{title}</a>', values), '<a href="https://example.com/?a=1&amp;b=2">Tom &amp; Jerry &lt;3 {word}</a>');
+  assert.equal(renderField('&amp; {Word} {nope} {}', values), '&amp; {Word} {nope} {}');
+  assert.equal(renderField('', values), '');
+  assert.equal(markerValues({ ...card, word: 'ねこ', reading: 'ねこ' }, { url: '', title: '' }, '').furigana, 'ねこ');
+  assert.equal(markerValues({ ...card, reading: '' }, { url: '', title: '' }, '').furigana, '食べる');
+});
+
+test('unknownMarkers lists each marker that is not known, one time, as written', async () => {
+  const { unknownMarkers } = await import('../src/anki.ts');
+  assert.deepEqual(unknownMarkers('{word} {Word} {nope} {nope} {} {image}'), ['{Word}', '{nope}', '{}']);
+  assert.deepEqual(unknownMarkers('{word}{reading}{furigana}{sentence}{definition}{image}{url}{title} plain text'), []);
+});
+
+test('suggestFields maps known field names to one marker and leaves the others empty', async () => {
+  const { suggestFields } = await import('../src/anki.ts');
+  assert.deepEqual(suggestFields(['Expression', 'ExpressionFurigana', 'ExpressionReading', 'Sentence', 'SentenceFurigana',
+    'MainDefinition', 'Picture', 'Word Meaning', 'Glossary', 'Front', 'Back', 'Notes', 'Source URL', 'Title']), {
+    Expression: '{word}', ExpressionFurigana: '{furigana}', ExpressionReading: '{reading}', Sentence: '{sentence}', SentenceFurigana: '',
+    MainDefinition: '{definition}', Picture: '{image}', 'Word Meaning': '{definition}', Glossary: '{definition}', Front: '{word}',
+    Back: '{definition}', Notes: '', 'Source URL': '', Title: '{title}',
+  });
+});
+
+test('parseNoteType reads a stored note type and falls back to the built-in one', async () => {
+  const { parseNoteType, wordField } = await import('../src/anki.ts');
+  const custom = { kind: 'custom', model: 'Mining', fields: { Front: '{sentence}', Back: '{word} {definition}' } };
+  assert.deepEqual(parseNoteType(custom), custom);
+  for (const bad of [undefined, null, 'custom', { kind: 'custom', model: 'Mining' }, { ...custom, fields: { Front: 1 } }, { ...custom, fields: [] }]) {
+    assert.deepEqual(parseNoteType(bad), { kind: 'builtin' });
+  }
+  assert.equal(wordField(parseNoteType(custom)), 'Back');
+  assert.equal(wordField({ kind: 'custom', model: 'Mining', fields: { Front: '{sentence}' } }), 'Word');
+  assert.equal(wordField({ kind: 'builtin' }), 'Word');
+});

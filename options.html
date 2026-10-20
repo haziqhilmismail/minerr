@@ -35,6 +35,30 @@
   button:disabled { cursor: progress; opacity: .6; }
   :focus-visible, .drop:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
   input[type="text"]:focus-visible { outline-offset: 0; border-color: var(--accent); }
+  select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: inherit; font: inherit; }
+  select:focus-visible { outline-offset: 0; border-color: var(--accent); }
+  .row select { flex: 1 1 260px; }
+  [aria-invalid="true"] { border-color: var(--error); }
+  h3 { margin: 20px 0 4px; font-size: 15px; line-height: 1.3; }
+  .field:has(+ .note-fields[hidden]) { margin-bottom: 0; }
+  .note-fields { margin: 4px 0 0; padding: 2px 0 0 16px; border-left: 3px solid var(--raised); }
+  .markers { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; margin: 12px 0 16px; font-size: 13px; }
+  .markers dt { font: 600 13px/1.6 ui-monospace, monospace; color: var(--accent); }
+  .markers dd { margin: 0; color: var(--muted); }
+  .mapping { display: grid; grid-template-columns: minmax(96px, max-content) 1fr; align-items: center; gap: 8px 14px; }
+  .mapping label { font-weight: 600; overflow-wrap: anywhere; }
+  .mapping input { font-family: ui-monospace, monospace; font-size: 14px; }
+  .mapping .error { grid-column: 2; margin-top: -4px; font-size: 13px; }
+  .mapping .error:empty { display: none; }
+  .preview { margin-top: 8px; table-layout: fixed; }
+  .preview th { width: 30%; padding: 8px 14px 8px 0; border-top: 1px solid var(--line); color: var(--text); font-size: 14px;
+    vertical-align: top; overflow-wrap: anywhere; }
+  .preview td { height: auto; padding: 8px 0; vertical-align: top; overflow-wrap: anywhere; }
+  .preview td.empty { color: var(--muted); font-style: italic; }
+  .preview ol { margin: 4px 0 0; padding-left: 1.4em; }
+  .preview .dict { display: block; color: var(--muted); font-size: 12px; }
+  .preview img { display: block; max-width: min(100%, 240px); height: auto; border-radius: 6px; }
+  .preview a { color: var(--accent); }
   .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
   .row input[type="text"] { flex: 1 1 260px; width: auto; }
   .status { font-size: 14px; color: var(--muted); }
@@ -109,9 +133,35 @@
       </div>
       <p id="deck-help" class="help">Anki makes the deck if it does not exist.</p>
     </div>
-    <div class="row">
+    <div class="row field">
       <button id="anki-check" type="button">Check connection</button>
       <span id="anki-status" class="status" role="status"></span>
+    </div>
+    <div class="field">
+      <label for="note-type">Note type</label>
+      <div class="row">
+        <select id="note-type" aria-describedby="note-type-help"></select>
+        <span id="note-type-status" class="status" role="status"></span>
+      </div>
+      <p id="note-type-help" class="help">Minerr makes the built-in note type and keeps it up to date. If you select your own note type, Minerr only fills its fields and never changes the note type.</p>
+    </div>
+    <div id="note-fields" class="note-fields" hidden>
+      <h3>Fields</h3>
+      <p class="help">Write the content of each field. Minerr replaces these markers when it adds a card. The other text stays as you write it, and it can contain HTML.</p>
+      <dl class="markers">
+        <dt>{word}</dt><dd>The word in dictionary form</dd>
+        <dt>{reading}</dt><dd>The reading in kana</dd>
+        <dt>{furigana}</dt><dd>The word with its reading for Anki furigana, 食べる[たべる]</dd>
+        <dt>{sentence}</dt><dd>The sentence, with the word in bold</dd>
+        <dt>{definition}</dt><dd>The definitions with their tags</dd>
+        <dt>{image}</dt><dd>The screenshot of the tab</dd>
+        <dt>{url}</dt><dd>The address of the page</dd>
+        <dt>{title}</dt><dd>The title of the page</dd>
+      </dl>
+      <div id="field-rows" class="mapping"></div>
+      <h3>Preview</h3>
+      <p class="help">The fields of a card for 食べる, as Anki shows them.</p>
+      <table class="preview"><tbody id="preview-rows"></tbody></table>
     </div>
   </section>
 

@@ -21,6 +21,11 @@ const fixture = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
   ['n', 'partOfSpeech', -3, 'noun', 0],
 ]);
 
+// The definition HTML of 食べる in the fixture.
+const DEFINITION = '<div class="tags"><span class="tag tag-popular" title="high priority term">⭐</span> <span class="tag" title="">ichi</span></div>'
+  + '<ol><li><span class="tag tag-partOfSpeech" title="Ichidan verb">v1</span> <span class="tag tag-partOfSpeech" title="transitive verb">vt</span>'
+  + ' to eat (fixture)<span class="dict">Fixture</span></li></ol>';
+
 const ankiRequests: unknown[] = [];
 const ankiReplies: Record<string, (params: unknown) => unknown> = {
   createDeck: () => 1,
@@ -54,7 +59,7 @@ await listen(anki, 8765);
 
 const site = createServer((req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.end('<!doctype html><meta charset="utf-8"><body><p id="line">猫が魚を食べなかった。</p><div id="subs"></div></body>');
+  res.end('<!doctype html><meta charset="utf-8"><title>猫 &amp; 魚</title><body><p id="line">猫が魚を食べなかった。</p><div id="subs"></div></body>');
 });
 const sitePort = await listen(site, 0);
 const pageUrl = `http://127.0.0.1:${sitePort}/watch`;
@@ -170,16 +175,19 @@ try {
   await popup.locator('li').first().waitFor();
   console.log('turned on again: underline and popup back');
 
+  assert.deepEqual(ankiRequests.map(r => at(r, 'action')), ['modelNames'], 'the options page lists the note types');
+  const firstAdd = ankiRequests.length;
   await popup.getByRole('button', { name: 'Add to Anki A' }).click();
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
-  const actions = ankiRequests.map(r => at(r, 'action'));
+  const added = ankiRequests.slice(firstAdd);
+  const actions = added.map(r => at(r, 'action'));
   console.log('AnkiConnect actions:', actions);
   assert.deepEqual(actions, ['createDeck', 'modelNames', 'createModel', 'addNote']);
   assert.ok(ankiRequests.every(r => at(r, 'version') === 6));
-  assert.deepEqual(at(ankiRequests[0], 'params'), { deck: 'Minerr' });
-  assert.equal(at(ankiRequests[2], 'params', 'modelName'), 'Minerr');
-  assert.deepEqual(at(ankiRequests[2], 'params', 'inOrderFields'), ['Word', 'Reading', 'Sentence', 'Definition', 'Image']);
-  const note = at(ankiRequests[3], 'params', 'note');
+  assert.deepEqual(at(added[0], 'params'), { deck: 'Minerr' });
+  assert.equal(at(added[2], 'params', 'modelName'), 'Minerr');
+  assert.deepEqual(at(added[2], 'params', 'inOrderFields'), ['Word', 'Reading', 'Sentence', 'Definition', 'Image']);
+  const note = at(added[3], 'params', 'note');
   const picture = at(note, 'picture', 0);
   const data = at(picture, 'data');
   assert.ok(typeof data === 'string', 'picture data is a string');
@@ -190,9 +198,7 @@ try {
     Word: '食べる',
     Reading: 'たべる',
     Sentence: '猫が魚を<b>食べなかった</b>。',
-    Definition: '<div class="tags"><span class="tag tag-popular" title="high priority term">⭐</span> <span class="tag" title="">ichi</span></div>'
-      + '<ol><li><span class="tag tag-partOfSpeech" title="Ichidan verb">v1</span> <span class="tag tag-partOfSpeech" title="transitive verb">vt</span>'
-      + ' to eat (fixture)<span class="dict">Fixture</span></li></ol>',
+    Definition: DEFINITION,
     Image: '',
   });
   assert.deepEqual(at(picture, 'fields'), ['Image']);
@@ -221,7 +227,7 @@ try {
   await options.click('#anki-check');
   await options.waitForFunction(() => document.querySelector('#anki-status')?.textContent?.startsWith('Connected'));
   assert.equal(await options.textContent('#anki-status'), 'Connected (AnkiConnect version 6)');
-  assert.equal(at(ankiRequests.at(-1), 'action'), 'version');
+  assert.ok(ankiRequests.some(r => at(r, 'action') === 'version'));
   console.log('check connection:', await options.textContent('#anki-status'));
 
   const background = (page: Page, selector: string) => page.$eval(selector, node => getComputedStyle(node).backgroundColor);
@@ -256,7 +262,7 @@ try {
   await tab.keyboard.press('Escape');
   console.log('theme System: follows the system color scheme live');
 
-  const created = at(ankiRequests[2], 'params');
+  const created = at(added[2], 'params');
   const Front = at(created, 'cardTemplates', 0, 'Front');
   const Back = at(created, 'cardTemplates', 0, 'Back');
   let storedTemplates: unknown = { Recognition: { Front: 'old front', Back: 'old back' } };
@@ -310,6 +316,95 @@ try {
   await conflict.waitFor();
   console.log('popup error with an Anki editor open:', await conflict.textContent());
   ankiReplies.modelStyling = () => ({ css: storedCss });
+
+  ankiReplies.modelNames = () => ['Basic', 'Minerr', 'Mining'];
+  ankiReplies.modelFieldNames = params => (at(params, 'modelName') === 'Mining'
+    ? ['Expression', 'ExpressionReading', 'Sentence', 'MainDefinition', 'Picture', 'Notes'] : ['Front', 'Back']);
+  ankiReplies.storeMediaFile = () => 'minerr-stored.jpg';
+  const saved = options.locator('#note-type-status', { hasText: /^Saved$/ });
+  const storedNoteType = async () => at(await options.evaluate(() => chrome.storage.local.get('noteType')), 'noteType');
+  await options.bringToFront();
+  await options.click('#anki-check');
+  await options.locator('#note-type option[value="Mining"]').waitFor({ state: 'attached' });
+  assert.deepEqual(await options.$$eval('#note-type option', items => items.map(item => item.textContent)), ['Minerr (built-in)', 'Basic', 'Mining']);
+  await options.selectOption('#note-type', 'Mining');
+  await saved.waitFor();
+  assert.deepEqual(await storedNoteType(), { kind: 'custom', model: 'Mining', fields: {
+    Expression: '{word}', ExpressionReading: '{reading}', Sentence: '{sentence}', MainDefinition: '{definition}', Picture: '{image}', Notes: '',
+  } });
+  assert.equal(await options.inputValue('#known-field'), 'Expression');
+  const notesField = options.getByLabel('Notes', { exact: true });
+  await notesField.fill('{title} {nope}');
+  await options.locator('#field-rows .error', { hasText: 'Unknown marker {nope}.' }).waitFor();
+  assert.equal(await options.textContent('#note-type-status'), 'Not saved. Correct the unknown markers.');
+  assert.equal(at(await storedNoteType(), 'fields', 'Notes'), '');
+  await notesField.fill('<a href="{url}">{title}</a> {furigana}');
+  await saved.waitFor();
+  assert.equal(at(await storedNoteType(), 'fields', 'Notes'), '<a href="{url}">{title}</a> {furigana}');
+  const preview = Object.fromEntries(await options.$$eval('#preview-rows tr', rows => rows.map(row => [row.querySelector('th')?.textContent, row.querySelector('td')?.innerHTML])));
+  console.log('note type preview:', preview);
+  assert.match(preview.Picture, /^<img src="data:image\/svg\+xml,[^"]+" alt="">$/);
+  assert.deepEqual({ ...preview, Picture: '' }, {
+    Expression: '食べる', ExpressionReading: 'たべる', Sentence: '猫が魚を<b>食べなかった</b>。', Picture: '',
+    MainDefinition: '<div class="tags"><span class="tag tag-popular" title="high priority term">⭐</span></div><ol>'
+      + '<li><span class="tag tag-partOfSpeech" title="Ichidan verb">v1</span> to eat</li>'
+      + '<li>to live on (e.g. a salary)<br>to make a living<span class="dict">JMdict</span></li></ol>',
+    Notes: '<a href="https://www.youtube.com/watch?v=sample">Sample video</a> 食べる[たべる]',
+  });
+
+  const addTaberu = async () => {
+    await tab.bringToFront();
+    await tab.hover('#line .ml-word[data-ml-lemma="魚"]');
+    await popup.locator('.lemma', { hasText: '魚' }).waitFor();
+    await tab.hover('#line .ml-word[data-ml-lemma="食べる"]');
+    await popup.locator('.lemma', { hasText: '食べる' }).waitFor();
+    const sent = ankiRequests.length;
+    await tab.keyboard.press('a');
+    await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+    return ankiRequests.slice(sent);
+  };
+  const custom = await addTaberu();
+  console.log('AnkiConnect actions with a custom note type:', custom.map(r => at(r, 'action')));
+  assert.deepEqual(custom.map(r => at(r, 'action')), ['createDeck', 'storeMediaFile', 'addNote']);
+  const media = at(custom[1], 'params');
+  assert.match(String(at(media, 'filename')), /^minerr-\d+\.jpg$/);
+  assert.ok(String(at(media, 'data')).startsWith('/9j/'), 'stored media is base64 JPEG');
+  assert.deepEqual(at(custom[2], 'params', 'note'), {
+    deckName: 'Minerr',
+    modelName: 'Mining',
+    fields: {
+      Expression: '食べる',
+      ExpressionReading: 'たべる',
+      Sentence: '猫が魚を<b>食べなかった</b>。',
+      MainDefinition: DEFINITION,
+      Picture: '<img src="minerr-stored.jpg">',
+      Notes: `<a href="${pageUrl}">猫 &amp; 魚</a> 食べる[たべる]`,
+    },
+    tags: ['minerr'],
+  });
+  console.log('custom note type: addNote with the rendered fields, no note type writes');
+
+  ankiReplies.modelFieldNames = () => ['Expression', 'ExpressionReading', 'Sentence', 'MainDefinition', 'Picture', 'Source'];
+  await options.reload();
+  await options.locator('#note-type-status', { hasText: 'Updated the fields from Anki' }).waitFor();
+  assert.deepEqual(at(await storedNoteType(), 'fields'), {
+    Expression: '{word}', ExpressionReading: '{reading}', Sentence: '{sentence}', MainDefinition: '{definition}', Picture: '{image}', Source: '{url}',
+  });
+  console.log('a field renamed in Anki: the options page follows it');
+
+  await options.bringToFront();
+  await options.selectOption('#note-type', '');
+  await saved.waitFor();
+  assert.deepEqual(await storedNoteType(), { kind: 'builtin' });
+  assert.equal(await options.inputValue('#known-field'), 'Word');
+  assert.equal(await options.isVisible('#note-fields'), false);
+  const builtin = await addTaberu();
+  assert.deepEqual(builtin.map(r => at(r, 'action')).sort(), ['addNote', 'createDeck', 'modelNames', 'modelStyling', 'modelTemplates']);
+  const builtinNote = at(builtin.find(r => at(r, 'action') === 'addNote'), 'params', 'note');
+  assert.equal(at(builtinNote, 'modelName'), 'Minerr');
+  assert.deepEqual(at(builtinNote, 'fields'), { Word: '食べる', Reading: 'たべる', Sentence: '猫が魚を<b>食べなかった</b>。', Definition: DEFINITION, Image: '' });
+  assert.deepEqual(at(builtinNote, 'picture', 0, 'fields'), ['Image']);
+  console.log('back to the built-in note type: the Minerr note type and a picture again');
 
   await new Promise(resolve => anki.close(resolve));
   anki.closeAllConnections();

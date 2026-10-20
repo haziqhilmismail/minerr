@@ -1,4 +1,4 @@
-import { at, isList } from './parse.ts';
+import { at, isList, isRecordOf, isString, isStringList } from './parse.ts';
 import { TAG_CSS, tagClass } from './tags.ts';
 import type { Group, Tag } from './yomitan.ts';
 
@@ -10,7 +10,7 @@ export const DEFAULT_DECK = 'Minerr';
 export const DEFAULT_KNOWN_QUERY = `deck:"${DEFAULT_DECK}" prop:ivl>=21`;
 export const DEFAULT_KNOWN_FIELD = 'Word';
 
-// The HTML values of the fields of a new note.
+// The word of a new note and its HTML: sentence has the word in <b>, definition is from definitionHtml.
 export interface CardFields {
   word: string;
   reading: string;
@@ -21,6 +21,88 @@ export interface CardFields {
 export async function getDeck(): Promise<string> {
   const { deck } = await chrome.storage.local.get({ deck: DEFAULT_DECK });
   return typeof deck === 'string' ? deck : DEFAULT_DECK;
+}
+
+// The page of the word of a new note.
+export interface PageInfo {
+  url: string;
+  title: string;
+}
+
+// The note type of new notes. builtin is the Minerr note type, which Minerr makes and keeps up to date.
+// custom is a note type of the user: fields maps each of its fields to a template with markers. Minerr never changes it.
+export type NoteType = { kind: 'builtin' } | { kind: 'custom'; model: string; fields: Record<string, string> };
+
+export const BUILTIN: NoteType = { kind: 'builtin' };
+
+export function parseNoteType(value: unknown): NoteType {
+  const model = at(value, 'model');
+  const fields = at(value, 'fields');
+  return at(value, 'kind') === 'custom' && isString(model) && isRecordOf(fields, isString)
+    ? { kind: 'custom', model, fields } : BUILTIN;
+}
+
+export const getNoteType = async (): Promise<NoteType> => parseNoteType((await chrome.storage.local.get('noteType')).noteType);
+export const setNoteType = (noteType: NoteType): Promise<void> => chrome.storage.local.set({ noteType });
+
+export const MARKERS = ['word', 'reading', 'furigana', 'sentence', 'definition', 'image', 'url', 'title'] as const;
+export type Marker = (typeof MARKERS)[number];
+// The HTML that replaces each marker.
+export type MarkerValues = Record<Marker, string>;
+
+const MARKER = /\{([^{}]*)\}/g;
+const isMarker = (name: unknown): name is Marker => MARKERS.some(marker => marker === name);
+
+// The markers in template that are not in MARKERS, each one time, as written: ['{Word}'].
+export const unknownMarkers = (template: string): string[] =>
+  [...new Set([...template.matchAll(MARKER)].filter(match => !isMarker(match[1])).map(match => match[0]))];
+
+// One pass, so a marker in a value (a page title with "{word}") stays as it is. The other text of template is HTML and stays as it is.
+export const renderField = (template: string, values: MarkerValues): string =>
+  template.replace(MARKER, (text, name: string) => (isMarker(name) ? values[name] : text));
+
+// image is the HTML of the screenshot, or '' if no field uses {image}.
+export function markerValues(card: CardFields, page: PageInfo, image: string): MarkerValues {
+  const word = escapeHtml(card.word);
+  const reading = escapeHtml(card.reading);
+  return {
+    word,
+    reading,
+    furigana: reading && reading !== word ? `${word}[${reading}]` : word,
+    sentence: card.sentence,
+    definition: card.definition,
+    image,
+    url: escapeHtml(page.url),
+    title: escapeHtml(page.title),
+  };
+}
+
+// Field names, in lower case with letters only, that get a marker by default. "Word Reading" is wordreading.
+const FIELD_NAMES: Record<Marker, string[]> = {
+  word: ['word', 'expression', 'vocab', 'vocabulary', 'term', 'kanji', 'front'],
+  reading: ['reading', 'kana', 'wordreading', 'expressionreading', 'vocabreading'],
+  furigana: ['furigana', 'wordfurigana', 'expressionfurigana', 'vocabfurigana'],
+  sentence: ['sentence', 'example', 'context'],
+  definition: ['meaning', 'definition', 'definitions', 'glossary', 'wordmeaning', 'maindefinition', 'vocabmeaning', 'back'],
+  image: ['picture', 'image', 'screenshot', 'photo'],
+  url: ['url', 'source', 'link'],
+  title: ['title'],
+};
+
+// The default template of each field: one marker if the name is in FIELD_NAMES, else empty.
+export function suggestFields(names: string[]): Record<string, string> {
+  return Object.fromEntries(names.map(name => {
+    const key = name.toLowerCase().replace(/[^a-z]/g, '');
+    const marker = MARKERS.find(m => FIELD_NAMES[m].includes(key));
+    return [name, marker ? `{${marker}}` : ''];
+  }));
+}
+
+// The field that holds the word in dictionary form, for the import of known words.
+export function wordField(noteType: NoteType): string {
+  if (noteType.kind === 'builtin') return DEFAULT_KNOWN_FIELD;
+  const [name] = Object.entries(noteType.fields).find(([, template]) => template.includes('{word}')) ?? [DEFAULT_KNOWN_FIELD];
+  return name;
 }
 
 const CSS = `
@@ -107,13 +189,23 @@ async function invoke(action: string, params: object = {}): Promise<unknown> {
   return at(reply, 'result');
 }
 
+export async function modelNames(): Promise<string[]> {
+  const names = await invoke('modelNames');
+  if (!isStringList(names)) unexpected('modelNames');
+  return names;
+}
+
+export async function modelFieldNames(model: string): Promise<string[]> {
+  const names = await invoke('modelFieldNames', { modelName: model });
+  if (!isStringList(names)) unexpected('modelFieldNames');
+  return names;
+}
+
 // Creates the note type, or converges an existing one to the current templates and CSS.
 // It writes only what differs: AnkiConnect refuses note type writes while an Anki editor window is open.
 // An existing note type that lacks one of FIELDS is not migrated; addNote then fails with the AnkiConnect error.
 async function ensureModel(): Promise<void> {
-  const names = await invoke('modelNames');
-  if (!isList(names)) unexpected('modelNames');
-  if (!names.includes(MODEL)) {
+  if (!(await modelNames()).includes(MODEL)) {
     await invoke('createModel', NOTE_TYPE);
     return;
   }
@@ -131,20 +223,50 @@ async function ensureModel(): Promise<void> {
 // Once per service worker lifetime; a failed attempt (Anki closed) clears it so the next add tries again.
 let modelReady: Promise<void> | null = null;
 
-// jpegDataUrl is from captureVisibleTab. Returns the ID of the new note.
-export async function addNote(deck: string, card: CardFields, jpegDataUrl: string): Promise<number> {
-  await invoke('createDeck', { deck });
+// A JPEG file for AnkiConnect: data is base64.
+interface Picture {
+  filename: string;
+  data: string;
+}
+
+async function builtinNote(card: CardFields, picture: Picture) {
   modelReady ??= ensureModel().catch(error => { modelReady = null; throw error; });
   await modelReady;
-  const noteId = await invoke('addNote', {
-    note: {
-      deckName: deck,
-      modelName: MODEL,
-      fields: { Word: card.word, Reading: card.reading, Sentence: card.sentence, Definition: card.definition, Image: '' },
-      tags: ['minerr'],
-      picture: [{ data: jpegDataUrl.split(',')[1] ?? '', filename: `minerr-${Date.now()}.jpg`, fields: ['Image'] }],
-    },
-  });
+  return {
+    modelName: MODEL,
+    fields: { Word: card.word, Reading: card.reading, Sentence: card.sentence, Definition: card.definition, Image: '' },
+    picture: [{ ...picture, fields: ['Image'] }],
+  };
+}
+
+// The screenshot goes to the media folder only if a field uses {image}; {image} then becomes an <img> of the stored file.
+async function customNote({ model, fields }: Extract<NoteType, { kind: 'custom' }>, card: CardFields, page: PageInfo, picture: Picture) {
+  const templates = Object.entries(fields);
+  let image = '';
+  if (templates.some(([, template]) => template.includes('{image}'))) {
+    const stored = await invoke('storeMediaFile', picture);
+    if (!isString(stored)) unexpected('storeMediaFile');
+    image = `<img src="${escapeHtml(stored)}">`;
+  }
+  const values = markerValues(card, page, image);
+  return { modelName: model, fields: Object.fromEntries(templates.map(([name, template]) => [name, renderField(template, values)])) };
+}
+
+export interface NewNote {
+  deck: string;
+  noteType: NoteType;
+  card: CardFields;
+  page: PageInfo;
+  // From captureVisibleTab.
+  jpegDataUrl: string;
+}
+
+// Returns the ID of the new note.
+export async function addNote({ deck, noteType, card, page, jpegDataUrl }: NewNote): Promise<number> {
+  await invoke('createDeck', { deck });
+  const picture = { data: jpegDataUrl.split(',')[1] ?? '', filename: `minerr-${Date.now()}.jpg` };
+  const note = noteType.kind === 'builtin' ? await builtinNote(card, picture) : await customNote(noteType, card, page, picture);
+  const noteId = await invoke('addNote', { note: { deckName: deck, ...note, tags: ['minerr'] } });
   if (typeof noteId !== 'number') unexpected('addNote');
   return noteId;
 }

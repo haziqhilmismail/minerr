@@ -1,8 +1,12 @@
-import { DEFAULT_DECK, DEFAULT_KNOWN_FIELD, DEFAULT_KNOWN_QUERY, getDeck } from './src/anki.ts';
+import {
+  BUILTIN, DEFAULT_DECK, DEFAULT_KNOWN_QUERY, definitionHtml, getDeck, getNoteType, markerValues, NOTE_TYPE, type NoteType,
+  renderField, setNoteType, suggestFields, unknownMarkers, wordField,
+} from './src/anki.ts';
 import { deleteDictionary, importDictionary, listDictionaries } from './src/db.ts';
 import { byId } from './src/dom.ts';
 import { call, messageOf } from './src/rpc.ts';
 import { STATUSES, WORD_CSS } from './src/status.ts';
+import { TAG_CSS } from './src/tags.ts';
 import { applyTheme, getTheme, isTheme, setTheme } from './src/theme.ts';
 
 applyTheme();
@@ -99,6 +103,115 @@ deck.onchange = async () => {
   showStatus(deckSaved, 'Saved', 'ok');
 };
 
+const knownQuery = byId('known-query', HTMLInputElement);
+const knownField = byId('known-field', HTMLInputElement);
+knownQuery.value = DEFAULT_KNOWN_QUERY;
+
+const SAMPLE_IMAGE = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180">
+<rect width="320" height="180" fill="#3b4a5e"/><rect y="132" width="320" height="48" fill="#000"/>
+<text x="160" y="164" fill="#fff" font-size="20" text-anchor="middle" font-family="sans-serif">猫が魚を食べなかった。</text></svg>`)}`;
+const SAMPLE = markerValues({
+  word: '食べる',
+  reading: 'たべる',
+  sentence: '猫が魚を<b>食べなかった</b>。',
+  definition: definitionHtml({
+    expression: '食べる',
+    reading: 'たべる',
+    termTags: [{ name: '⭐', category: 'popular', notes: 'high priority term' }],
+    senses: [
+      { dict: 'JMdict', tags: [{ name: 'v1', category: 'partOfSpeech', notes: 'Ichidan verb' }], glossary: ['to eat'] },
+      { dict: 'JMdict', tags: [], glossary: ['to live on (e.g. a salary)', 'to make a living'] },
+    ],
+  }),
+}, { url: 'https://www.youtube.com/watch?v=sample', title: 'Sample video' }, `<img src="${SAMPLE_IMAGE}" alt="">`);
+
+const noteTypeSelect = byId('note-type', HTMLSelectElement);
+const noteTypeStatus = byId('note-type-status', HTMLElement);
+const noteFields = byId('note-fields', HTMLElement);
+const fieldRows = byId('field-rows', HTMLElement);
+const previewRows = byId('preview-rows', HTMLElement);
+const builtinOption = el('option', { value: '', textContent: 'Minerr (built-in)' });
+let noteType = await getNoteType();
+
+// The values of a user template are the user's HTML, so the preview shows them as Anki does.
+function showPreview(fields: Record<string, string>): void {
+  previewRows.replaceChildren(...Object.entries(fields).map(([name, template]) => {
+    const value = renderField(template, SAMPLE);
+    return el('tr', {}, el('th', { scope: 'row', textContent: name }),
+      value ? el('td', { innerHTML: value }) : el('td', { className: 'empty', textContent: 'Empty' }));
+  }));
+}
+
+function showNoteType(): void {
+  noteTypeSelect.value = noteType.kind === 'custom' ? noteType.model : '';
+  knownField.value = wordField(noteType);
+  noteFields.hidden = noteType.kind === 'builtin';
+  if (noteType.kind === 'builtin') return;
+  const { model } = noteType;
+  const fields = { ...noteType.fields };
+  fieldRows.replaceChildren(...Object.entries(fields).flatMap(([name, template], i) => {
+    const input = el('input', { type: 'text', id: `field-${i}`, value: template, spellcheck: false });
+    const error = el('p', { className: 'error', id: `field-${i}-error` });
+    input.setAttribute('aria-describedby', error.id);
+    input.oninput = async () => {
+      fields[name] = input.value;
+      const unknown = unknownMarkers(input.value);
+      error.textContent = unknown.length ? `Unknown marker ${unknown.join(', ')}. Use a marker from the list above.` : '';
+      input.setAttribute('aria-invalid', String(unknown.length > 0));
+      showPreview(fields);
+      if (Object.values(fields).some(value => unknownMarkers(value).length)) {
+        showStatus(noteTypeStatus, 'Not saved. Correct the unknown markers.', 'error');
+        return;
+      }
+      noteType = { kind: 'custom', model, fields: { ...fields } };
+      await setNoteType(noteType);
+      knownField.value = wordField(noteType);
+      showStatus(noteTypeStatus, 'Saved', 'ok');
+    };
+    return [el('label', { htmlFor: input.id, textContent: name }), input, error];
+  }));
+  showPreview(fields);
+}
+
+// The list keeps the selected note type when Anki is closed. The Minerr note type is the built-in choice.
+async function showModels(): Promise<void> {
+  const selected = noteType.kind === 'custom' ? [noteType.model] : [];
+  let models: string[] = [];
+  try {
+    models = await call({ type: 'ankiModels' });
+  } catch {
+    showStatus(noteTypeStatus, 'Open Anki, then click Check connection to see your note types.');
+  }
+  const names = [...new Set([...models, ...selected])].filter(name => name !== NOTE_TYPE.modelName);
+  noteTypeSelect.replaceChildren(builtinOption, ...names.map(name => el('option', { value: name, textContent: name })));
+  if (noteType.kind === 'custom' && models.includes(noteType.model)) await syncFields(noteType.model, noteType.fields);
+  showNoteType();
+}
+
+// Follows the fields of the note type in Anki: a new field gets a suggested marker, and a removed field drops out.
+async function syncFields(model: string, fields: Record<string, string>): Promise<void> {
+  const names = await call({ type: 'ankiModelFields', model });
+  const suggested = suggestFields(names);
+  const synced = Object.fromEntries(names.map(name => [name, fields[name] ?? suggested[name] ?? '']));
+  if (JSON.stringify(synced) === JSON.stringify(fields)) return;
+  noteType = { kind: 'custom', model, fields: synced };
+  await setNoteType(noteType);
+  showStatus(noteTypeStatus, 'Updated the fields from Anki', 'ok');
+}
+
+noteTypeSelect.onchange = async () => {
+  const model = noteTypeSelect.value;
+  try {
+    const next: NoteType = model ? { kind: 'custom', model, fields: suggestFields(await call({ type: 'ankiModelFields', model })) } : BUILTIN;
+    await setNoteType(next);
+    noteType = next;
+    showStatus(noteTypeStatus, 'Saved', 'ok');
+  } catch (error) {
+    showStatus(noteTypeStatus, messageOf(error), 'error');
+  }
+  showNoteType();
+};
+
 const ankiCheck = byId('anki-check', HTMLButtonElement);
 ankiCheck.onclick = async () => {
   const status = byId('anki-status', HTMLElement);
@@ -106,17 +219,14 @@ ankiCheck.onclick = async () => {
   showStatus(status, 'Checking…');
   try {
     showStatus(status, `Connected (AnkiConnect version ${await call({ type: 'ankiVersion' })})`, 'ok');
+    showStatus(noteTypeStatus, '');
+    await showModels();
   } catch (error) {
     showStatus(status, messageOf(error), 'error');
   } finally {
     ankiCheck.disabled = false;
   }
 };
-
-const knownQuery = byId('known-query', HTMLInputElement);
-const knownField = byId('known-field', HTMLInputElement);
-knownQuery.value = DEFAULT_KNOWN_QUERY;
-knownField.value = DEFAULT_KNOWN_FIELD;
 byId('known-import', HTMLButtonElement).onclick = async () => {
   const status = byId('known-status', HTMLElement);
   showStatus(status, 'Asking Anki…');
@@ -128,7 +238,7 @@ byId('known-import', HTMLButtonElement).onclick = async () => {
   }
 };
 
-document.head.append(el('style', { textContent: WORD_CSS }));
+document.head.append(el('style', { textContent: WORD_CSS + TAG_CSS }));
 byId('legend', HTMLElement).prepend(...Object.values(STATUSES).map(({ hotkey, label, className, color }) => {
   const swatch = el('span', { className: 'swatch' });
   swatch.style.background = color;
@@ -147,4 +257,4 @@ for (const input of document.querySelectorAll('input[name="theme"]')) {
   };
 }
 
-await showDictionaries();
+await Promise.all([showDictionaries(), showModels()]);

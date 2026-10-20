@@ -1,4 +1,4 @@
-import { addNote, fieldValues, getDeck, version } from './src/anki.ts';
+import { addNote, fieldValues, getDeck, getNoteType, modelFieldNames, modelNames, version } from './src/anki.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
 import { getStatuses, setStatus, setStatuses } from './src/status.ts';
 import { isEnabled, setEnabled } from './src/switch.ts';
@@ -39,7 +39,8 @@ async function capture(windowId: number): Promise<string> {
 async function addCard({ card }: Message<'addCard'>, sender: chrome.runtime.MessageSender): Promise<number> {
   if (!sender.tab) throw new Error('Add cards from a tab.');
   const image = await capture(sender.tab.windowId);
-  const noteId = await addNote(await getDeck(), card, image);
+  const { url = '', title = '' } = sender.tab;
+  const noteId = await addNote({ deck: await getDeck(), noteType: await getNoteType(), card, page: { url, title }, jpegDataUrl: image });
   const statuses = await getStatuses([card.word]);
   if (statuses.get(card.word) === 'unknown') await setStatus(card.word, 'learning');
   return noteId;
@@ -62,6 +63,8 @@ serve(
     addCard,
     importKnown,
     ankiVersion: version,
+    ankiModels: modelNames,
+    ankiModelFields: ({ model }) => modelFieldNames(model),
     whisperHealth: health,
     whisperStart: ({ url }) => startJob(url),
     whisperJob: ({ id }) => getJob(id),
