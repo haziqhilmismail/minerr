@@ -71,6 +71,8 @@ try {
       await popup.locator('.message.error').waitFor();
     }
     await shot(tab, `popup-${scheme}.png`);
+    await popup.locator('.definitions').evaluate(list => { list.scrollTop = list.scrollHeight; });
+    await shot(tab, `popup-${scheme}-end.png`);
     await tab.mouse.move(0, 0);
     await tab.keyboard.press('Escape');
   }

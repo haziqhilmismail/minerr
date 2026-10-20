@@ -6,11 +6,12 @@ import { chromium } from 'playwright';
 const here = import.meta.dirname;
 export const extension = process.env.EXTENSION_DIR ?? join(here, '..');
 
-// rows are Yomitan term_bank rows.
-export function makeDictionary(path, title, rows) {
+// rows are Yomitan term_bank rows, tags are tag_bank rows.
+export function makeDictionary(path, title, rows, tags = []) {
   execFileSync('python3', ['-I', join(here, 'make-zip.py'), path,
     `index.json=stored:${JSON.stringify({ title, revision: '1', format: 3 })}`,
-    `term_bank_1.json=deflated:${JSON.stringify(rows)}`]);
+    `term_bank_1.json=deflated:${JSON.stringify(rows)}`,
+    `tag_bank_1.json=deflated:${JSON.stringify(tags)}`]);
   return path;
 }
 

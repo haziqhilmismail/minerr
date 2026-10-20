@@ -10,7 +10,7 @@
     { "matches": ["<all_urls>"], "js": ["content.js"] }
   ],
   "web_accessible_resources": [
-    { "resources": ["src/anki.js", "src/page.js", "src/popup.js", "src/rpc.js", "src/sentence.js", "src/status.js", "src/switch.js"], "matches": ["<all_urls>"] }
+    { "resources": ["src/anki.js", "src/page.js", "src/popup.js", "src/rpc.js", "src/sentence.js", "src/status.js", "src/switch.js", "src/tags.js"], "matches": ["<all_urls>"] }
   ],
   "commands": {
     "toggle-minerr": { "suggested_key": { "default": "Alt+Shift+M" }, "description": "Turn Minerr on or off in all tabs" }

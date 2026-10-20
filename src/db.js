@@ -1,15 +1,21 @@
-import { readYomitan } from './yomitan.js';
+import { groupTerms, readYomitan } from './yomitan.js';
 
-// Stores: dicts {title, revision, count} (count is null while an import is unfinished),
-// terms {dict, id, expression, reading, glossary, score} keyed by [dict, id] so one range deletes a dictionary.
+// Stores: dicts {title, revision, count, tags} (count is null while an import is unfinished; tags is true
+// for an import that stored tags), terms {dict, id, expression, reading, definitionTags, termTags, glossary, score}
+// keyed by [dict, id], and tags {dict, name, category, notes} keyed by [dict, name].
+// The [dict, ...] keys let one key range delete a dictionary.
 function open() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('minerr', 1);
-    request.onupgradeneeded = () => {
-      request.result.createObjectStore('dicts', { keyPath: 'title' });
-      const terms = request.result.createObjectStore('terms', { keyPath: ['dict', 'id'] });
-      terms.createIndex('expression', 'expression');
-      terms.createIndex('reading', 'reading');
+    const request = indexedDB.open('minerr', 2);
+    request.onupgradeneeded = event => {
+      const db = request.result;
+      if (event.oldVersion < 1) {
+        db.createObjectStore('dicts', { keyPath: 'title' });
+        const terms = db.createObjectStore('terms', { keyPath: ['dict', 'id'] });
+        terms.createIndex('expression', 'expression');
+        terms.createIndex('reading', 'reading');
+      }
+      if (event.oldVersion < 2) db.createObjectStore('tags', { keyPath: ['dict', 'name'] });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -33,10 +39,14 @@ export async function listDictionaries() {
   return result((await db()).transaction('dicts').objectStore('dicts').getAll());
 }
 
+// An array sorts after every number and string, so [title, []] is above every [title, id] and [title, name] key.
+const keysOf = title => IDBKeyRange.bound([title], [title, []]);
+
 export async function deleteDictionary(title) {
-  const tx = (await db()).transaction(['dicts', 'terms'], 'readwrite');
+  const tx = (await db()).transaction(['dicts', 'terms', 'tags'], 'readwrite');
   tx.objectStore('dicts').delete(title);
-  tx.objectStore('terms').delete(IDBKeyRange.bound([title], [title, Infinity]));
+  tx.objectStore('terms').delete(keysOf(title));
+  tx.objectStore('tags').delete(keysOf(title));
   await finished(tx);
 }
 
@@ -48,9 +58,12 @@ async function putDictionary(meta) {
 
 // Re-importing a title replaces it, so a crashed or repeated import converges to one clean copy.
 export async function importDictionary(bytes, onProgress) {
-  const { title, revision, banks } = await readYomitan(bytes);
+  const { title, revision, tags, banks } = await readYomitan(bytes);
   await deleteDictionary(title);
   await putDictionary({ title, revision, count: null });
+  const tagTx = (await db()).transaction('tags', 'readwrite');
+  for (const tag of tags) tagTx.objectStore('tags').put({ ...tag, dict: title });
+  await finished(tagTx);
   let count = 0;
   for (const [index, load] of banks.entries()) {
     const terms = await load();
@@ -60,16 +73,18 @@ export async function importDictionary(bytes, onProgress) {
     await finished(tx);
     onProgress({ bank: index + 1, banks: banks.length, count });
   }
-  await putDictionary({ title, revision, count });
+  await putDictionary({ title, revision, count, tags: true });
   return { title, count };
 }
 
-export async function lookup(lemma, limit = 5) {
-  const terms = (await db()).transaction('terms').objectStore('terms');
+// Returns groupTerms groups for the best `limit` rows. A row is one sense, so the limit fits all senses of a common word.
+export async function lookup(lemma, limit = 40) {
+  const tx = (await db()).transaction(['terms', 'tags']);
+  const terms = tx.objectStore('terms');
   let rows = await result(terms.index('expression').getAll(lemma));
   if (!rows.length) rows = await result(terms.index('reading').getAll(lemma));
-  return rows
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map(({ dict, expression, reading, glossary }) => ({ dict, expression, reading, glossary }));
+  rows = rows.sort((a, b) => b.score - a.score).slice(0, limit);
+  const dicts = [...new Set(rows.map(row => row.dict))];
+  const tags = await Promise.all(dicts.map(dict => result(tx.objectStore('tags').getAll(keysOf(dict)))));
+  return groupTerms(rows, tags.flat());
 }

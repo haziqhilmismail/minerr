@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { definitionHtml, NOTE_TYPE } from '../src/anki.js';
-import { readYomitan } from '../src/yomitan.js';
+import { groupTerms, readYomitan } from '../src/yomitan.js';
 import { useCjkFonts } from './harness.mjs';
 
 const out = process.env.OUT_DIR ?? '/tmp/minerr-card';
@@ -13,10 +13,11 @@ mkdirSync(out, { recursive: true });
 useCjkFonts(mkdtempSync(join(tmpdir(), 'ml-card-')));
 
 const dict = await readYomitan(readFileSync(join(import.meta.dirname, 'fixtures', 'JMdict_english.zip')));
-const entries = [];
+const rows = [];
 for (const load of dict.banks) {
-  entries.push(...(await load()).filter(t => t.expression === '食べる').map(t => ({ ...t, dict: dict.title })));
+  rows.push(...(await load()).filter(t => t.expression === '食べる').map(t => ({ ...t, dict: dict.title })));
 }
+const [group] = groupTerms(rows.sort((a, b) => b.score - a.score), dict.tags.map(tag => ({ ...tag, dict: dict.title })));
 const image = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720">
 <rect width="1280" height="720" fill="#3b4a5e"/><rect y="560" width="1280" height="160" fill="#000"/>
 <text x="640" y="660" fill="#fff" font-size="64" text-anchor="middle" font-family="Noto Sans JP, sans-serif">猫が魚を食べなかった。</text></svg>`)}`;
@@ -24,7 +25,7 @@ const fields = {
   Word: '食べる',
   Reading: 'たべる',
   Sentence: '猫が魚を<b>食べなかった</b>。',
-  Definition: definitionHtml(entries.slice(0, 2)),
+  Definition: definitionHtml(group),
   Image: `<img src="${image}">`,
 };
 console.log('Definition:', fields.Definition);

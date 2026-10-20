@@ -66,15 +66,24 @@ test('sentenceAround keeps only the sentence that holds the word', () => {
   assert.deepEqual(sentenceAround('', '猫', ''), { start: '', word: '猫', end: '' });
 });
 
-test('definitionHtml is one escaped <ol> with a dictionary label after each run of the same dictionary', () => {
-  assert.equal(definitionHtml([
-    { dict: 'JMdict', glossary: ['to eat'] },
-    { dict: 'JMdict', glossary: ['to live on\nto subsist on', 'a <b> & "c"'] },
-    { dict: 'Other', glossary: ['to consume'] },
-  ]), '<ol><li>to eat</li>'
+test('definitionHtml is a term tag row and one escaped <ol> with tag chips and a label after each dictionary run', () => {
+  const noun = { name: 'n', category: 'partOfSpeech', notes: 'noun "common"' };
+  assert.equal(definitionHtml({
+    expression: '猫',
+    reading: 'ねこ',
+    termTags: [{ name: '⭐', category: 'popular', notes: 'high priority term' }, { name: 'ichi', category: '', notes: '' }],
+    senses: [
+      { dict: 'JMdict', tags: [noun, { name: 'uk', category: '', notes: 'kana' }], glossary: ['cat'] },
+      { dict: 'JMdict', tags: [], glossary: ['to live on\nto subsist on', 'a <b> & "c"'] },
+      { dict: 'Other', tags: [{ name: '<x>', category: 'made-up', notes: '' }], glossary: ['feline'] },
+    ],
+  }), '<div class="tags"><span class="tag tag-popular" title="high priority term">⭐</span> <span class="tag" title="">ichi</span></div>'
+    + '<ol><li><span class="tag tag-partOfSpeech" title="noun &quot;common&quot;">n</span> <span class="tag" title="kana">uk</span> cat</li>'
     + '<li>to live on<br>to subsist on<br>a &lt;b&gt; &amp; &quot;c&quot;<span class="dict">JMdict</span></li>'
-    + '<li>to consume<span class="dict">Other</span></li></ol>');
-  assert.equal(definitionHtml([]), '');
+    + '<li><span class="tag" title="">&lt;x&gt;</span> feline<span class="dict">Other</span></li></ol>');
+  assert.equal(definitionHtml({ expression: '猫', reading: 'ねこ', termTags: [], senses: [{ dict: 'Old', tags: [], glossary: ['cat'] }] }),
+    '<ol><li>cat<span class="dict">Old</span></li></ol>');
+  assert.equal(definitionHtml(undefined), '');
 });
 
 test('structured-content glossary flattens to plain text lines', () => {

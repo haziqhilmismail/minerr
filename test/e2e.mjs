@@ -8,9 +8,14 @@ import { extension, launch, listen, makeDictionary } from './harness.mjs';
 const work = mkdtempSync(join(tmpdir(), 'ml-e2e-'));
 
 const fixture = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
-  ['食べる', 'たべる', 'v1', 'v1', 100, [{ type: 'structured-content', content: { tag: 'ul', content: [{ tag: 'li', content: 'to eat (fixture)' }] } }], 1, ''],
+  ['食べる', 'たべる', '1 v1 vt', 'v1', 100, [{ type: 'structured-content', content: { tag: 'ul', content: [{ tag: 'li', content: 'to eat (fixture)' }] } }], 1, '⭐ ichi'],
   ['猫', 'ねこ', 'n', '', 100, ['cat (fixture)'], 2, ''],
   ['魚', 'さかな', 'n', '', 100, ['fish (fixture)'], 3, ''],
+], [
+  ['⭐', 'popular', -10, 'high priority term', 10],
+  ['v1', 'partOfSpeech', -3, 'Ichidan verb', 0],
+  ['vt', 'partOfSpeech', -3, 'transitive verb', 0],
+  ['n', 'partOfSpeech', -3, 'noun', 0],
 ]);
 
 const ankiRequests = [];
@@ -48,12 +53,31 @@ const site = createServer((req, res) => {
 const sitePort = await listen(site, 0);
 const pageUrl = `http://127.0.0.1:${sitePort}/watch`;
 
-const { context, extensionId } = await launch(join(work, 'profile'));
+const { context, worker, extensionId } = await launch(join(work, 'profile'));
 const failures = [];
 context.on('weberror', error => failures.push(error.error().message));
 
 try {
   console.log('extension loaded from', extension);
+
+  // A database from before tags: version 1, no tags store, a term row without tag fields.
+  await worker.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('minerr', 1);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore('dicts', { keyPath: 'title' });
+      const terms = request.result.createObjectStore('terms', { keyPath: ['dict', 'id'] });
+      terms.createIndex('expression', 'expression');
+      terms.createIndex('reading', 'reading');
+    };
+    request.onsuccess = () => {
+      const tx = request.result.transaction(['dicts', 'terms'], 'readwrite');
+      tx.objectStore('dicts').put({ title: 'Old', revision: '1', count: 1 });
+      tx.objectStore('terms').put({ dict: 'Old', id: 0, expression: '好き', reading: 'すき', glossary: ['to like (old import)'], score: 1 });
+      tx.oncomplete = () => { request.result.close(); resolve(); };
+      tx.onerror = () => reject(tx.error);
+    };
+    request.onerror = () => reject(request.error);
+  }));
 
   const options = await context.newPage();
   await options.goto(`chrome-extension://${extensionId}/options.html`);
@@ -62,7 +86,10 @@ try {
   const imported = await options.textContent('#dict-status');
   console.log('options import status:', imported);
   assert.equal(imported, 'Imported Fixture: 3 terms');
-  assert.deepEqual(await options.$$eval('#dict-list li', items => items.map(li => li.innerText.split('\n'))), [['Fixture', '3 terms', 'Delete']]);
+  assert.deepEqual(await options.$$eval('#dict-list li', items => items.map(li => li.innerText.split('\n'))), [
+    ['Fixture', '3 terms', 'Delete'],
+    ['Old', '1 terms', 'Delete'],
+  ]);
 
   const tab = await context.newPage();
   await tab.goto(pageUrl);
@@ -94,7 +121,16 @@ try {
   const popupText = await popup.innerText();
   console.log('popup text:', JSON.stringify(popupText));
   assert.match(popupText, /^食べる\s*たべる/);
-  assert.equal(await popup.locator('li').first().innerText(), 'to eat (fixture)\nFixture');
+  assert.equal(await popup.locator('li').first().innerText(), 'v1 vt to eat (fixture)\nFixture');
+  const chips = locator => locator.locator('.tag').evaluateAll(tags => tags.map(tag => [tag.textContent, tag.className, tag.title]));
+  assert.deepEqual(await chips(popup.locator('header')), [
+    ['⭐', 'tag tag-popular', 'high priority term'],
+    ['ichi', 'tag', ''],
+  ]);
+  assert.deepEqual(await chips(popup.locator('li').first()), [
+    ['v1', 'tag tag-partOfSpeech', 'Ichidan verb'],
+    ['vt', 'tag tag-partOfSpeech', 'transitive verb'],
+  ]);
 
   await tab.keyboard.press('3');
   await tab.waitForSelector('#line .ml-word[data-ml-lemma="食べる"].ml-known');
@@ -143,7 +179,9 @@ try {
     Word: '食べる',
     Reading: 'たべる',
     Sentence: '猫が魚を<b>食べなかった</b>。',
-    Definition: '<ol><li>to eat (fixture)<span class="dict">Fixture</span></li></ol>',
+    Definition: '<div class="tags"><span class="tag tag-popular" title="high priority term">⭐</span> <span class="tag" title="">ichi</span></div>'
+      + '<ol><li><span class="tag tag-partOfSpeech" title="Ichidan verb">v1</span> <span class="tag tag-partOfSpeech" title="transitive verb">vt</span>'
+      + ' to eat (fixture)<span class="dict">Fixture</span></li></ol>',
     Image: '',
   });
   assert.deepEqual(picture.fields, ['Image']);
@@ -234,6 +272,9 @@ try {
   await tab.bringToFront();
   await tab.hover('.caption .ml-word[data-ml-lemma="好き"]');
   await popup.locator('.lemma', { hasText: '好き' }).waitFor();
+  assert.equal(await popup.locator('.definitions').innerText(), 'to like (old import)\nOld');
+  assert.equal(await popup.locator('.tag').count(), 0);
+  console.log('word from a dictionary imported before tags: definition without chips');
   await tab.keyboard.press('a');
   const error = popup.locator('.message.error');
   await error.waitFor();

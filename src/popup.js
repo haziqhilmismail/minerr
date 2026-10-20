@@ -3,6 +3,7 @@ import { call } from './rpc.js';
 import { sentenceAround } from './sentence.js';
 import { getStatuses, onStatusChange, setStatus, STATUSES } from './status.js';
 import { isEnabled, onEnabledChange, setEnabled } from './switch.js';
+import { TAG_CSS, tagClass } from './tags.js';
 
 const POWER_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>';
 
@@ -26,7 +27,8 @@ const STYLE = `
   }
   .popup[hidden] { display: none; }
   header { padding: 12px 16px; border-bottom: 1px solid var(--line); }
-  .title { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; }
+  .title { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; }
+  .title .tags { font-size: 15px; }
   .lemma { font-size: 28px; font-weight: 700; line-height: 1.25; }
   header { position: relative; }
   .title { padding-right: 64px; }
@@ -53,8 +55,12 @@ const STYLE = `
   ol { margin: 0; padding-left: 22px; }
   li { margin-bottom: 12px; white-space: pre-line; }
   li::marker { color: var(--muted); font-size: 12px; }
+  .group { margin: 4px 0 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .group .word { font-size: 16px; font-weight: 700; }
+  .group .reading { margin: 0 8px 0 6px; font-size: 14px; }
   .dict { width: fit-content; margin-top: 4px; padding: 0 7px; border-radius: 4px; background: var(--raised);
     color: var(--muted); font-size: 11px; line-height: 18px; }
+  ${TAG_CSS}
   .empty { margin: 0 0 8px; color: var(--muted); }
   footer { padding: 10px 16px 12px; border-top: 1px solid var(--line); }
   .add { width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent);
@@ -132,9 +138,17 @@ function position(span) {
   box.style.left = `${Math.max(4, Math.min(rect.left, innerWidth - box.offsetWidth - 4))}px`;
 }
 
+// Each chip is followed by a space, so the chips wrap like words.
+const chips = tags => tags.flatMap(({ name, category, notes }) => [el('span', { className: tagClass(category), title: notes, textContent: name }), ' ']);
+
+// One dictionary label closes each run of senses from the same dictionary.
+const senseList = senses => el('ol', {}, ...senses.map((sense, i) => el('li', {}, ...chips(sense.tags), sense.glossary.join('\n'),
+  sense.dict === senses[i + 1]?.dict ? '' : el('div', { className: 'dict', textContent: sense.dict }))));
+
 function render(view) {
-  const { lemma, entries } = view;
-  const reading = entries[0]?.reading ?? '';
+  const { lemma, groups } = view;
+  const [first, ...others] = groups;
+  const reading = first?.reading ?? '';
   const surface = view.span.textContent;
   statusButtons.clear();
   const statusRow = el('div', { className: 'statuses', role: 'group', ariaLabel: 'Word status' },
@@ -145,44 +159,50 @@ function render(view) {
       statusButtons.set(status, button);
       return button;
     }));
-  const definitions = entries.length
-    ? el('ol', {}, ...entries.map((e, i) => el('li', {}, e.glossary.join('\n'),
-      // One dictionary label closes each run of senses from the same dictionary.
-      e.dict === entries[i + 1]?.dict ? '' : el('div', { className: 'dict', textContent: e.dict }))))
-    : el('p', { className: 'empty', textContent: 'No dictionary entry. Import a dictionary in the options page.' });
+  // Other readings or spellings of the lemma follow the first group, each under its own heading.
+  const definitions = first
+    ? [senseList(first.senses), ...others.flatMap(group => [
+      el('div', { className: 'group' },
+        el('span', { className: 'word', textContent: group.expression }),
+        el('span', { className: 'reading', textContent: group.reading }),
+        ...chips(group.termTags)),
+      senseList(group.senses),
+    ])]
+    : [el('p', { className: 'empty', textContent: 'No dictionary entry. Import a dictionary in the options page.' })];
   addButton = el('button', { className: 'add', onclick: addCard }, ...addLabel());
   message = el('div', { className: 'message', role: 'status' });
   box.replaceChildren(
     el('header', {},
       el('div', { className: 'title' },
         el('span', { className: 'lemma', textContent: lemma }),
-        reading !== lemma ? el('span', { className: 'reading', textContent: reading }) : ''),
+        reading !== lemma ? el('span', { className: 'reading', textContent: reading }) : '',
+        first?.termTags.length ? el('span', { className: 'tags' }, ...chips(first.termTags)) : ''),
       surface !== lemma ? el('div', { className: 'surface', textContent: `On the page: ${surface}` }) : '',
       statusRow,
       el('div', { className: 'corner' },
         el('button', { className: 'off', innerHTML: POWER_ICON, title: 'Turn Minerr off in all tabs (Alt+Shift+M turns it on)', ariaLabel: 'Turn Minerr off', onclick: () => setEnabled(false) }),
         el('button', { className: 'close', textContent: '✕', title: 'Close (Esc)', ariaLabel: 'Close', onclick: close }))),
-    el('div', { className: 'definitions' }, definitions),
+    el('div', { className: 'definitions' }, ...definitions),
     el('footer', {}, addButton, message),
   );
   markStatus(view.status);
 }
 
 async function open(span) {
-  const view = { span, lemma: span.dataset.mlLemma, status: 'unknown', entries: [] };
+  const view = { span, lemma: span.dataset.mlLemma, status: 'unknown', groups: [] };
   current = view;
-  let entries;
+  let groups;
   try {
-    [entries, view.status] = await Promise.all([
+    [groups, view.status] = await Promise.all([
       call({ type: 'lookup', lemma: view.lemma }),
       getStatuses([view.lemma]).then(statuses => statuses.get(view.lemma)),
     ]);
   } catch (error) {
-    entries = [];
+    groups = [];
     console.warn('minerr lookup failed', error);
   }
   if (current !== view) return;
-  view.entries = entries;
+  view.groups = groups;
   (document.fullscreenElement ?? document.documentElement).append(host);
   render(view);
   box.hidden = false;
@@ -204,9 +224,9 @@ async function addCard() {
   if (!view || button.disabled) return;
   const card = {
     word: view.lemma,
-    reading: view.entries[0]?.reading ?? '',
+    reading: view.groups[0]?.reading ?? '',
     sentence: sentenceHtml(view.span),
-    definition: definitionHtml(view.entries),
+    definition: definitionHtml(view.groups[0]),
   };
   button.disabled = true;
   button.replaceChildren('Adding to Anki…');

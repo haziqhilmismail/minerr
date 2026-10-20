@@ -1,3 +1,5 @@
+import { TAG_CSS, tagClass } from './tags.js';
+
 const ENDPOINT = 'http://127.0.0.1:8765';
 const MODEL = 'Minerr';
 const FIELDS = ['Word', 'Reading', 'Sentence', 'Definition', 'Image'];
@@ -26,7 +28,9 @@ const CSS = `
 .definition ol { margin: 0; padding-left: 1.6em; }
 .definition li { margin-bottom: .6em; }
 .definition li::marker { color: var(--muted); font-size: .85em; }
+.definition .tags { margin-bottom: .6em; }
 .dict { display: block; color: var(--muted); font-size: .7rem; }
+${TAG_CSS}
 .image { margin-top: 1.5rem; }
 .image img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: .5rem; }
 `;
@@ -48,14 +52,20 @@ export const NOTE_TYPE = {
 
 export const escapeHtml = text => text.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-// entries are dictionary lookup results ({dict, glossary}); one dictionary label closes each run of the same dictionary.
-export function definitionHtml(entries) {
-  if (!entries.length) return '';
-  const items = entries.map((e, i) => {
-    const dict = e.dict === entries[i + 1]?.dict ? '' : `<span class="dict">${escapeHtml(e.dict)}</span>`;
-    return `<li>${escapeHtml(e.glossary.join('\n')).replaceAll('\n', '<br>')}${dict}</li>`;
+const tagsHtml = tags => tags
+  .map(tag => `<span class="${tagClass(tag.category)}" title="${escapeHtml(tag.notes)}">${escapeHtml(tag.name)}</span> `).join('');
+
+// group is one groupTerms group: its term tags as a chip row, then its senses as a numbered list with tag chips.
+// One dictionary label closes each run of senses from the same dictionary.
+export function definitionHtml(group) {
+  if (!group) return '';
+  const { termTags, senses } = group;
+  const items = senses.map((sense, i) => {
+    const dict = sense.dict === senses[i + 1]?.dict ? '' : `<span class="dict">${escapeHtml(sense.dict)}</span>`;
+    return `<li>${tagsHtml(sense.tags)}${escapeHtml(sense.glossary.join('\n')).replaceAll('\n', '<br>')}${dict}</li>`;
   });
-  return `<ol>${items.join('')}</ol>`;
+  const tags = termTags.length ? `<div class="tags">${tagsHtml(termTags).trimEnd()}</div>` : '';
+  return `${tags}<ol>${items.join('')}</ol>`;
 }
 
 async function invoke(action, params = {}) {
