@@ -8,7 +8,7 @@ Minerr does these steps in the browser:
 
 1. It parses the Japanese text on each page into words, with the [kuromoji](https://github.com/takuyaa/kuromoji.js) tokenizer.
 2. It underlines each word in the color of its status: unknown, learning, known, or ignored.
-3. When you move the mouse over a word, it shows the dictionary definitions.
+3. When you move the mouse over a word, it shows the dictionary definitions with their tags, for example `n` (noun) and `⭐` (high priority).
 4. With one key, it makes an Anki card. The card has the word, the reading, the sentence, the definitions, and a screenshot of the tab.
 
 ![Words on a page with status underlines](docs/page.png)
@@ -20,6 +20,8 @@ Minerr does these steps in the browser:
 - The extension parses the text on all pages, and also the text that appears later. Subtitles on YouTube and Netflix are page text, so Minerr parses them too.
 - It joins a verb or adjective with its inflections into one word. For example, 食べなかった is one word with the dictionary form 食べる.
 - It looks up definitions in a Yomitan dictionary that you import, for example JMdict.
+- It shows the tags of the dictionary in color, as Yomitan does. The tags of the word, for example `⭐` (high priority) and `ichi` or `news13k` (frequent), are next to the reading. The tags of each definition, for example `v1` (Ichidan verb) and `uk` (usually in kana), are before the definition. Move the mouse over a tag to see what it means.
+- If the word has more than one reading in the dictionaries, the popup shows each reading with its own definitions.
 - It keeps the word statuses in the browser. A status change updates the underlines in all open tabs at once.
 - It sends cards to Anki through AnkiConnect. It makes the deck and the note type if they do not exist.
 - It can mark the words of your mature Anki cards as known.
@@ -71,6 +73,8 @@ AnkiConnect accepts requests from browser extensions by default. If the popup sh
 4. Wait for the message `Imported JMdict [...]: ... terms`. The import takes about one minute.
 
 You can import other Yomitan term dictionaries in the same way. If you import a dictionary with the same title again, the new import replaces the old one.
+
+Minerr shows the tags of all dictionaries. A dictionary that you imported with an earlier version of Minerr has no tags. Its row on the options page shows `Import again to show tags.` Import the zip file again to get the tags.
 
 On the options page, click **Check connection** in the **Anki** section. The page must show `Connected (AnkiConnect version 6)`.
 
@@ -139,13 +143,13 @@ The note type is `Minerr`. It has these fields:
 | `Word` | The dictionary form of the word, for example 食べる. |
 | `Reading` | The reading from the dictionary, for example たべる. |
 | `Sentence` | The sentence from the page. The word is in `<b>`. |
-| `Definition` | The definitions as a numbered list, with the dictionary name. |
+| `Definition` | The tags of the word, then the definitions as a numbered list with their tags and the dictionary name. It contains only the definitions for the reading in `Reading`. |
 | `Image` | The screenshot of the tab. |
 
 The note type has one card type, `Recognition`:
 
 - **Front.** The sentence in large text, with the word in color. The dictionary form is in small text below it.
-- **Back.** The front, then the word with its reading as furigana, the definitions, and the screenshot.
+- **Back.** The front, then the word with its reading as furigana, the tags and the definitions, and the screenshot.
 
 The card has a light theme and a night mode theme. It also fits phone screens. If a field is empty, the card does not show it.
 
@@ -167,6 +171,7 @@ The code has no build step and no framework.
 | `src/page.js` | Finds Japanese text on the page and wraps each word. |
 | `src/popup.js` | The dictionary popup and its keys. |
 | `src/status.js` | The word statuses, their colors, and their storage. |
+| `src/tags.js` | The colors of the dictionary tags, for the popup and the card. |
 | `src/anki.js` | The AnkiConnect client and the note type. |
 | `src/db.js` | The dictionary storage in IndexedDB. |
 | `src/group.js`, `src/sentence.js`, `src/yomitan.js`, `src/zip.js` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
@@ -183,7 +188,7 @@ More scripts:
 
 - `node test/screenshots.mjs` saves screenshots of the page, the popup, and the options page to `/tmp/minerr-ui`.
 - `node test/card-preview.mjs` saves screenshots of the card to `/tmp/minerr-card`.
-- If the system has no Japanese font, set `CJK_FONT_DIR` to a folder that contains one.
+- If the system has no Japanese font, set `CJK_FONT_DIR` to a folder that contains one. Put an emoji font in the same folder, for example `seguiemj.ttf` from Windows. Without it, the `⭐` tag shows as a box.
 - If Chromium cannot start because a library such as `libnss3.so` is missing, set `LD_LIBRARY_PATH` to a folder with the missing libraries.
 - If you update kuromoji, run `npm run vendor` and commit the `vendor/kuromoji` folder.
 
