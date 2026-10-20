@@ -96,6 +96,13 @@ try {
   await player.keyboard.press('c');
   await toast.filter({ hasText: 'Copied the line.' }).waitFor();
   assert.deepEqual(await player.evaluate(() => Reflect.get(window, 'copied')), ['猫が魚を食べた']);
+  const playerTab = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, player.url());
+  const action = await context.newPage();
+  await action.goto(`chrome-extension://${extensionId}/action.html?tab=${playerTab}`);
+  await action.locator('#score').waitFor();
+  assert.match(await action.innerText('#score-basis'), /^\d+ words in \d+ subtitle lines\./);
+  await action.close();
+  console.log('toolbar menu on the player tab: the score of the subtitle lines that showed');
   await player.keyboard.press('s');
   await player.waitForFunction(() => document.querySelector('video')?.paused === false);
   await player.keyboard.press('.');
