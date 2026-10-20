@@ -49,8 +49,10 @@ try {
   await options.waitForFunction(async () => (await chrome.storage.local.get('cleanSubs')).cleanSubs === true);
   await options.click('#clean-subs');
   await options.locator('label', { hasText: '4× speed' }).click();
+  await options.click('#sub-obscured');
   await options.locator('label', { hasText: 'Hide' }).click();
   await options.waitForFunction(async () => (await chrome.storage.local.get('subEffect')).subEffect === 'hide');
+  await options.click('#sub-obscured');
   assert.deepEqual([await storedValue('cleanSubs'), await storedValue('gapMode')], [false, 'x4']);
   await worker.evaluate(() => chrome.storage.local.set({ subObscured: true }));
   await options.locator('#sub-obscured:checked').waitFor();

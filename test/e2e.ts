@@ -104,6 +104,17 @@ try {
     ['Fixture', '3 terms', 'Delete'],
     ['Old', '1 terms. Import again to show tags.', 'Delete'],
   ]);
+  const shown = () => options.evaluate(() => ['input[value="blur"]', '#auto-resume-heading', '#pitch-legend']
+    .map(selector => document.querySelector(selector)?.checkVisibility()));
+  assert.deepEqual(await shown(), [false, false, false]);
+  await options.locator('label:has(#sub-obscured)').click();
+  await options.locator('label:has(input[name="playMode"][value="after"])').click();
+  await options.locator('label:has(#pitch-colors)').click();
+  assert.deepEqual(await shown(), [true, true, true]);
+  for (const label of ['label:has(#sub-obscured)', 'label:has(input[name="playMode"][value="normal"])', 'label:has(#pitch-colors)']) {
+    await options.locator(label).click();
+  }
+  console.log('options: Blur/Hide, the after-pause settings, and the pitch legend show only when their setting is on');
 
   const tab = await context.newPage();
   await tab.goto(pageUrl);
