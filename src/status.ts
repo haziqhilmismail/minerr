@@ -5,7 +5,14 @@ export const STATUSES = {
   learning: { hotkey: '2', label: 'Learning', className: 'ml-learning', color: '#f59f00', underline: 'max(2px, 0.12em)' },
   known: { hotkey: '3', label: 'Known', className: 'ml-known', color: '#2f9e44', underline: 'max(1px, 0.05em)' },
   ignored: { hotkey: '4', label: 'Ignored', className: 'ml-ignored', color: '#8a8f98', underline: null },
-};
+} satisfies Record<string, { hotkey: string; label: string; className: string; color: string; underline: string | null }>;
+
+export type Status = keyof typeof STATUSES;
+
+export const isStatus = (value: unknown): value is Status => typeof value === 'string' && Object.hasOwn(STATUSES, value);
+
+// The statuses in the order of their hotkeys.
+export const STATUS_NAMES: Status[] = Object.keys(STATUSES).filter(isStatus);
 
 // currentColor keeps the hover highlight visible on light text over video and on dark text over a light page.
 export const WORD_CSS = [
@@ -17,33 +24,34 @@ export const WORD_CSS = [
 ].join('\n');
 
 const PREFIX = 'w:';
-const wordKey = lemma => PREFIX + lemma;
-const lemmaOfKey = key => (key.startsWith(PREFIX) ? key.slice(PREFIX.length) : null);
+const wordKey = (lemma: string) => PREFIX + lemma;
+const lemmaOfKey = (key: string) => (key.startsWith(PREFIX) ? key.slice(PREFIX.length) : null);
+const storedStatus = (value: unknown): Status => (isStatus(value) ? value : 'unknown');
 
-export function setStatus(lemma, status) {
+export function setStatus(lemma: string, status: Status): Promise<void> {
   return status === 'unknown'
     ? chrome.storage.local.remove(wordKey(lemma))
     : chrome.storage.local.set({ [wordKey(lemma)]: status });
 }
 
 // Calls listener with a Map of lemma -> new status for every word whose status changed in any tab.
-export function onStatusChange(listener) {
+export function onStatusChange(listener: (changed: Map<string, Status>) => void): void {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
-    const changed = new Map();
+    const changed = new Map<string, Status>();
     for (const [key, { newValue }] of Object.entries(changes)) {
       const lemma = lemmaOfKey(key);
-      if (lemma !== null) changed.set(lemma, newValue ?? 'unknown');
+      if (lemma !== null) changed.set(lemma, storedStatus(newValue));
     }
     if (changed.size) listener(changed);
   });
 }
 
-export function setStatuses(lemmas, status) {
+export function setStatuses(lemmas: string[], status: Status): Promise<void> {
   return chrome.storage.local.set(Object.fromEntries(lemmas.map(lemma => [wordKey(lemma), status])));
 }
 
-export async function getStatuses(lemmas) {
+export async function getStatuses(lemmas: string[]): Promise<Map<string, Status>> {
   const stored = await chrome.storage.local.get(lemmas.map(wordKey));
-  return new Map(lemmas.map(lemma => [lemma, stored[wordKey(lemma)] ?? 'unknown']));
+  return new Map(lemmas.map(lemma => [lemma, storedStatus(stored[wordKey(lemma)])]));
 }
