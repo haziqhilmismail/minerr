@@ -35,7 +35,9 @@ export interface Point {
 }
 
 // i+1: the sentence has exactly one unknown word, so it is a good sentence to mine.
-export const isIPlusOne = (statuses: Status[]): boolean => statuses.filter(status => status === 'unknown').length === 1;
+// A single word (a link, a heading, a menu item) gives no context, so a sentence needs two words or more.
+export const isIPlusOne = (statuses: Status[]): boolean =>
+  statuses.length >= 2 && statuses.filter(status => status === 'unknown').length === 1;
 
 // The i+1 sentences of a block, without the white space at their edges. A word belongs to the sentence where it starts.
 export function iPlusOneSentences(pieces: Piece[]): { start: Point; end: Point }[] {

@@ -67,11 +67,11 @@ test('sentenceAround keeps only the sentence that holds the word', () => {
   assert.deepEqual(sentenceAround('', '猫', ''), { start: '', word: '猫', end: '' });
 });
 
-test('isIPlusOne is true only for exactly one unknown word', () => {
+test('isIPlusOne is true only for exactly one unknown word in two words or more', () => {
   const cases: Status[][] = [
-    [], ['known'], ['unknown'], ['known', 'unknown', 'learning', 'ignored'], ['unknown', 'unknown'], ['learning', 'ignored'],
+    [], ['known'], ['unknown'], ['known', 'unknown'], ['known', 'unknown', 'learning', 'ignored'], ['unknown', 'unknown'], ['learning', 'ignored'],
   ];
-  assert.deepEqual(cases.map(statuses => isIPlusOne(statuses)), [false, false, true, true, false, false]);
+  assert.deepEqual(cases.map(statuses => isIPlusOne(statuses)), [false, false, false, true, true, false, false]);
 });
 
 test('iPlusOneSentences finds the sentences with one unknown word, across pieces, without edge white space', () => {
@@ -84,10 +84,9 @@ test('iPlusOneSentences finds the sentences with one unknown word, across pieces
   const found = iPlusOneSentences(pieces);
   const textOf = ({ start, end }: (typeof found)[number]) => pieces.slice(start.piece, end.piece + 1)
     .map((p, i, run) => p.text.slice(i === 0 ? start.offset : 0, i === run.length - 1 ? end.offset : undefined)).join('');
-  assert.deepEqual(found.map(textOf), ['猫が魚を食べた。', '「雨だ！」', '本を読む']);
+  assert.deepEqual(found.map(textOf), ['猫が魚を食べた。', '本を読む']);
   assert.deepEqual(found, [
     { start: { piece: 1, offset: 0 }, end: { piece: 6, offset: 1 } },
-    { start: { piece: 6, offset: 1 }, end: { piece: 8, offset: 3 } },
     { start: { piece: 13, offset: 0 }, end: { piece: 15, offset: 2 } },
   ]);
   assert.deepEqual(iPlusOneSentences([{ text: '猫が好き', status: 'known' }]), []);

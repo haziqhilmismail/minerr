@@ -11,9 +11,11 @@ Minerr does these steps in the browser:
 3. When you move the mouse over a word, it shows the dictionary definitions with their tags, for example `n` (noun) and `⭐` (high priority).
 4. With one key, it makes an Anki card. The card has the word, the reading, the sentence, the definitions, and a screenshot of the tab.
 
-![Words on a page with status underlines](docs/page.png)
+![A Japanese Wikipedia article with status underlines and the popup for 狭義](docs/page.png)
 
-![The popup for 食べる](docs/popup.png)
+![A YouTube video with WhisperX subtitles in the Minerr overlay and the popup for 例えば](docs/video.png)
+
+The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedia.org/wiki/%E3%83%8D%E3%82%B3) (CC BY-SA 4.0) and an NHK やさしいことばニュース video on YouTube.
 
 ## Features
 
@@ -145,6 +147,7 @@ Minerr sets each word from the matching cards to known. The default search is `d
 An i+1 sentence has exactly one unknown word. You know all the other words in it, so it makes a good card. Minerr gives each i+1 sentence a soft yellow background.
 
 - Minerr counts only the words with a red underline. Learning, known, and ignored words do not count.
+- A sentence must have two words or more. A single word, for example a link or a menu item, gets no highlight.
 - Minerr cuts the sentences with the same rule as the card sentence: at `。`, `！`, `？`, and line breaks.
 - The highlight also shows in the subtitle overlay on YouTube and in the video player.
 - When a word status changes, the highlight changes in all open tabs.
@@ -381,6 +384,12 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/whisper.ts` | The client for the WhisperX server. |
 | `src/db.ts` | The dictionary storage in IndexedDB. |
 | `src/group.ts`, `src/sentence.ts`, `src/yomitan.ts`, `src/zip.ts` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
+| `src/theme.ts`, `theme.css` | The theme setting, and the palette of the extension pages. |
+| `action.html`, `action.ts` | The toolbar popup. |
+| `player.html`, `player.ts` | The video player page. Content scripts do not run on extension pages, so the page loads `src/page.ts`, `src/popup.ts`, and `src/iplusone.ts` itself. |
+| `src/iplusone.ts` | The i+1 highlight. The pure part is `iPlusOneSentences` in `src/sentence.ts`. |
+| `src/overlay.ts` | The subtitle overlay line, for YouTube and the player. |
+| `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 
 Node.js runs the `.ts` test files directly, without a build. To run the tests:
 
@@ -399,18 +408,10 @@ More scripts:
 
 - `node test/screenshots.ts` saves screenshots of the page, the popup, and the options page to `/tmp/minerr-ui`.
 - `node test/card-preview.ts` saves screenshots of the card to `/tmp/minerr-card`.
+- `node test/readme-shots.ts` saves the two screenshots at the top of this README to `docs/`. It needs the network and a WhisperX server that has the subtitles of the video.
 - If the system has no Japanese font, set `CJK_FONT_DIR` to a folder that contains one. Put an emoji font in the same folder, for example `seguiemj.ttf` from Windows. Without it, the `⭐` tag shows as a box.
 - If Chromium cannot start because a library such as `libnss3.so` is missing, set `LD_LIBRARY_PATH` to a folder with the missing libraries.
 - If you update kuromoji, run `npm run vendor` and commit the `vendor/kuromoji` folder.
-
-### Files of the i+1 highlight and the player
-
-| Path | Purpose |
-| --- | --- |
-| `player.html`, `player.ts` | The video player page. Content scripts do not run on extension pages, so the page loads `src/page.ts`, `src/popup.ts`, and `src/iplusone.ts` itself. |
-| `src/iplusone.ts` | The i+1 highlight. The pure part is `iPlusOneSentences` in `src/sentence.ts`. |
-| `src/overlay.ts` | The subtitle overlay line, for YouTube and the player. |
-| `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 
 The WhisperX server has two endpoints for the player:
 
