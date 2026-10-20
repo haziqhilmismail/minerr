@@ -34,7 +34,11 @@ serve(
     },
     wordKeys: async ({ words }) => {
       const dictionary = await dictionaryWordsNow();
-      return Promise.all(words.map(async word => (await dictionary.entry(word, null))?.key ?? word));
+      // A key with a reading, 上手【うわて】, names the entry of that reading.
+      return Promise.all(words.map(async word => {
+        const [, headword = word, reading = null] = /^(.+)【(.+)】$/.exec(word) ?? [];
+        return (await dictionary.entry(headword, reading))?.key ?? word;
+      }));
     },
   },
   target => target === 'offscreen',

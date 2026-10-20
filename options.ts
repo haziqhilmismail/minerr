@@ -12,7 +12,7 @@ import { sentenceHighlight } from './src/sentence-hover.ts';
 import type { Setting } from './src/settings.ts';
 import { call, messageOf } from './src/rpc.ts';
 import {
-  getAllStatuses, importStatuses, moveStatusKeys, onStatusChange, parseStatusFile, STATUS_NAMES, STATUSES, statusFile, WORD_CSS,
+  forgetStatusMove, getAllStatuses, importStatuses, moveStatusKeys, onStatusChange, parseStatusFile, STATUS_NAMES, STATUSES, statusFile, WORD_CSS,
 } from './src/status.ts';
 import { TAG_CSS } from './src/tags.ts';
 import { applyTheme, theme } from './src/theme.ts';
@@ -49,6 +49,7 @@ async function showDictionaries(): Promise<void> {
     remove.onclick = async () => {
       if (!confirm(`Delete the dictionary "${title}"?`)) return;
       remove.disabled = true;
+      await forgetStatusMove();
       await deleteDictionary(title);
       await showDictionaries();
     };
@@ -77,6 +78,7 @@ async function importFile(file: File): Promise<void> {
   progress.hidden = false;
   try {
     showStatus(status, `Reading ${file.name}…`);
+    await forgetStatusMove();
     const { title, count, meta } = await importDictionary(await file.arrayBuffer(), ({ bank, banks, count }) => {
       progress.max = banks;
       progress.value = bank;

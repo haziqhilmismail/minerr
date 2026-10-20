@@ -154,6 +154,24 @@ try {
   assert.deepEqual(await options.evaluate(async () => Object.fromEntries(Object.entries(await chrome.storage.local.get(null))
     .filter(([key]) => key.startsWith('w:')))), { 'w:猫': 'known', 'w:ネコ科': 'known' });
   console.log('a service worker start with no marker moves w:ネコ and w:ねこ to w:猫');
+
+  options.once('dialog', dialog => dialog.accept());
+  await options.locator('#dict-list li', { hasText: 'JMdict' }).getByRole('button', { name: 'Delete' }).click();
+  await options.locator('#dict-list li', { hasText: 'JMdict' }).waitFor({ state: 'detached' });
+  await options.evaluate(() => chrome.storage.local.set({ 'w:ねこ': 'known', 'w:猫': 'learning' }));
+  await options.setInputFiles('#dict-file', fixture);
+  await options.locator('#dict-status', { hasText: 'Imported JMdict' }).waitFor();
+  await options.evaluate(() => new Promise<void>((resolve, reject) => {
+    const check = async (tries: number) => {
+      if (!('w:ねこ' in await chrome.storage.local.get('w:ねこ'))) resolve();
+      else if (tries) setTimeout(() => check(tries - 1), 100);
+      else reject(new Error('the import did not move w:ねこ'));
+    };
+    check(100);
+  }));
+  assert.deepEqual(await options.evaluate(async () => Object.fromEntries(Object.entries(await chrome.storage.local.get(null))
+    .filter(([key]) => key.startsWith('w:')))), { 'w:猫': 'known', 'w:ネコ科': 'known' });
+  console.log('delete JMdict, set ねこ known, import JMdict again: the move runs again and 猫 is known');
   console.log('SPELLING PASS');
 } finally {
   await context.close();

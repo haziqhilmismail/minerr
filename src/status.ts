@@ -166,7 +166,8 @@ const MOVED = 'statusKeysOf';
 // The set comes first and the marker last, so a run that stops halfway runs again and ends in the same storage.
 export async function moveStatusKeys(dictionaries: Dictionary[], wordKeys: (words: string[]) => Promise<string[]>): Promise<void> {
   const sequenced = dictionaries.filter(({ entries }) => entries);
-  if (!sequenced.length) return;
+  // An unfinished import has part of its rows, and resolve reads them too.
+  if (!sequenced.length || dictionaries.some(({ count }) => count === null)) return;
   const marker = JSON.stringify(sequenced.map(({ title, entries }) => [title, entries]));
   if ((await chrome.storage.local.get(MOVED))[MOVED] === marker) return;
   const stored = await getAllStatuses();
@@ -175,6 +176,9 @@ export async function moveStatusKeys(dictionaries: Dictionary[], wordKeys: (word
   await chrome.storage.local.remove(remove.map(wordKey));
   await chrome.storage.local.set({ [MOVED]: marker });
 }
+
+// A dictionary delete or import can change the keys of the stored words, also for the same set of dictionaries.
+export const forgetStatusMove = (): Promise<void> => chrome.storage.local.remove(MOVED);
 
 // The words get the status keys of their dictionary entries first, so ねこ from an old file is stored as 猫.
 export async function importStatuses(imported: Record<string, StoredStatus>): Promise<ImportCounts> {
