@@ -393,7 +393,8 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `offscreen.ts` | Runs kuromoji and the dictionary lookups in an offscreen document. |
 | `src/rpc.ts` | The messages between the parts of the extension, and the type of the reply to each message. |
 | `src/page.ts` | Finds Japanese text on the page and wraps each word. |
-| `src/popup.ts` | The dictionary popup and its keys. |
+| `src/popup.ts` | The dictionary popup: when it opens, its keys, and the card that it adds. |
+| `src/popup-view.ts` | The content of the popup and its position. |
 | `src/subtitles.ts` | The subtitle overlay on YouTube. |
 | `src/status.ts` | The word statuses, their colors, and their storage. |
 | `src/tags.ts` | The colors of the dictionary tags, for the popup and the card. |

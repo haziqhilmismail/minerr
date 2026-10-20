@@ -1,84 +1,13 @@
 import { type CardFields, definitionHtml, escapeHtml } from './anki.ts';
 import { blockOf } from './dom.ts';
 import { type HoverMode, hoverDelay, hoverMode } from './hover.ts';
+import {
+  addLabel, createBox, isPopup, type Layer, markStatus, mount, position, render, setPopupVisible, showMessage, type View,
+} from './popup-view.ts';
 import { call, messageOf } from './rpc.ts';
 import { sentenceAround } from './sentence.ts';
-import { getStatuses, onStatusChange, setStatus, type Status, STATUS_NAMES, STATUSES } from './status.ts';
+import { getStatuses, onStatusChange, setStatus, STATUS_NAMES, STATUSES } from './status.ts';
 import { minerrEnabled } from './settings.ts';
-import { TAG_CSS, tagClass } from './tags.ts';
-import { applyTheme } from './theme.ts';
-import type { Group, Sense, Tag } from './yomitan.ts';
-
-const POWER_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>';
-
-const STYLE = `
-  .popup {
-    --bg: light-dark(#ffffff, #1f2027); --raised: light-dark(#f1f2f6, #2b2c35); --text: light-dark(#1c1d24, #ecedf2);
-    --muted: light-dark(#646775, #a3a5b3); --line: light-dark(#e1e2ea, #393a46); --accent: light-dark(#2c4bb8, #7c93f2);
-    --on-accent: light-dark(#ffffff, #10173a); --ok: light-dark(#1d7a36, #74d68f); --error: light-dark(#c22a2a, #ff8f8f);
-    position: fixed; z-index: 2147483647; display: flex; flex-direction: column; box-sizing: border-box;
-    width: 380px; max-width: calc(100vw - 8px); max-height: min(60vh, 480px); overflow: hidden;
-    border: 1px solid var(--line); border-top: 3px solid var(--status, var(--line)); border-radius: 10px;
-    background: var(--bg); color: var(--text); color-scheme: light dark; text-align: left;
-    font: 14px/1.5 "Hiragino Sans", "Yu Gothic UI", "Meiryo", "Noto Sans JP", system-ui, sans-serif;
-    box-shadow: 0 14px 36px light-dark(rgba(20, 24, 50, .2), rgba(0, 0, 0, .55)), 0 2px 6px light-dark(rgba(20, 24, 50, .08), transparent);
-  }
-  .popup[data-theme="light"] { color-scheme: light; }
-  .popup[data-theme="dark"] { color-scheme: dark; }
-  .popup[hidden] { display: none; }
-  header { padding: 12px 16px; border-bottom: 1px solid var(--line); }
-  .title { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; }
-  .title .tags { font-size: 15px; }
-  .lemma { font-size: 28px; font-weight: 700; line-height: 1.25; }
-  header { position: relative; }
-  .title { padding-right: 64px; }
-  .corner { position: absolute; top: 8px; right: 8px; display: flex; gap: 2px; }
-  .corner button { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent;
-    color: var(--muted); font: inherit; font-size: 16px; line-height: 28px; cursor: pointer; }
-  .corner svg { vertical-align: -3px; }
-  .corner button:hover { background: var(--raised); color: var(--text); }
-  .reading { font-size: 16px; color: var(--muted); }
-  .surface { font-size: 12px; color: var(--muted); }
-  .statuses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: 10px; padding: 3px;
-    border-radius: 8px; background: var(--raised); }
-  button { font: inherit; color: inherit; cursor: pointer; }
-  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .statuses button { padding: 5px 2px; border: 0; border-radius: 6px; background: none; color: var(--muted);
-    font-size: 12px; white-space: nowrap; }
-  .statuses button:hover { color: var(--text); }
-  .statuses button[aria-pressed="true"] { background: var(--bg); color: var(--text); font-weight: 700;
-    box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(0, 0, 0, .12); }
-  .dot { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; vertical-align: 1px; }
-  kbd { display: inline-block; min-width: 16px; box-sizing: border-box; padding: 0 3px; border: 1px solid currentColor;
-    border-radius: 4px; font: 600 10px/14px system-ui, sans-serif; text-align: center; opacity: .7; }
-  .definitions { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px 16px 4px; }
-  ol { margin: 0; padding-left: 22px; }
-  li { margin-bottom: 12px; white-space: pre-line; }
-  li::marker { color: var(--muted); font-size: 12px; }
-  .group { margin: 4px 0 8px; padding-top: 10px; border-top: 1px solid var(--line); }
-  .group .word { font-size: 16px; font-weight: 700; }
-  .group .reading { margin: 0 8px 0 6px; font-size: 14px; }
-  .dict { width: fit-content; margin-top: 4px; padding: 0 7px; border-radius: 4px; background: var(--raised);
-    color: var(--muted); font-size: 11px; line-height: 18px; }
-  ${TAG_CSS}
-  .empty { margin: 0 0 8px; color: var(--muted); }
-  footer { padding: 10px 16px 12px; border-top: 1px solid var(--line); }
-  .add { width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent);
-    font-weight: 700; }
-  .add:hover { filter: brightness(1.08); }
-  .add:disabled { cursor: progress; opacity: .65; filter: none; }
-  .message { margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--ok); }
-  .message:empty { display: none; }
-  .message.error { color: var(--error); }
-`;
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, ...children: (Node | string)[]
-): HTMLElementTagNameMap[K] {
-  const node = Object.assign(document.createElement(tag), props);
-  node.append(...children);
-  return node;
-}
 
 // The sentence around the word inside its nearest block ancestor, with the word in <b>.
 function sentenceHtml(span: HTMLElement): string {
@@ -93,39 +22,11 @@ function sentenceHtml(span: HTMLElement): string {
   return `${escapeHtml(start)}<b>${escapeHtml(word)}</b>${escapeHtml(end)}`;
 }
 
-const host = document.createElement('minerr-popup');
-host.style.cssText = 'all: initial; position: fixed; top: 0; left: 0; z-index: 2147483647;';
-const shadow = host.attachShadow({ mode: 'open' });
-const box = el('div', { className: 'popup', hidden: true });
-shadow.append(el('style', { textContent: STYLE }), box);
-applyTheme(box);
-
-// The word that the popup shows. groups is empty until the lookup is done.
-interface View {
-  span: HTMLElement;
-  lemma: string;
-  status: Status;
-  groups: Group[];
-}
-
-let current: View | null = null;
+const box = createBox();
+let current: Layer | null = null;
 // The word under the mouse, so that Shift can open it, and the timer of a popup that waits for the mouse to stop.
 let hovered: HTMLElement | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
-let message: HTMLDivElement | null = null;
-let addButton: HTMLButtonElement | null = null;
-const statusButtons = new Map<Status, HTMLButtonElement>();
-
-function showMessage(text: string, isError = false): void {
-  if (!message) return;
-  message.textContent = text;
-  message.className = isError ? 'message error' : 'message';
-}
-
-function markStatus(status: Status): void {
-  for (const [name, button] of statusButtons) button.setAttribute('aria-pressed', String(name === status));
-  box.style.setProperty('--status', STATUSES[status].color);
-}
 
 // Keeps the word highlighted while the mouse is on the popup, so the user sees which word it belongs to.
 function markActive(span: HTMLElement | null): void {
@@ -133,95 +34,33 @@ function markActive(span: HTMLElement | null): void {
   span?.setAttribute('data-ml-active', '');
 }
 
-const addLabel = () => ['Add to Anki ', el('kbd', { textContent: 'A' })];
+let opening: View | null = null;
 
-function position(span: HTMLElement): void {
-  const rect = span.getBoundingClientRect();
-  // Fit the popup on the roomier side of the word so it never covers the word; the definitions scroll instead.
-  box.style.maxHeight = `min(60vh, 480px, ${Math.max(rect.top, innerHeight - rect.bottom) - 12}px)`;
-  const below = rect.bottom + 6;
-  const top = below + box.offsetHeight > innerHeight ? Math.max(4, rect.top - box.offsetHeight - 6) : below;
-  box.style.top = `${top}px`;
-  box.style.left = `${Math.max(4, Math.min(rect.left, innerWidth - box.offsetWidth - 4))}px`;
-}
-
-// Each chip is followed by a space, so the chips wrap like words.
-const chips = (tags: Tag[]) => tags.flatMap(({ name, category, notes }) => [el('span', { className: tagClass(category), title: notes, textContent: name }), ' ']);
-
-// One dictionary label closes each run of senses from the same dictionary.
-const senseList = (senses: Sense[]) => el('ol', {}, ...senses.map((sense, i) => el('li', {}, ...chips(sense.tags), sense.glossary.join('\n'),
-  sense.dict === senses[i + 1]?.dict ? '' : el('div', { className: 'dict', textContent: sense.dict }))));
-
-function render(view: View): void {
-  const { lemma, groups } = view;
-  const [first, ...others] = groups;
-  const reading = first?.reading ?? '';
-  const surface = view.span.textContent;
-  statusButtons.clear();
-  const statusRow = el('div', { className: 'statuses', role: 'group', ariaLabel: 'Word status' },
-    ...STATUS_NAMES.map(status => {
-      const { hotkey, label, color } = STATUSES[status];
-      const dot = el('span', { className: 'dot' });
-      dot.style.background = color;
-      const button = el('button', { onclick: () => setStatus(lemma, status) }, dot, `${label} `, el('kbd', { textContent: hotkey }));
-      statusButtons.set(status, button);
-      return button;
-    }));
-  // Other readings or spellings of the lemma follow the first group, each under its own heading.
-  const definitions = first
-    ? [senseList(first.senses), ...others.flatMap(group => [
-      el('div', { className: 'group' },
-        el('span', { className: 'word', textContent: group.expression }),
-        el('span', { className: 'reading', textContent: group.reading }),
-        ...chips(group.termTags)),
-      senseList(group.senses),
-    ])]
-    : [el('p', { className: 'empty', textContent: 'No dictionary entry. Import a dictionary in the options page.' })];
-  addButton = el('button', { className: 'add', onclick: addCard }, ...addLabel());
-  message = el('div', { className: 'message', role: 'status' });
-  box.replaceChildren(
-    el('header', {},
-      el('div', { className: 'title' },
-        el('span', { className: 'lemma', textContent: lemma }),
-        reading !== lemma ? el('span', { className: 'reading', textContent: reading }) : '',
-        first?.termTags.length ? el('span', { className: 'tags' }, ...chips(first.termTags)) : ''),
-      surface !== lemma ? el('div', { className: 'surface', textContent: `On the page: ${surface}` }) : '',
-      statusRow,
-      el('div', { className: 'corner' },
-        el('button', { className: 'off', innerHTML: POWER_ICON, title: 'Turn Minerr off in all tabs (Alt+Shift+M turns it on)', ariaLabel: 'Turn Minerr off', onclick: () => minerrEnabled.set(false) }),
-        el('button', { className: 'close', textContent: '✕', title: 'Close (Esc)', ariaLabel: 'Close', onclick: close }))),
-    el('div', { className: 'definitions' }, ...definitions),
-    el('footer', {}, addButton, message),
-  );
-  markStatus(view.status);
-}
-
-async function open(span: HTMLElement): Promise<void> {
+// Opens the popup of a word span (a .ml-word with data-ml-lemma). The subtitle code calls it for keys that pick a word.
+export async function openWord(span: HTMLElement): Promise<void> {
   const lemma = span.dataset.mlLemma;
   if (lemma === undefined) return;
   const view: View = { span, lemma, status: 'unknown', groups: [] };
-  current = view;
-  let groups: Group[];
+  opening = view;
   try {
-    [groups, view.status] = await Promise.all([
+    [view.groups, view.status] = await Promise.all([
       call({ type: 'lookup', lemma }),
       getStatuses([lemma]).then(statuses => statuses.get(lemma) ?? 'unknown'),
     ]);
   } catch (error) {
-    groups = [];
     console.warn('minerr lookup failed', error);
   }
-  if (current !== view) return;
-  view.groups = groups;
-  (document.fullscreenElement ?? document.documentElement).append(host);
-  render(view);
+  if (opening !== view) return;
+  mount();
+  current = render(box, view, { addCard, close });
   box.hidden = false;
-  position(span);
+  position(box, span);
   markActive(span);
 }
 
 function close(): void {
   clearTimeout(timer);
+  opening = null;
   current = null;
   box.hidden = true;
   markActive(null);
@@ -230,9 +69,9 @@ function close(): void {
 const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
 
 async function addCard(): Promise<void> {
-  const view = current;
-  const button = addButton;
-  if (!view || !button || button.disabled) return;
+  const layer = current;
+  if (!layer || layer.addButton.disabled) return;
+  const { view, addButton: button } = layer;
   const card: CardFields = {
     word: view.lemma,
     reading: view.groups[0]?.reading ?? '',
@@ -241,16 +80,16 @@ async function addCard(): Promise<void> {
   };
   button.disabled = true;
   button.replaceChildren('Adding to Anki…');
-  host.style.visibility = 'hidden';
+  setPopupVisible(false);
   await nextFrame();
   await nextFrame();
   try {
     await call({ type: 'addCard', card });
-    if (current === view) showMessage('Added to Anki.');
+    if (current === layer) showMessage(layer, 'Added to Anki.');
   } catch (error) {
-    if (current === view) showMessage(messageOf(error), true);
+    if (current === layer) showMessage(layer, messageOf(error), true);
   } finally {
-    host.style.visibility = '';
+    setPopupVisible(true);
     button.disabled = false;
     button.replaceChildren(...addLabel());
   }
@@ -261,7 +100,7 @@ const isEditable = (target: EventTarget | null) => target instanceof HTMLElement
 
 const HOTKEYS: Record<string, () => void> = {
   ...Object.fromEntries(STATUS_NAMES.map(status => [STATUSES[status].hotkey, () => {
-    if (current) setStatus(current.lemma, status);
+    if (current) setStatus(current.view.lemma, status);
   }])),
   a: addCard,
   Escape: close,
@@ -278,7 +117,7 @@ hoverMode.watch(value => { mode = value; });
 
 function consider(span: HTMLElement, shift: boolean, buttonDown: boolean): void {
   clearTimeout(timer);
-  if (!enabled || span === current?.span) return;
+  if (!enabled || span === current?.view.span) return;
   const delay = hoverDelay({
     mode,
     shift,
@@ -288,7 +127,7 @@ function consider(span: HTMLElement, shift: boolean, buttonDown: boolean): void 
     buttonDown,
   });
   // A YouTube subtitle line can change during the wait, so open only a word that is still on the page.
-  if (delay !== null) timer = setTimeout(() => { if (span.isConnected) open(span); }, delay);
+  if (delay !== null) timer = setTimeout(() => { if (span.isConnected) openWord(span); }, delay);
 }
 
 document.addEventListener('mouseover', event => {
@@ -308,7 +147,7 @@ document.addEventListener('mouseout', event => {
 
 document.addEventListener('mousedown', event => {
   clearTimeout(timer);
-  if (current && event.target !== host && !(event.target instanceof Element && event.target.closest('.ml-word'))) close();
+  if (current && !isPopup(event.target) && !(event.target instanceof Element && event.target.closest('.ml-word'))) close();
 });
 
 // Capture, like the hotkeys below, so a page that stops keydown cannot block Shift.
@@ -318,7 +157,7 @@ window.addEventListener('keydown', event => {
 
 // Capture on window so page shortcuts (YouTube uses 1-4 to seek) do not also fire.
 window.addEventListener('keydown', event => {
-  if (!current || box.hidden || event.ctrlKey || event.metaKey || event.altKey || isEditable(event.target)) return;
+  if (!current || event.ctrlKey || event.metaKey || event.altKey || isEditable(event.target)) return;
   const action = HOTKEYS[event.key.length === 1 ? event.key.toLowerCase() : event.key];
   if (!action) return;
   event.preventDefault();
@@ -327,6 +166,6 @@ window.addEventListener('keydown', event => {
 }, true);
 
 onStatusChange(changed => {
-  const status = current && changed.get(current.lemma);
-  if (status) markStatus(status);
+  const status = current && changed.get(current.view.lemma);
+  if (current && status) markStatus(current, status);
 });
