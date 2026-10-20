@@ -22,8 +22,11 @@ export const STATUS_NAMES: Status[] = Object.keys(STATUSES).filter(isStatus);
 export const WORD_CSS = [
   '.ml-word { border-radius: 2px; text-underline-offset: 0.2em; text-decoration-skip-ink: none; }',
   '.ml-word:hover, .ml-word[data-ml-active] { background-color: color-mix(in srgb, currentColor 16%, transparent); }',
-  ...Object.values(STATUSES).filter(s => s.underline)
-    .map(s => `.${s.className} { text-decoration: underline ${s.underline} ${s.color}; }`),
+  // Only unknown words keep their underline, which gets thicker on hover; the other statuses show theirs on hover only.
+  ...Object.values(STATUSES).filter(s => s.underline).map(s => (s === STATUSES.unknown
+    ? `.${s.className} { text-decoration: underline ${s.underline} ${s.color}; }\n`
+      + `.${s.className}:hover, .${s.className}[data-ml-active] { text-decoration-thickness: max(3px, 0.2em); }`
+    : `.${s.className}:hover, .${s.className}[data-ml-active] { text-decoration: underline ${s.underline} ${s.color}; }`)),
   ':root[data-minerr-off] .ml-word { text-decoration: none; background-color: transparent; }',
   // The page text is on only where the user turned it on, so the hand cursor marks the words that open a popup.
   ':root:not([data-minerr-off]) .ml-word { cursor: pointer; }',
