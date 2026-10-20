@@ -115,15 +115,13 @@ function schedule(): void {
 }
 
 // Gives the page its own text back when the page text goes off: no word spans stay outside the subtitle overlay.
+// No normalize(): it would merge or delete text nodes that the page owns, and frameworks such as Vue keep empty text nodes
+// as anchors. The parse joins adjacent text nodes into one run, so the split text parses as before.
 function unwrapPage(): void {
-  const parents = new Set<Node>();
   for (const span of document.querySelectorAll('.ml-word')) {
-    if (!span.parentNode || span.closest(VIDEO)) continue;
-    parents.add(span.parentNode);
-    span.replaceWith(span.textContent ?? '');
+    if (span.parentNode && !span.closest(VIDEO)) span.replaceWith(span.textContent ?? '');
   }
-  for (const parent of parents) parent.normalize();
-  // The merged text nodes are page text again, for the next time the page text goes on.
+  // The new text nodes are page text, for the next time the page text goes on.
   created = new WeakSet();
 }
 
