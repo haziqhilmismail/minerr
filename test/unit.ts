@@ -27,16 +27,16 @@ function makeZip(members: string[]) {
 }
 
 test('verb with auxiliaries is one word with the dictionary form', () => {
-  assert.deepEqual(parse('食べなかった'), [{ text: '食べなかった', lemma: '食べる' }]);
+  assert.deepEqual(parse('食べなかった'), [{ text: '食べなかった', lemma: '食べる', reading: 'たべなかった' }]);
 });
 
 test('particles and copula carry no lemma; text concatenates to the input', () => {
   const input = '猫が好きです';
   const segments = parse(input);
   assert.deepEqual(segments, [
-    { text: '猫', lemma: '猫' },
+    { text: '猫', lemma: '猫', reading: 'ねこ' },
     { text: 'が' },
-    { text: '好き', lemma: '好き' },
+    { text: '好き', lemma: '好き', reading: 'すき' },
     { text: 'です' },
   ]);
   assert.equal(segments.map(s => s.text).join(''), input);
@@ -47,11 +47,11 @@ test('て/ば groups, whitespace and latin text stay plain, concatenation is exa
   const segments = parse(input);
   assert.equal(segments.map(s => s.text).join(''), input);
   assert.deepEqual(segments.filter(s => s.lemma), [
-    { text: '猫', lemma: '猫' },
-    { text: '魚', lemma: '魚' },
-    { text: '食べている', lemma: '食べる' },
-    { text: '行けば', lemma: '行く' },
-    { text: '寒くない', lemma: '寒い' },
+    { text: '猫', lemma: '猫', reading: 'ねこ' },
+    { text: '魚', lemma: '魚', reading: 'さかな' },
+    { text: '食べている', lemma: '食べる', reading: 'たべている' },
+    { text: '行けば', lemma: '行く', reading: 'いけば' },
+    { text: '寒くない', lemma: '寒い', reading: 'さむくない' },
   ]);
 });
 

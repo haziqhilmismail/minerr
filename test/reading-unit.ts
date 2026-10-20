@@ -4,7 +4,9 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import kuromoji from 'kuromoji';
 import { chord } from '../src/chord.ts';
+import { groupTokens, toHiragana } from '../src/group.ts';
 import { entryStars, highs, morae, pitchPattern, stars, toMeta, withMeta } from '../src/meta.ts';
 import { at, isStringList } from '../src/parse.ts';
 import { toggleSite } from '../src/site.ts';
@@ -95,4 +97,18 @@ test('chord names a key with Alt from the physical key, and Shift only with Alt'
 test('toggleSite adds a site that is on and removes a site that is off', () => {
   assert.deepEqual(toggleSite(['a.com'], 'b.org'), ['a.com', 'b.org']);
   assert.deepEqual(toggleSite(['a.com', 'b.org'], 'a.com'), ['b.org']);
+});
+
+test('a word with kanji gets its reading in hiragana; kana words and words that kuromoji does not know get none', async () => {
+  const tokenizer = await new Promise<kuromoji.Tokenizer>((resolve, reject) =>
+    kuromoji.builder({ dicPath: join(here, '..', 'node_modules', 'kuromoji', 'dict') }).build((err, t) => (err ? reject(err) : resolve(t))));
+  assert.deepEqual(groupTokens(tokenizer.tokenize('テレビ局でゲームをプレイした')), [
+    { text: 'テレビ局', lemma: 'テレビ局', reading: 'てれびきょく' },
+    { text: 'で' },
+    { text: 'ゲーム', lemma: 'ゲーム' },
+    { text: 'を' },
+    { text: 'プレイ', lemma: 'プレイ' },
+    { text: 'した', lemma: 'する' },
+  ]);
+  assert.equal(toHiragana('キョウ、ヴァーチャル'), 'きょう、ゔぁーちゃる');
 });

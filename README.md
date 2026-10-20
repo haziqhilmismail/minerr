@@ -378,6 +378,22 @@ You can choose when the word popup opens.
 
 In all modes, `Shift` opens the popup at once. You can press `Shift` before or after you move the mouse onto the word. If a popup is open, the popup of the next word opens after 0.05 seconds. A quick pass of the mouse over a word does not open a popup. The change applies at once in all tabs.
 
+## Furigana
+
+Minerr can show the reading of a word in hiragana over the word. It shows readings only over words with kanji.
+
+1. Open the options page.
+2. In **Furigana**, click **Off**, **Unknown words**, **All words**, or **On hover**.
+
+| Mode | The reading shows |
+| --- | --- |
+| **Off** | Nowhere. This is the default. |
+| **Unknown words** | Over each word with a red underline. When the status of a word changes, its reading goes away. |
+| **All words** | Over each word with kanji. |
+| **On hover** | Over the word under the mouse, and over the word of the open popup. |
+
+The reading comes from the kuromoji tokenizer, so it is the reading of the word on the page, for example たべなかった for 食べなかった. Minerr makes a line taller when a word in it gets a reading, so the reading does not cover the line above. The reading is not page text: when you copy text or add a card, the text has no readings.
+
 ## Frequency and pitch accent
 
 Minerr also reads Yomitan frequency dictionaries and pitch accent dictionaries, for example the JPDB frequency list or the Kanjium pitch accents. Import them on the options page in the same way as a term dictionary. The list of dictionaries shows the number of frequency and pitch entries of each one.
@@ -423,6 +439,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/page.ts` | Finds Japanese text on the page and wraps each word. |
 | `src/popup.ts` | The dictionary popup: when it opens, its keys, and the card that it adds. |
 | `src/popup-view.ts` | The content of the popup and its position. |
+| `src/furigana.ts` | The furigana setting, and the CSS that shows the reading over a word. |
 | `src/site.ts` | Minerr on or off for each site, and the state that says if Minerr shows on a page. |
 | `src/keys.ts`, `src/chord.ts` | The keys that work on a page without a popup, and the names of the keys. |
 | `src/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |

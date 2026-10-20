@@ -1,6 +1,7 @@
 import type { Segment } from './group.ts';
 import { call } from './rpc.ts';
 import { getStatuses, onStatusChange, type Status, STATUSES, WORD_CSS } from './status.ts';
+import { installFurigana } from './furigana.ts';
 import { watchActive } from './site.ts';
 
 const JAPANESE = /[぀-ヿ一-鿿]/;
@@ -39,7 +40,7 @@ function setSpanStatus(span: HTMLElement, status: Status): void {
 
 function render(segments: Segment[], statuses: Map<string, Status>): DocumentFragment {
   const fragment = document.createDocumentFragment();
-  for (const { text, lemma } of segments) {
+  for (const { text, lemma, reading } of segments) {
     if (!lemma) {
       const node = document.createTextNode(text);
       created.add(node);
@@ -49,6 +50,7 @@ function render(segments: Segment[], statuses: Map<string, Status>): DocumentFra
     const span = document.createElement('span');
     span.className = 'ml-word';
     span.dataset.mlLemma = lemma;
+    if (reading) span.dataset.mlReading = reading;
     span.textContent = text;
     setSpanStatus(span, statuses.get(lemma) ?? 'unknown');
     fragment.append(span);
@@ -104,5 +106,6 @@ onStatusChange(changed => {
 
 document.head.append(Object.assign(document.createElement('style'), { textContent: WORD_CSS }));
 watchActive(active => document.documentElement.toggleAttribute('data-minerr-off', !active));
+installFurigana();
 collect(document.body);
 schedule();

@@ -7,6 +7,8 @@ declare namespace kuromoji {
     pos: string;
     pos_detail_1: string;
     basic_form: string;
+    // In katakana. A word that is not in the dictionary has none.
+    reading?: string;
   }
   interface Tokenizer {
     tokenize(text: string): Token[];

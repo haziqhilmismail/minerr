@@ -26,7 +26,8 @@ const pitches = makeDictionary(join(work, 'pitches.zip'), 'Pitches', [], [], [
 
 const site = createServer((req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.end('<!doctype html><meta charset="utf-8"><title>reading</title><body><p id="line">猫が魚を食べなかった。</p></body>');
+  res.end('<!doctype html><meta charset="utf-8"><title>reading</title><body><p id="line">猫が魚を食べなかった。</p>'
+    + '<p id="wrap" style="width: 6em; font-size: 20px; line-height: 1.2">猫が魚を食べた。猫が魚を食べた。猫が魚を食べた。</p></body>');
 });
 const pageUrl = `http://127.0.0.1:${await listen(site, 0)}/page`;
 
@@ -100,6 +101,7 @@ try {
   const toast = tab.locator('minerr-popup .toast');
   await toast.filter({ hasText: 'Minerr is off for 127.0.0.1. Press Alt+Shift+D to turn it on.' }).waitFor();
   assert.deepEqual(await options.evaluate(() => chrome.storage.local.get('disabledSites')), { disabledSites: ['127.0.0.1'] });
+  await toast.waitFor({ state: 'hidden', timeout: 4000 });
   await other.waitForFunction(() => document.documentElement.hasAttribute('data-minerr-off'));
   assert.equal(await tab.$eval('#line .ml-word[data-ml-lemma="猫"]', word => getComputedStyle(word).textDecorationLine), 'none');
   await tab.mouse.move(0, 0);
@@ -122,6 +124,45 @@ try {
   assert.equal(await action.isVisible('#site-toggle'), false, 'an extension page gets no site switch');
   await action.close();
   console.log('per site: Alt+Shift+D turns this site off in all its tabs; the toolbar switch turns it on');
+
+  const furigana = async (mode: string) => {
+    await options.click(`label:has(input[name="furigana"][value="${mode}"])`);
+    await tab.waitForFunction(value => (document.documentElement.dataset.mlFurigana ?? 'off') === value, mode);
+  };
+  const readings = () => tab.$$eval('#line .ml-word', spans => spans.map(span => `${span.textContent}:${getComputedStyle(span, '::before').content}`));
+  assert.deepEqual(await readings(), ['猫:none', '魚:none', '食べなかった:none']);
+  await furigana('all');
+  assert.deepEqual(await readings(), ['猫:"ねこ"', '魚:"さかな"', '食べなかった:"たべなかった"']);
+  assert.equal(await tab.textContent('#line'), '猫が魚を食べなかった。');
+  const lines = await tab.$$eval('#wrap .ml-word', spans => spans.map(span => {
+    const { top, bottom } = span.getBoundingClientRect();
+    const style = getComputedStyle(span);
+    const reading = parseFloat(getComputedStyle(span, '::before').fontSize) * 1.1;
+    return { top, bottom, room: parseFloat(style.paddingTop) - reading };
+  }));
+  const rows = [...new Set(lines.map(line => Math.round(line.bottom)))].sort((a, b) => a - b);
+  assert.ok(rows.length >= 3, `the paragraph wraps: ${rows.length} lines`);
+  assert.ok(lines.every(line => line.room >= 0), 'the top padding of each word holds its reading');
+  for (const [i, row] of rows.slice(1).entries()) {
+    const above = rows[i] ?? 0;
+    const tops = lines.filter(line => Math.round(line.bottom) === row).map(line => line.top);
+    assert.ok(Math.min(...tops) >= above - 0.5, `line ${i + 2}: the readings start below line ${i + 1}`);
+  }
+  await tab.screenshot({ path: join(work, 'furigana-all.png') });
+  await options.evaluate(() => chrome.storage.local.set({ 'w:猫': 'known' }));
+  await tab.waitForSelector('#line .ml-word.ml-known[data-ml-lemma="猫"]');
+  await furigana('unknown');
+  assert.deepEqual(await readings(), ['猫:none', '魚:"さかな"', '食べなかった:"たべなかった"']);
+  await furigana('hover');
+  await tab.mouse.move(0, 0);
+  assert.deepEqual(await readings(), ['猫:none', '魚:none', '食べなかった:none']);
+  await tab.hover('#line .ml-word[data-ml-lemma="魚"]');
+  assert.deepEqual(await readings(), ['猫:none', '魚:"さかな"', '食べなかった:none']);
+  await furigana('off');
+  assert.deepEqual(await readings(), ['猫:none', '魚:none', '食べなかった:none']);
+  await options.evaluate(() => chrome.storage.local.remove('w:猫'));
+  await tab.keyboard.press('Escape');
+  console.log('furigana: all words, unknown words, on hover, and off; the readings never cover the line above; saved', join(work, 'furigana-all.png'));
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('READING E2E PASS');

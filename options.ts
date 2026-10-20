@@ -4,6 +4,7 @@ import {
 } from './src/anki.ts';
 import { deleteDictionary, importDictionary, listDictionaries } from './src/db.ts';
 import { byId } from './src/dom.ts';
+import { furiganaMode } from './src/furigana.ts';
 import { hoverMode } from './src/hover.ts';
 import type { Setting } from './src/settings.ts';
 import { call, messageOf } from './src/rpc.ts';
@@ -303,6 +304,6 @@ async function bindRadios<T extends string>(name: string, { get, set, isValue }:
   }
 }
 
-await Promise.all([bindRadios('hoverMode', hoverMode), bindRadios('theme', theme)]);
+await Promise.all([bindRadios('hoverMode', hoverMode), bindRadios('theme', theme), bindRadios('furigana', furiganaMode)]);
 
 await Promise.all([showDictionaries(), showModels(), showCounts()]);
