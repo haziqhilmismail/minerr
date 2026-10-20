@@ -138,6 +138,15 @@ test('no dictionary: the parse is the kuromoji grouping and no word has an entry
   assert.equal(await none.entry('猫', 'ねこ'), null);
 });
 
+test('a failed dictionary read gives the kuromoji grouping without entries', async () => {
+  const fail = () => Promise.reject(new Error('IndexedDB is closed'));
+  const broken = dictionaryWords({ byExpression: fail, byReading: fail, bySequence: fail, headwords: fail });
+  const text = '食肉目の猫を見た';
+  assert.deepEqual(await parse(text, broken), groupTokens(tokenizer.tokenize(text)));
+  const half = dictionaryWords({ ...memoryIndex(rows), bySequence: fail });
+  assert.deepEqual(await parse(text, half), groupTokens(tokenizer.tokenize(text)));
+});
+
 test('real JMdict: 猫/ねこ/ネコ share 猫, and 食肉目ネコ科ネコ属 is three words', async () => {
   assert.ok(existsSync(JMDICT), `missing ${JMDICT}; download it as the README says`);
   const dict = await readYomitan(readFileSync(JMDICT));

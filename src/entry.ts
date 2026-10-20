@@ -157,11 +157,17 @@ export function joinCompounds(tokens: kuromoji.Token[], headwords: Set<string>):
 }
 
 // The segments of tokens, with compound nouns joined and the dictionary entry of each word.
+// If a dictionary read fails, the text gets the kuromoji grouping without entries, as with no dictionary.
 export async function entrySegments(tokens: kuromoji.Token[], words: Words): Promise<Segment[]> {
-  const texts = tokens.flatMap((_, i) => compounds(runAt(tokens, i)));
-  const segments = groupTokens(joinCompounds(tokens, await words.headwords(texts)));
-  return Promise.all(segments.map(async segment => {
-    const entry = segment.lemma ? await words.entry(segment.lemma, lemmaReading(segment)) : null;
-    return entry ? { ...segment, entry } : segment;
-  }));
+  try {
+    const texts = tokens.flatMap((_, i) => compounds(runAt(tokens, i)));
+    const segments = groupTokens(joinCompounds(tokens, await words.headwords(texts)));
+    return await Promise.all(segments.map(async segment => {
+      const entry = segment.lemma ? await words.entry(segment.lemma, lemmaReading(segment)) : null;
+      return entry ? { ...segment, entry } : segment;
+    }));
+  } catch (error) {
+    console.warn('minerr could not read the dictionary entries', error);
+    return groupTokens(tokens);
+  }
 }
