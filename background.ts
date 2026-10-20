@@ -1,9 +1,10 @@
 import {
   addDraft, fieldValues, getDeck, getNoteType, installLapis, modelFieldNames, modelNames, type NoteDraft, noteDraft, usesWordAudio, version,
 } from './src/anki.ts';
+import { listDictionaries } from './src/db.ts';
 import { cardMedia, widenSentence } from './src/lineaudio.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
-import { getStatuses, setStatus, setStatuses } from './src/status.ts';
+import { getStatuses, moveStatusKeys, setStatus, setStatuses } from './src/status.ts';
 import { minerrEnabled } from './src/settings.ts';
 import { cachedSegments, getJob, health, siteCaptions, startJob } from './src/whisper.ts';
 import { wordAudio } from './src/wordaudio.ts';
@@ -24,8 +25,15 @@ async function ensureOffscreen(): Promise<void> {
   await creating;
 }
 
-async function toOffscreen<K extends 'parse' | 'lookup' | 'pitch' | 'lookupText'>(message: Message<K>): Promise<Reply<K>> {
+// A dictionary import moves the statuses to their keys (options.ts). The first offscreen call after a service worker start
+// finishes a move that stopped. It starts there, not at the top of this file, so a worker that only runs a command does not open IndexedDB.
+let moved: Promise<void> | undefined;
+
+async function toOffscreen<K extends 'parse' | 'lookup' | 'pitch' | 'lookupText' | 'wordKeys'>(message: Message<K>): Promise<Reply<K>> {
   await ensureOffscreen();
+  moved ??= listDictionaries()
+    .then(dictionaries => moveStatusKeys(dictionaries, words => call({ type: 'wordKeys', words, target: 'offscreen' })))
+    .catch(error => console.warn('minerr could not move the statuses to their keys', error));
   return call({ ...message, target: 'offscreen' });
 }
 
@@ -55,16 +63,16 @@ async function cardDraft({ card }: Message<'cardDraft'>, sender: chrome.runtime.
 }
 
 // A draft is the note of the edit form; without one, the card goes to Anki at once.
-async function addCard({ card, draft }: Message<'addCard'>, sender: chrome.runtime.MessageSender): Promise<number> {
+async function addCard({ card, word, draft }: Message<'addCard'>, sender: chrome.runtime.MessageSender): Promise<number> {
   const noteId = await addDraft(await getDeck(), draft ?? await cardDraft({ type: 'cardDraft', card }, sender));
-  const statuses = await getStatuses([card.word]);
-  if (statuses.get(card.word) === 'unknown') await setStatus(card.word, 'learning');
+  if (((await getStatuses([word])).get(word.key) ?? 'unknown') === 'unknown') await setStatus(word, 'learning');
   return noteId;
 }
 
 async function importKnown({ query, field }: Message<'importKnown'>): Promise<number> {
   const words = await fieldValues(query, field);
-  await setStatuses(words, 'known');
+  const keys = await toOffscreen({ type: 'wordKeys', words });
+  await setStatuses(keys.map(key => ({ key })), 'known');
   return words.length;
 }
 
@@ -79,6 +87,7 @@ serve(
     pitch: toOffscreen,
     lookupText: toOffscreen,
     cardDraft,
+    wordKeys: toOffscreen,
     addCard,
     importKnown,
     ankiInstallLapis: installLapis,

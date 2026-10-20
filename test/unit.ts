@@ -199,6 +199,8 @@ test('readYomitan returns index metadata, tags, and flattened terms per bank', a
   const rows = [
     ['猫', 'ねこ', '1 n', '', 10, ['cat', { type: 'text', text: 'feline' }], 1, '⭐ ichi'],
     ['ねこ', '', '', '', 5, [{ type: 'structured-content', content: { tag: 'li', content: 'cat (kana)' } }], 2, ''],
+    ['ネコ', '', '', '', 1, ['⟶猫'], -1, ''],
+    ['犬', 'いぬ', '', '', 1, ['dog'], 0, ''],
   ];
   const zip = makeZip([
     `index.json=stored:${JSON.stringify({ title: 'Tiny', revision: 'r1', format: 3 })}`,
@@ -217,8 +219,10 @@ test('readYomitan returns index metadata, tags, and flattened terms per bank', a
   assert.ok(bank);
   assert.equal(more.length, 0);
   assert.deepEqual(await bank(), [
-    { expression: '猫', reading: 'ねこ', definitionTags: ['1', 'n'], termTags: ['⭐', 'ichi'], glossary: ['cat', 'feline'], score: 10 },
-    { expression: 'ねこ', reading: 'ねこ', definitionTags: [], termTags: [], glossary: ['cat (kana)'], score: 5 },
+    { expression: '猫', reading: 'ねこ', definitionTags: ['1', 'n'], termTags: ['⭐', 'ichi'], glossary: ['cat', 'feline'], score: 10, sequence: 1 },
+    { expression: 'ねこ', reading: 'ねこ', definitionTags: [], termTags: [], glossary: ['cat (kana)'], score: 5, sequence: 2 },
+    { expression: 'ネコ', reading: 'ネコ', definitionTags: [], termTags: [], glossary: ['⟶猫'], score: 1, sequence: 1 },
+    { expression: '犬', reading: 'いぬ', definitionTags: [], termTags: [], glossary: ['dog'], score: 1 },
   ]);
   const untagged = makeZip([`index.json=stored:${JSON.stringify({ title: 'Bare', revision: 'r1', format: 3 })}`]);
   assert.deepEqual((await readYomitan(untagged)).tags, []);
@@ -373,6 +377,15 @@ test('mergeStatuses lets the imported status win and counts added, changed, and 
     counts: { added: 2, changed: 1, unchanged: 1 },
   });
   assert.deepEqual(mergeStatuses({ 猫: 'known' }, {}), { changes: {}, counts: { added: 0, changed: 0, unchanged: 0 } });
+});
+
+test('statusesByKey gives each key the highest status of its words: known, then ignored, then learning', async () => {
+  const { statusesByKey, statusMoves } = await import('../src/status.ts');
+  assert.deepEqual(statusesByKey([['ねこ', 'learning'], ['猫', 'known'], ['ネコ', 'ignored'], ['いぬ', 'learning'], ['犬', 'ignored']], ['猫', '猫', '猫', '犬', '犬']),
+    new Map([['猫', 'known'], ['犬', 'ignored']]));
+  assert.deepEqual(statusMoves({ ねこ: 'known', ネコ: 'learning', 猫: 'learning', 犬: 'ignored', いぬ: 'learning', 紙: 'known' }, ['猫', '猫', '猫', '犬', '犬', '紙']),
+    { set: { 猫: 'known' }, remove: ['ねこ', 'ネコ', 'いぬ'] });
+  assert.deepEqual(statusMoves({ 猫: 'known' }, ['猫']), { set: {}, remove: [] });
 });
 
 test('parseSubtitles reads SRT with a BOM, CRLF, multi-line cues, tags, and position codes', async () => {

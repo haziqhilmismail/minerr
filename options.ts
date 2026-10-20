@@ -13,7 +13,7 @@ import { sentenceHighlight } from './src/sentence-hover.ts';
 import type { Setting } from './src/settings.ts';
 import { call, messageOf } from './src/rpc.ts';
 import {
-  getAllStatuses, importStatuses, onStatusChange, parseStatusFile, STATUS_NAMES, STATUSES, statusFile, WORD_CSS,
+  forgetStatusMove, getAllStatuses, importStatuses, moveStatusKeys, onStatusChange, parseStatusFile, STATUS_NAMES, STATUSES, statusFile, WORD_CSS,
 } from './src/status.ts';
 import { TAG_CSS } from './src/tags.ts';
 import { applyTheme, theme } from './src/theme.ts';
@@ -45,18 +45,22 @@ const metaText = (meta = 0) => (meta ? `, ${meta} frequency and pitch entries` :
 
 async function showDictionaries(): Promise<void> {
   const dictionaries = await listDictionaries();
-  const items = dictionaries.map(({ title, count, tags, meta: entries }) => {
+  const items = dictionaries.map(({ title, count, tags, meta: metaCount, entries }) => {
     const remove = el('button', { type: 'button', className: 'delete', textContent: 'Delete' });
     remove.onclick = async () => {
       if (!confirm(`Delete the dictionary "${title}"?`)) return;
       remove.disabled = true;
+      await forgetStatusMove();
       await deleteDictionary(title);
       await showDictionaries();
     };
-    // An import from before tags were stored has no tags flag.
+    // An import from before tags were stored has no tags flag, and one from before entries were counted has no entries count.
+    const noEntries = count !== null && count > 0 && entries === undefined;
     const meta = count === null ? 'Import not finished. Import it again.'
-      : tags ? `${count} terms${metaText(entries)}` : `${count} terms. Import again to show tags.`;
-    return el('li', { className: count === null || !tags ? 'warn' : '' },
+      : !tags ? `${count} terms. Import again to show tags.`
+      : noEntries ? `${count} terms${metaText(metaCount)}. Import again so that the spellings of a word share one status.`
+      : `${count} terms${metaText(metaCount)}`;
+    return el('li', { className: count === null || !tags || noEntries ? 'warn' : '' },
       el('div', {}, el('span', { className: 'name', textContent: title }), el('span', { className: 'meta', textContent: meta })),
       remove);
   });
@@ -75,11 +79,15 @@ async function importFile(file: File): Promise<void> {
   progress.hidden = false;
   try {
     showStatus(status, `Reading ${file.name}…`);
+    await forgetStatusMove();
     const { title, count, meta } = await importDictionary(await file.arrayBuffer(), ({ bank, banks, count }) => {
       progress.max = banks;
       progress.value = bank;
       showStatus(status, `Importing ${file.name}: bank ${bank} of ${banks}, ${count} terms`);
     });
+    // If this fails, the next service worker start moves them (background.ts).
+    await moveStatusKeys(await listDictionaries(), words => call({ type: 'wordKeys', words }))
+      .catch(error => console.warn('minerr could not move the statuses to their keys', error));
     showStatus(status, `Imported ${title}: ${count} terms${metaText(meta)}`, 'ok');
   } catch (error) {
     showStatus(status, `Import failed: ${messageOf(error)}`, 'error');

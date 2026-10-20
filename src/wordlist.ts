@@ -25,5 +25,5 @@ export function listWords(words: ReadonlyMap<string, StoredStatus>, { search, fi
 // The words of a list with one word on each line, each one time.
 export const wordsOfLines = (text: string): string[] => [...new Set(text.split('\n').map(line => line.trim()).filter(Boolean))];
 
-// The lemmas of parsed text, each one time.
-export const lemmasOf = (parsed: Segment[][]): string[] => [...new Set(parsed.flat().flatMap(({ lemma }) => (lemma ? [lemma] : [])))];
+// The status keys of the words of parsed text, each one time.
+export const keysOf = (parsed: Segment[][]): string[] => [...new Set(parsed.flat().flatMap(({ lemma, entry }) => (lemma ? [entry?.key ?? lemma] : [])))];

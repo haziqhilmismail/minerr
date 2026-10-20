@@ -17,9 +17,9 @@ export type Rating = (typeof RATINGS)[number];
 
 export const ratingOf = (percent: number): Rating => RATINGS.find(rating => percent >= rating.min) ?? RATINGS[6];
 
-// One word on the page or in a subtitle line, with the status of its lemma.
+// One word on the page or in a subtitle line, by its status key, with its status.
 export interface Word {
-  lemma: string;
+  key: string;
   status: Status;
 }
 
@@ -28,7 +28,7 @@ export interface Comprehension {
   percent: number;
   rating: Rating;
   words: number;
-  // The number of different lemmas with each status.
+  // The number of different words (status keys) with each status.
   unique: Record<Status, number>;
 }
 
@@ -38,7 +38,7 @@ export function comprehension(words: Word[]): Comprehension | null {
   const understood = words.filter(word => word.status === 'known' || word.status === 'ignored').length;
   const percent = Math.floor((understood / words.length) * 100);
   const unique: Record<Status, number> = { unknown: 0, learning: 0, known: 0, ignored: 0 };
-  for (const status of new Map(words.map(word => [word.lemma, word.status])).values()) unique[status]++;
+  for (const status of new Map(words.map(word => [word.key, word.status])).values()) unique[status]++;
   return { percent, rating: ratingOf(percent), words: words.length, unique };
 }
 

@@ -1,6 +1,8 @@
+import type { Dictionary } from './db.ts';
 import { at, isList } from './parse.ts';
+import { call } from './rpc.ts';
 
-// The one definition of word statuses. Storage holds one key per lemma; a missing key means unknown.
+// The one definition of word statuses. Storage holds one key per word (its status key, src/entry.ts); a missing key means unknown.
 // color is the status color on every surface; underline is the thickness of the colored underline on page words (null: none).
 export const STATUSES = {
   unknown: { hotkey: '1', label: 'Unknown', className: 'ml-unknown', color: '#e5383b', underline: 'max(2px, 0.12em)' },
@@ -26,34 +28,44 @@ export const WORD_CSS = [
 ].join('\n');
 
 const PREFIX = 'w:';
-const wordKey = (lemma: string) => PREFIX + lemma;
-const lemmaOfKey = (key: string) => (key.startsWith(PREFIX) ? key.slice(PREFIX.length) : null);
+const wordKey = (key: string) => PREFIX + key;
+const keyOfStorage = (key: string) => (key.startsWith(PREFIX) ? key.slice(PREFIX.length) : null);
 const storedStatus = (value: unknown): Status => (isStatus(value) ? value : 'unknown');
 
-export const setStatus = (lemma: string, status: Status): Promise<void> => setStatuses([lemma], status);
+// A word by its status key (src/entry.ts).
+export interface WordId {
+  key: string;
+}
 
-// Calls listener with a Map of lemma -> new status for every word whose status changed in any tab.
+export const setStatus = (word: WordId, status: Status): Promise<void> => setStatuses([word], status);
+
+// Calls listener with a Map of status key -> new status for every key whose status changed in any tab.
 export function onStatusChange(listener: (changed: Map<string, Status>) => void): void {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
     const changed = new Map<string, Status>();
     for (const [key, { newValue }] of Object.entries(changes)) {
-      const lemma = lemmaOfKey(key);
-      if (lemma !== null) changed.set(lemma, storedStatus(newValue));
+      const word = keyOfStorage(key);
+      if (word !== null) changed.set(word, storedStatus(newValue));
     }
     if (changed.size) listener(changed);
   });
 }
 
-export function setStatuses(lemmas: string[], status: Status): Promise<void> {
-  return status === 'unknown'
-    ? chrome.storage.local.remove(lemmas.map(wordKey))
-    : chrome.storage.local.set(Object.fromEntries(lemmas.map(lemma => [wordKey(lemma), status])));
+export async function setStatuses(words: WordId[], status: Status): Promise<void> {
+  const keys = [...new Set(words.map(word => word.key))].map(wordKey);
+  if (status === 'unknown') return chrome.storage.local.remove(keys);
+  await chrome.storage.local.set(Object.fromEntries(keys.map(key => [key, status])));
 }
 
-export async function getStatuses(lemmas: string[]): Promise<Map<string, Status>> {
-  const stored = await chrome.storage.local.get(lemmas.map(wordKey));
-  return new Map(lemmas.map(lemma => [lemma, storedStatus(stored[wordKey(lemma)])]));
+// The stored statuses of words, by status key. A word that is not in the map is unknown.
+export async function getStatuses(words: WordId[]): Promise<Map<string, Status>> {
+  const keys = [...new Set(words.map(word => word.key))];
+  const stored = await chrome.storage.local.get(keys.map(wordKey));
+  return new Map(keys.flatMap(key => {
+    const value = stored[wordKey(key)];
+    return isStatus(value) ? [[key, value]] : [];
+  }));
 }
 
 // A status that storage holds: an unknown word has no key.
@@ -63,8 +75,8 @@ export const isStoredStatus = (value: unknown): value is StoredStatus => isStatu
 export async function getAllStatuses(): Promise<Record<string, StoredStatus>> {
   const stored = await chrome.storage.local.get(null);
   return Object.fromEntries(Object.entries(stored).flatMap(([key, value]) => {
-    const lemma = lemmaOfKey(key);
-    return lemma !== null && isStoredStatus(value) ? [[lemma, value]] : [];
+    const word = keyOfStorage(key);
+    return word !== null && isStoredStatus(value) ? [[word, value]] : [];
   }));
 }
 
@@ -124,8 +136,56 @@ export function mergeStatuses(current: Record<string, StoredStatus>, imported: R
   return { changes, counts };
 }
 
+// When two spellings of one word have different statuses, the word gets the higher one, so a merge never lowers a word.
+// ignored is above learning because the comprehension score counts an ignored word as understood (src/score.ts).
+const RANK: Record<StoredStatus, number> = { learning: 1, ignored: 2, known: 3 };
+
+// The status of each status key, from words with their statuses. keys[i] is the status key of words[i].
+export function statusesByKey(words: [string, StoredStatus][], keys: string[]): Map<string, StoredStatus> {
+  const byKey = new Map<string, StoredStatus>();
+  words.forEach(([word, status], i) => {
+    const key = keys[i] ?? word;
+    const other = byKey.get(key);
+    byKey.set(key, other && RANK[other] > RANK[status] ? other : status);
+  });
+  return byKey;
+}
+
+// The changes that move stored statuses to their status keys. keys[i] is the status key of the i-th stored word.
+export function statusMoves(stored: Record<string, StoredStatus>, keys: string[]) {
+  const byKey = statusesByKey(Object.entries(stored), keys);
+  return {
+    set: Object.fromEntries([...byKey].filter(([key, status]) => stored[key] !== status)),
+    remove: Object.keys(stored).filter(word => !byKey.has(word)),
+  };
+}
+
+const MOVED = 'statusKeysOf';
+
+// Moves each stored status to the status key of its word, one time for each set of dictionaries with entries.
+// The set comes first and the marker last, so a run that stops halfway runs again and ends in the same storage.
+export async function moveStatusKeys(dictionaries: Dictionary[], wordKeys: (words: string[]) => Promise<string[]>): Promise<void> {
+  const sequenced = dictionaries.filter(({ entries }) => entries);
+  // An unfinished import has part of its rows, and resolve reads them too.
+  if (!sequenced.length || dictionaries.some(({ count }) => count === null)) return;
+  const marker = JSON.stringify(sequenced.map(({ title, entries }) => [title, entries]));
+  if ((await chrome.storage.local.get(MOVED))[MOVED] === marker) return;
+  const stored = await getAllStatuses();
+  const { set, remove } = statusMoves(stored, await wordKeys(Object.keys(stored)));
+  await chrome.storage.local.set(Object.fromEntries(Object.entries(set).map(([key, status]) => [wordKey(key), status])));
+  await chrome.storage.local.remove(remove.map(wordKey));
+  await chrome.storage.local.set({ [MOVED]: marker });
+}
+
+// A dictionary delete or import can change the keys of the stored words, also for the same set of dictionaries.
+export const forgetStatusMove = (): Promise<void> => chrome.storage.local.remove(MOVED);
+
+// The words get the status keys of their dictionary entries first, so ねこ from an old file is stored as 猫.
 export async function importStatuses(imported: Record<string, StoredStatus>): Promise<ImportCounts> {
-  const { changes, counts } = mergeStatuses(await getAllStatuses(), imported);
-  await chrome.storage.local.set(Object.fromEntries(Object.entries(changes).map(([lemma, status]) => [wordKey(lemma), status])));
+  const entries = Object.entries(imported);
+  const keys = await call({ type: 'wordKeys', words: entries.map(([word]) => word) });
+  const canonical = Object.fromEntries(statusesByKey(entries, keys));
+  const { changes, counts } = mergeStatuses(await getAllStatuses(), canonical);
+  await chrome.storage.local.set(Object.fromEntries(Object.entries(changes).map(([key, status]) => [wordKey(key), status])));
   return counts;
 }

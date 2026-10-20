@@ -21,6 +21,8 @@ The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedi
 
 - The extension parses the text on all pages, and also the text that appears later. Subtitles on YouTube and Netflix are page text, so Minerr parses them too.
 - It joins a verb or adjective with its inflections into one word. For example, 食べなかった is one word with the dictionary form 食べる.
+- It joins nouns into the longest word that the dictionary has. For example, 食肉目ネコ科ネコ属 is three words: 食肉目, ネコ科, and ネコ属.
+- All the spellings of one dictionary word share one status. For example, 猫, ねこ, and ネコ are one word.
 - It reads text across inline markup as one text. For example, in `<ruby>暖<rt>あたた</rt></ruby>かくて`, 暖かくて is one word with the dictionary form 暖かい. Minerr does not parse the ruby text あたた, and it does not put it in the card sentence.
 - It looks up definitions in a Yomitan dictionary that you import, for example JMdict.
 - It shows the tags of the dictionary in color, as Yomitan does. The tags of the word, for example `⭐` (high priority) and `ichi` or `news13k` (frequent), are next to the reading. The tags of each definition, for example `v1` (Ichidan verb) and `uk` (usually in kana), are before the definition. Move the mouse over a tag to see what it means.
@@ -88,6 +90,8 @@ AnkiConnect accepts requests from browser extensions by default. If the popup sh
 
 You can import other Yomitan term dictionaries in the same way. If you import a dictionary with the same title again, the new import replaces the old one.
 
+If you imported JMdict with an earlier version of Minerr, import it again. The new import keeps the entry number of each word, so the spellings of a word can share a status. Until you import it again, its row on the options page shows `Import again so that the spellings of a word share one status.` See [Spellings of one word](#spellings-of-one-word).
+
 Minerr shows the tags of all dictionaries. A dictionary that you imported with an earlier version of Minerr has no tags. Its row on the options page shows `Import again to show tags.` Import the zip file again to get the tags.
 
 On the options page, click **Check connection** in the **Anki** section. The page must show `Connected (AnkiConnect version 6)`.
@@ -122,6 +126,25 @@ When the popup is open, use these keys:
 | `Esc` | Close the card form, or close the popup. |
 
 The keys do not work when the focus is in a text field.
+
+### Spellings of one word
+
+A status belongs to a word, not to a spelling. A word is one JMdict entry. For example, the entry 猫 has the spellings 猫 and ネコ and the reading ねこ. When you set 猫 to known, ねこ and ネコ also become known.
+
+Minerr finds the entry from the dictionary form and the reading of the word on the page:
+
+- If one entry fits, all the spellings of that entry share one status.
+- If more than one entry fits, the spelling keeps its own status. For example, かみ can be 紙, 神, or 髪.
+- If one spelling has two readings in two entries, each entry has its own status. For example, 上手 (じょうず) and 上手 (うわて) are two words.
+- If you have no dictionary that has entry numbers, each spelling has its own status.
+
+The status key is the text that Minerr stores for the word. The key is the headword of the entry, for example 猫. If a more common entry has the same headword, the key also has the reading of the entry, for example `上手【うわて】`. The status file and the word browser show these keys.
+
+The popup shows the headword and the reading of the entry. If the spelling on the page is different, the popup also shows it, for example `On the page: ネコ`.
+
+Earlier versions of Minerr stored the status under the spelling of the dictionary form, for example ねこ. When a dictionary import is complete, Minerr moves each status to the key of its word, for example from ねこ to 猫. Minerr does this one time for each set of dictionaries.
+
+If two spellings of one word have different statuses, the word gets the higher status. Known is the highest status, then ignored, then learning. Thus a move never makes a known word unknown or learning. An import of a status file uses the same rule.
 
 ### Mark words in bulk
 
@@ -176,7 +199,7 @@ The form works with Lapis, with the classic note type, and with your own note ty
 2. Enter an Anki search and the name of the field that holds the word.
 3. Click **Import known words**.
 
-Minerr sets each word from the matching cards to known. The default search is `deck:"Minerr" prop:ivl>=21`, which finds the cards with an interval of 21 days or more. The default field is `Word`.
+Minerr sets each word from the matching cards to known. If a dictionary has the word, Minerr uses the status key of its entry, so 猫科 becomes ネコ科. The default search is `deck:"Minerr" prop:ivl>=21`, which finds the cards with an interval of 21 days or more. The default field is `Word`.
 
 ## Find i+1 sentences
 
@@ -656,7 +679,7 @@ To import the statuses:
 2. In **Word statuses**, click **Import statuses**.
 3. Select a file that you exported.
 
-The import keeps the words that are not in the file. If a word is in the file, the status from the file replaces the current status. The page shows the number of words that the import added, changed, and did not change. The new statuses apply at once in all open tabs.
+The import keeps the words that are not in the file. If a word is in the file, the status from the file replaces the current status. Minerr changes each word of the file to the status key of its entry, so ねこ becomes 猫. The page shows the number of words that the import added, changed, and did not change. The new statuses apply at once in all open tabs.
 
 If the file is not a correct Minerr status file, the page shows the problem, and Minerr changes no status.
 
@@ -708,7 +731,7 @@ To turn the sentence highlight off or on, press `Alt+Shift+S` on a page. Or, on 
 
 ### Count on the page
 
-Under the word, the popup shows how many times the word appears on the page, for example `Appears 4 times on this page`. Minerr counts the words with the same dictionary form, so 食べた and 食べなかった both count for 食べる.
+Under the word, the popup shows how many times the word appears on the page, for example `Appears 4 times on this page`. Minerr counts the words with the same status key, so 食べた and 食べなかった both count for 食べる, and ねこ and ネコ both count for 猫.
 
 ## Furigana
 
@@ -835,11 +858,12 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/whisper.ts` | The client for the WhisperX server. |
 | `src/lineaudio.ts`, `src/record.ts` | The sentence audio of a card: the server cuts it, or the tab records the line. |
 | `src/db.ts` | The dictionary storage in IndexedDB. |
+| `src/entry.ts` | The dictionary entry and the status key of each word, and the join of compound nouns. |
 | `src/group.ts`, `src/sentence.ts`, `src/yomitan.ts`, `src/zip.ts` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
 | `src/theme.ts`, `theme.css` | The theme setting, and the palette of the extension pages. |
 | `src/hover.ts` | The word popup setting, and the rule that decides when the popup opens. |
 | `action.html`, `action.ts` | The toolbar popup. |
-| `player.html`, `player.ts` | The video player page. Content scripts do not run on extension pages, so the page loads `src/page.ts`, `src/popup.ts`, and `src/iplusone.ts` itself. |
+| `player.html`, `player.ts` | The video player page. Content scripts do not run on extension pages, so the page loads `src/page.ts`, `src/popup.ts`, `src/iplusone.ts`, and `src/stats.ts` itself. |
 | `src/iplusone.ts` | The i+1 highlight. The pure part is `iPlusOneSentences` in `src/sentence.ts`. |
 | `src/video.ts` | The video, its subtitle lines, and the overlay over it. YouTube, the player, and other sites use it. |
 | `src/overlay.ts` | The subtitle overlay line, for YouTube and the player. |
@@ -863,9 +887,9 @@ Node.js runs the `.ts` test files directly, without a build. To run the tests:
 1. Run `npm ci`.
 2. Download `JMdict_english.zip` to `test/fixtures/JMdict_english.zip`.
 3. Run `npm run build`. The browser tests load the extension from `dist`.
-4. Run `node test/unit.ts`, `node test/card-unit.ts`, and `node test/video-unit.ts`.
+4. Run `node test/unit.ts`, `node test/entry-unit.ts`, `node test/card-unit.ts`, and `node test/video-unit.ts`.
 5. Close Anki, because the next test uses port 8765.
-6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect. Then run `node test/card.ts`. It tests the Lapis note type, the word audio, and the card form, with a mock AnkiConnect and a mock JapanesePod101.
+6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect. Then run `node test/spelling.ts`, which tests the shared status of the spellings of a word, and `node test/card.ts`. It tests the Lapis note type, the word audio, and the card form, with a mock AnkiConnect and a mock JapanesePod101.
 7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/media.ts`, `node test/player.ts`, and `node test/sites.ts`, which use the same ports.
 8. Run `python3 -I -B -m unittest discover -s server` to test the WhisperX server. This test does not need WhisperX.
 
@@ -876,6 +900,7 @@ More scripts:
 - `node test/screenshots.ts` saves screenshots of the page, the popup, and the options page to `/tmp/minerr-ui`.
 - `node test/card-preview.ts` saves screenshots of the card to `/tmp/minerr-card`.
 - `node test/page-perf.ts [lines]` measures the first parse of a page with many lines of Japanese text, 50000 by default. It prints the time until all the words show and the longest tasks of the page.
+- `node test/parse-time.ts` imports the real JMdict and prints the parse time of a long page. To time a different build, set `EXTENSION_DIR`.
 - `node test/readme-shots.ts` saves the two screenshots at the top of this README to `docs/`. It needs the network and a WhisperX server that has the subtitles of the video.
 - If the system has no Japanese font, set `CJK_FONT_DIR` to a folder that contains one. Put an emoji font in the same folder, for example `seguiemj.ttf` from Windows. Without it, the `⭐` tag shows as a box.
 - If Chromium cannot start because a library such as `libnss3.so` is missing, set `LD_LIBRARY_PATH` to a folder with the missing libraries.

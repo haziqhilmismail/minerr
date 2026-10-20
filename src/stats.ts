@@ -4,16 +4,17 @@ import { iPlusOneRanges, statusOf } from './iplusone.ts';
 import { serve } from './rpc.ts';
 import { comprehension, type Comprehension, iPlusOneTexts, type Word } from './score.ts';
 import type { Piece } from './sentence.ts';
-import { getStatuses } from './status.ts';
+import { getStatuses, type WordId } from './status.ts';
+import { wordOf } from './words.ts';
 
 // sentences are the i+1 sentences, each one time, in text order. pageStatsShow scrolls to a page sentence;
 // a subtitle line is not on the page now. lines is the number of subtitle lines in the score.
 export type PageStats = { score: Comprehension | null; sentences: string[] } & ({ source: 'page' } | { source: 'video'; lines: number });
 
-// A part of a subtitle line: a word with its lemma, or plain text with lemma null.
+// A part of a subtitle line: a word, or plain text with word null.
 interface Token {
   text: string;
-  lemma: string | null;
+  word: WordId | null;
 }
 
 const FOCUS = 'minerr-focus';
@@ -29,7 +30,7 @@ let shownRanges: Range[] = [];
 
 function pageStats(): PageStats {
   const words: Word[] = [...document.querySelectorAll<HTMLElement>('.ml-word')]
-    .map(span => ({ lemma: span.dataset.mlLemma ?? '', status: statusOf(span) ?? 'unknown' }));
+    .map(span => ({ key: wordOf(span).key, status: statusOf(span) ?? 'unknown' }));
   const sentences = new Map<string, Range>();
   for (const range of iPlusOneRanges()) {
     const text = tidy(range.toString());
@@ -55,16 +56,17 @@ function recordLine(): void {
   if (!line || !text || lines.has(text) || !line.querySelector('.ml-word')) return;
   lines.set(text, [...line.childNodes].map(node => ({
     text: node.textContent ?? '',
-    lemma: node instanceof HTMLElement && node.classList.contains('ml-word') ? node.dataset.mlLemma ?? null : null,
+    word: node instanceof HTMLElement && node.classList.contains('ml-word') ? wordOf(node) : null,
   })));
 }
 
 async function videoStats(): Promise<PageStats> {
   recordLine();
   const tokens = [...lines.values()];
-  const statuses = await getStatuses([...new Set(tokens.flat().flatMap(token => (token.lemma ? [token.lemma] : [])))]);
-  const pieces = tokens.map(line => line.map(({ text, lemma }): Piece => ({ text, status: lemma ? statuses.get(lemma) ?? 'unknown' : null })));
-  const words = tokens.flat().flatMap(({ lemma }) => (lemma ? [{ lemma, status: statuses.get(lemma) ?? 'unknown' }] : []));
+  const statuses = await getStatuses(tokens.flat().flatMap(token => (token.word ? [token.word] : [])));
+  const statusOfWord = ({ key }: WordId) => statuses.get(key) ?? 'unknown';
+  const pieces = tokens.map(line => line.map(({ text, word }): Piece => ({ text, status: word ? statusOfWord(word) : null })));
+  const words = tokens.flat().flatMap(({ word }) => (word ? [{ key: word.key, status: statusOfWord(word) }] : []));
   shownRanges = [];
   return { source: 'video', lines: lines.size, score: comprehension(words), sentences: [...new Set(pieces.flatMap(iPlusOneTexts))] };
 }
