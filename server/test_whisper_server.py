@@ -1,4 +1,4 @@
-"""Run: python3 -I -m unittest discover -s server -v (needs no WhisperX install)."""
+"""Run: python3 -I -B -m unittest discover -s server -v (needs no WhisperX install)."""
 
 import unittest
 
