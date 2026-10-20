@@ -6,6 +6,7 @@ import { type JobStatus, waitForJob } from './whisper.ts';
 
 const POLL_MS = 2000;
 const RETRY_MS = 3000;
+const MAX_RETRY_MS = 60000;
 
 // YouTube's caption window stays in the DOM (the overlay reads it), but it is invisible and takes no mouse events.
 // When Minerr is off (page.ts sets data-minerr-off on the root), YouTube's own captions come back and the overlay hides.
@@ -80,14 +81,15 @@ function changeVideo(videoId: string | null): void {
   if (videoId) loadTracks(videoId);
 }
 
-// The server can start after the video opened, so the tab asks for the cached WhisperX subtitles until the server answers.
-// Only then does it ask for the YouTube subtitles, which take some seconds, because yt-dlp asks YouTube.
-function loadTracks(videoId: string): void {
+// The server can start after the video opened, so the tab asks for the cached WhisperX subtitles until the server answers,
+// with twice the wait after each try, up to one minute. Only then does it ask for the YouTube subtitles,
+// which take some seconds, because yt-dlp asks YouTube.
+function loadTracks(videoId: string, wait = RETRY_MS): void {
   call({ type: 'whisperCached', videoId }).then(segments => {
     if (state.videoId !== videoId) return;
     if (segments) useSegments(segments);
     loadSiteCaptions(videoId);
-  }, () => setTimeout(() => { if (state.videoId === videoId) loadTracks(videoId); }, RETRY_MS));
+  }, () => setTimeout(() => { if (state.videoId === videoId) loadTracks(videoId, Math.min(wait * 2, MAX_RETRY_MS)); }, wait));
 }
 
 function loadSiteCaptions(videoId: string): void {
