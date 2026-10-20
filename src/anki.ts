@@ -359,15 +359,17 @@ export async function addDraft(deck: string, { modelName, fields, media }: NoteD
 
 const LAPIS_PACKAGE = '_minerr_lapis.apkg';
 
-// Imports Lapis.apkg from the Lapis project, if Anki has no Lapis note type. AnkiConnect downloads the file to the media folder,
-// and importPackage reads a path relative to that folder. The package also makes a "Lapis" deck with one sample note:
+// Imports Lapis.apkg from the Lapis project, if Anki has no Lapis note type. AnkiConnect downloads the file to the media folder.
+// importPackage needs the full path: Anki does not run in the media folder. The package also makes a "Lapis" deck with one sample note:
 // Minerr deletes that deck only if it holds the sample note and nothing else.
 export async function installLapis(): Promise<string> {
   if ((await modelNames()).includes(LAPIS_MODEL)) return 'Lapis is already in Anki.';
   const filename = await invoke('storeMediaFile', { filename: LAPIS_PACKAGE, url: LAPIS_PACKAGE_URL });
   if (!isString(filename)) unexpected('storeMediaFile');
   try {
-    if (await invoke('importPackage', { path: filename }) !== true) throw new Error('Anki did not import Lapis.apkg.');
+    const folder = await invoke('getMediaDirPath');
+    if (!isString(folder)) unexpected('getMediaDirPath');
+    if (await invoke('importPackage', { path: `${folder}/${filename}` }) !== true) throw new Error('Anki did not import Lapis.apkg.');
   } finally {
     await invoke('deleteMediaFile', { filename });
   }

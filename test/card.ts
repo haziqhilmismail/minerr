@@ -71,6 +71,7 @@ try {
 
   let models = ['Basic'];
   anki.replies.modelNames = () => models;
+  anki.replies.getMediaDirPath = () => '/anki/collection.media';
   anki.replies.importPackage = () => { models = ['Basic', 'Lapis']; return true; };
   anki.replies.deleteMediaFile = () => null;
   anki.replies.deckNames = () => ['Default', 'Lapis'];
@@ -81,9 +82,9 @@ try {
   from = anki.requests.length;
   await options.click('#lapis-install-button');
   await options.locator('#note-type-status', { hasText: 'Installed Lapis.' }).waitFor();
-  assert.deepEqual(actions(from), ['modelNames', 'storeMediaFile', 'importPackage', 'deleteMediaFile', 'deckNames', 'findNotes', 'notesInfo', 'deleteDecks', 'modelNames']);
+  assert.deepEqual(actions(from), ['modelNames', 'storeMediaFile', 'getMediaDirPath', 'importPackage', 'deleteMediaFile', 'deckNames', 'findNotes', 'notesInfo', 'deleteDecks', 'modelNames']);
   assert.deepEqual(params(from, 'storeMediaFile'), [{ filename: '_minerr_lapis.apkg', url: LAPIS_PACKAGE_URL }]);
-  assert.deepEqual(params(from, 'importPackage'), [{ path: '_minerr_lapis.apkg' }]);
+  assert.deepEqual(params(from, 'importPackage'), [{ path: '/anki/collection.media/_minerr_lapis.apkg' }]);
   assert.deepEqual(params(from, 'deleteMediaFile'), [{ filename: '_minerr_lapis.apkg' }]);
   assert.deepEqual(params(from, 'findNotes'), [{ query: 'deck:"Lapis"' }]);
   assert.deepEqual(params(from, 'deleteDecks'), [{ decks: ['Lapis'], cardsToo: true }]);

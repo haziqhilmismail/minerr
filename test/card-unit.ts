@@ -120,7 +120,7 @@ test('installLapis keeps a "Lapis" deck that has notes of the user, and does not
   const requests: string[] = [];
   let models = ['Basic'];
   const replies: Record<string, () => unknown> = {
-    modelNames: () => models, storeMediaFile: () => '_minerr_lapis.apkg', importPackage: () => { models = ['Basic', 'Lapis']; return true; },
+    modelNames: () => models, storeMediaFile: () => '_minerr_lapis.apkg', getMediaDirPath: () => 'C:\\Anki\\collection.media', importPackage: () => { models = ['Basic', 'Lapis']; return true; },
     deleteMediaFile: () => null, deckNames: () => ['Lapis'], findNotes: () => [5, 6],
     notesInfo: () => [{ modelName: 'Lapis', fields: { Expression: { value: '十中八九' } } }, { modelName: 'Lapis', fields: { Expression: { value: '猫' } } }],
   };
@@ -132,7 +132,7 @@ test('installLapis keeps a "Lapis" deck that has notes of the user, and does not
   };
   try {
     assert.equal(await installLapis(), 'Installed Lapis. The "Lapis" deck has other notes, so Minerr kept it.');
-    assert.deepEqual(requests, ['modelNames', 'storeMediaFile', 'importPackage', 'deleteMediaFile', 'deckNames', 'findNotes', 'notesInfo']);
+    assert.deepEqual(requests, ['modelNames', 'storeMediaFile', 'getMediaDirPath', 'importPackage', 'deleteMediaFile', 'deckNames', 'findNotes', 'notesInfo']);
     requests.length = 0;
     assert.equal(await installLapis(), 'Lapis is already in Anki.');
     assert.deepEqual(requests, ['modelNames']);
