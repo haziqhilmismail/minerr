@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": ".",
+    "outDir": "dist",
+    "types": ["chrome"]
+  },
+  "include": ["*.js", "*.ts", "src"]
+}

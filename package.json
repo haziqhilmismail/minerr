@@ -5,12 +5,17 @@
   "type": "module",
   "scripts": {
     "vendor": "mkdir -p vendor/kuromoji && cp node_modules/kuromoji/build/kuromoji.js node_modules/kuromoji/LICENSE-2.0.txt node_modules/kuromoji/NOTICE.md vendor/kuromoji/ && cp -r node_modules/kuromoji/dict vendor/kuromoji/",
-    "test": "node test/unit.mjs && node test/e2e.mjs && node test/subtitles.mjs"
+    "build": "node scripts/dist.ts && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "npm run typecheck && npm run build && node test/unit.mjs && node test/e2e.mjs && node test/subtitles.mjs"
   },
   "dependencies": {
     "kuromoji": "^0.1.2"
   },
   "devDependencies": {
-    "playwright": "^1.64.1"
+    "@types/chrome": "^0.3.5",
+    "@types/node": "^24.19.2",
+    "playwright": "^1.64.1",
+    "typescript": "^7.0.2"
   }
 }

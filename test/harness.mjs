@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { chromium } from 'playwright';
 
 const here = import.meta.dirname;
-export const extension = process.env.EXTENSION_DIR ?? join(here, '..');
+// Run npm run build first: the tests load the built extension in dist/.
+export const extension = process.env.EXTENSION_DIR ?? join(here, '..', 'dist');
 
 // rows are Yomitan term_bank rows, tags are tag_bank rows.
 export function makeDictionary(path, title, rows, tags = []) {
