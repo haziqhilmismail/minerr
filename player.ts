@@ -3,6 +3,7 @@
 import './src/page.ts';
 import './src/popup.ts';
 import './src/iplusone.ts';
+import './src/stats.ts';
 import { parseSubtitles, type SubtitleSegment, toSrt } from './src/captions.ts';
 import { byId } from './src/dom.ts';
 import { messageOf } from './src/rpc.ts';
