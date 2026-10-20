@@ -1,4 +1,5 @@
 import { captionText, type SubtitleSegment } from './captions.ts';
+import { SIDE_OPEN } from './linelist.ts';
 import { call, type Message, messageOf, serve } from './rpc.ts';
 import { attach, layer, setLines, sidebar } from './video.ts';
 import { secondDisplay } from './videosettings.ts';
@@ -12,17 +13,17 @@ const MAX_RETRY_MS = 60000;
 // When Minerr is off (page.ts sets data-minerr-off on the root), YouTube's own captions come back and the overlay hides.
 // The open subtitle sidebar (src/linelist.ts) narrows the page. The masthead is fixed, so it gets its own right edge.
 // The theater player is as high as the narrower page is wide, where YouTube makes it as high as the window is wide.
-// YouTube sizes the two columns from the window, wider than the narrower page, so the recommended videos hide and
-// the player column takes the width of the page.
+// YouTube sets the min-width of #columns from the window, wider than the narrower page. Minerr removes that min-width
+// and hides #secondary (the recommended videos), so the player column gets the width of the page.
 const STYLE = `
   :root:not([data-minerr-off]) .ytp-caption-window-container { opacity: 0 !important; pointer-events: none !important; }
   :root[data-minerr-off] .minerr-subs { display: none; }
-  :root[data-minerr-side]:not([data-minerr-off]) #masthead-container { left: 0 !important; right: var(--minerr-side-width) !important; width: auto !important; }
-  :root[data-minerr-side]:not([data-minerr-off]) ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container {
+  ${SIDE_OPEN} #masthead-container { left: 0 !important; right: var(--minerr-side-width) !important; width: auto !important; }
+  ${SIDE_OPEN} ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container {
     height: calc((100vw - var(--minerr-side-width)) * 9 / 16) !important;
   }
-  :root[data-minerr-side]:not([data-minerr-off]) ytd-watch-flexy #columns { min-width: 0 !important; }
-  :root[data-minerr-side]:not([data-minerr-off]) ytd-watch-flexy #secondary { display: none !important; }
+  ${SIDE_OPEN} ytd-watch-flexy #columns { min-width: 0 !important; }
+  ${SIDE_OPEN} ytd-watch-flexy #secondary { display: none !important; }
 `;
 
 // 'youtube' shows the YouTube subtitles: with times when the server downloaded them, else a mirror of YouTube's own captions.

@@ -2,7 +2,8 @@
 import type { MediaFile, NoteDraft } from './anki.ts';
 import { el } from './popup-view.ts';
 
-// The other children of an editing popup hide, so the form fills the popup.
+// The other children of an editing popup hide, so the form fills the popup. The form is in the shadow root of the popup,
+// so .primary of the Send button comes from the popup STYLE (src/popup-view.ts).
 const STYLE = `
   .popup.editing > :not(form) { display: none; }
   .card-form { display: flex; flex-direction: column; min-height: 0; }

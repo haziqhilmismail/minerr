@@ -73,7 +73,7 @@ const STYLE = `
   .add, .edit { min-height: 36px; padding: 8px 16px; border: 0; border-radius: var(--radius-pill); font-weight: 700; }
   .add { flex: 1; }
   ${PRIMARY_BUTTON}
-  .add:disabled { cursor: progress; opacity: .65; filter: none; }
+  .add:disabled { cursor: progress; opacity: .65; }
   .edit { background: var(--raised); }
   .edit:hover { background: var(--accent-soft); }
   .message { margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--ok); }

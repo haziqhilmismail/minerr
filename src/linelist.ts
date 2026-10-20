@@ -9,24 +9,26 @@ import { choices, FILTER_NAMES, LINE_FILTERS, type LineFilter, type LineWord, sh
 import { addWordCard } from './popup.ts';
 import { STATUSES } from './status.ts';
 import { applyTheme } from './theme.ts';
-import { TOKENS } from './tokens.ts';
+import { themed } from './tokens.ts';
 import { wordOf } from './words.ts';
 
 // The list does not follow the video under the mouse, or while the user selects a target word.
 const PAUSED = ':hover, :has(.pick)';
 
-// The panel declares the tokens of docs/design.md and follows the Minerr theme (src/theme.ts), not the colors of the page.
+// The open panel, for the rules of the page around it.
+export const SIDE_OPEN = ':root[data-minerr-side]:not([data-minerr-off])';
+
+// The panel follows the Minerr theme (src/theme.ts), not the colors of the page.
 const STYLE = `
   :root { --minerr-side-width: min(400px, 40vw); }
-  :root[data-minerr-side]:not([data-minerr-off]) { position: relative !important; margin-right: var(--minerr-side-width) !important; }
-  .minerr-lines { ${TOKENS} color-scheme: light dark;
+  ${SIDE_OPEN} { position: relative !important; margin-right: var(--minerr-side-width) !important; }
+  ${themed('.minerr-lines')}
+  .minerr-lines {
     position: fixed; top: 0; right: 0; bottom: 0; z-index: 2147483646; width: var(--minerr-side-width);
     box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden;
     border-left: 1px solid var(--line); background: var(--bg); color: var(--text); box-shadow: var(--shadow-2);
     font: 16px/1.5 var(--font-ui); text-align: left;
   }
-  .minerr-lines[data-theme="light"] { color-scheme: light; }
-  .minerr-lines[data-theme="dark"] { color-scheme: dark; }
   .minerr-lines[hidden], :root[data-minerr-off] .minerr-lines { display: none; }
   .minerr-lines button, .minerr-lines select, .minerr-lines input { box-sizing: border-box; margin: 0; border: 1px solid var(--line);
     border-radius: var(--radius-pill); background: transparent; color: inherit; font: 600 14px/1.6 var(--font-ui); cursor: pointer; }
