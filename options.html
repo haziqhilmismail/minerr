@@ -242,6 +242,11 @@
     <h2 id="video-heading">Video</h2>
     <p class="help">The subtitle overlay on YouTube, in the video player, and on other sites.</p>
     <div class="field">
+      <label for="sub-scale">Subtitle size: <output id="sub-scale-value" for="sub-scale"></output></label>
+      <input id="sub-scale" type="range" min="50" max="300" step="10" aria-describedby="sub-scale-help">
+      <p id="sub-scale-help" class="help">The text size of the subtitles. On a video, Alt+= makes them larger and Alt+- makes them smaller.</p>
+    </div>
+    <div class="field">
       <label for="audio-padding">Sentence audio padding (ms)</label>
       <input id="audio-padding" type="number" min="0" max="3000" step="100" aria-describedby="audio-padding-help">
       <p id="audio-padding-help" class="help">A card from a subtitle line gets the audio of the line, and this much audio before and after it.</p>
