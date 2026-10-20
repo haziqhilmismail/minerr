@@ -3,6 +3,7 @@ import type { SubtitleSegment } from './captions.ts';
 import type { Segment } from './group.ts';
 import type { CardLine } from './lineaudio.ts';
 import { at } from './parse.ts';
+import type { PageStats } from './stats.ts';
 import type { Snapshot, Source } from './subtitles.ts';
 import type { Health, Job } from './whisper.ts';
 import type { Group } from './yomitan.ts';
@@ -12,6 +13,7 @@ import type { Group } from './yomitan.ts';
 // The content scripts of a YouTube tab handle subsState, subsGenerate, and subsUse.
 // The page with the video overlay (a content script, or the player page) handles videoLine and videoRecord.
 // The content scripts of a page that is not YouTube handle videoAttach.
+// The content scripts of every tab, and the reader page, handle pageStats and pageStatsShow (src/stats.ts).
 interface Protocol {
   parse: { request: { texts: string[] }; reply: Segment[][] };
   lookup: { request: { lemma: string }; reply: Group[] };
@@ -31,6 +33,8 @@ interface Protocol {
   videoLine: { request: {}; reply: CardLine | null };
   videoRecord: { request: { start: number; end: number }; reply: MediaFile | null };
   videoAttach: { request: {}; reply: string };
+  pageStats: { request: {}; reply: PageStats };
+  pageStatsShow: { request: { index: number }; reply: void };
 }
 
 type MessageType = keyof Protocol;

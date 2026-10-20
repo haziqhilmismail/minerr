@@ -4,13 +4,14 @@
   "version": "0.1.0",
   "description": "Colors Japanese words by status, shows dictionary definitions on hover, and adds Anki cards.",
   "permissions": ["storage", "offscreen", "unlimitedStorage"],
+  "optional_permissions": ["clipboardRead"],
   "host_permissions": ["<all_urls>", "http://127.0.0.1:8765/*", "http://127.0.0.1:8766/*"],
   "background": { "service_worker": "background.js", "type": "module" },
   "content_scripts": [
     { "matches": ["<all_urls>"], "js": ["content.js"] }
   ],
   "web_accessible_resources": [
-    { "resources": ["src/anki.js", "src/captions.js", "src/dom.js", "src/hover.js", "src/iplusone.js", "src/overlay.js", "src/page.js", "src/parse.js", "src/popup.js", "src/rpc.js", "src/sentence.js", "src/settings.js", "src/status.js", "src/subtitles.js", "src/tags.js", "src/theme.js", "src/video.js", "src/playback.js", "src/videokeys.js", "src/videosettings.js", "src/record.js", "src/autopause.js", "src/linelist.js", "src/anywhere.js", "src/whisper.js"], "matches": ["<all_urls>"] }
+    { "resources": ["src/anki.js", "src/anywhere.js", "src/autopause.js", "src/captions.js", "src/dom.js", "src/hover.js", "src/iplusone.js", "src/linelist.js", "src/overlay.js", "src/page.js", "src/parse.js", "src/playback.js", "src/popup.js", "src/record.js", "src/rpc.js", "src/score.js", "src/sentence.js", "src/settings.js", "src/stats.js", "src/status.js", "src/subtitles.js", "src/tags.js", "src/theme.js", "src/video.js", "src/videokeys.js", "src/videosettings.js", "src/whisper.js"], "matches": ["<all_urls>"] }
   ],
   "action": { "default_title": "Minerr", "default_popup": "action.html" },
   "commands": {

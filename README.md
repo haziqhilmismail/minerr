@@ -30,6 +30,9 @@ The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedi
 - On YouTube, it shows the subtitles in its own large overlay at the bottom center of the video. You can look up and mine the words in the overlay. The overlay also works on other video sites and on video files from your computer.
 - A card from a subtitle line gets the audio of the line.
 - It can make Japanese subtitles for a YouTube video with WhisperX, in a small server on your computer.
+- It shows a comprehension score for each page or video, and the recommended i+1 sentences.
+- It has a word browser to find, sort, and change word statuses, and to add a list of known words.
+- It has a reader for `.epub`, `.txt`, `.srt`, and `.vtt` files, with vertical text, and a page for pasted text.
 
 All data stays on your computer. The extension sends requests only to AnkiConnect at `http://127.0.0.1:8765` and to the optional WhisperX server at `http://127.0.0.1:8766`.
 
@@ -163,6 +166,34 @@ To turn the highlight off or on:
 2. Click the **Highlight i+1 sentences** switch.
 
 When you turn Minerr off, the highlight also goes away.
+
+## Comprehension score
+
+The toolbar menu shows how much of the current tab you understand.
+
+1. Open a page with Japanese text, or a YouTube video.
+2. Click the Minerr button in the Chrome toolbar.
+
+The **Comprehension** section shows these items:
+
+- The score: the percent of the words with the status known or ignored. A learning word does not count as understood.
+- A label for the score, as in Migaku. The table below gives the labels.
+- The number of different words with each status.
+- The recommended sentences: the i+1 sentences of the tab, each one time. Click a sentence to scroll the tab to it. The sentence gets a yellow flash.
+
+| Score | Label |
+| --- | --- |
+| 99% or more | Exceptional |
+| 95% to 98% | Excellent |
+| 90% to 94% | Great |
+| 80% to 89% | Good |
+| 70% to 79% | Approachable |
+| 60% to 69% | Challenging |
+| Less than 60% | Ambitious |
+
+On a YouTube video, the score uses only the subtitle lines that the overlay showed in the tab. The score changes while you watch. When you open a different video, the count starts again. You cannot click a subtitle sentence, because the line is not on the page now.
+
+Migaku also uses the number of i+1 sentences in its score. Minerr uses only the percent of the words.
 
 ## Subtitles on YouTube
 
@@ -389,6 +420,59 @@ The offset applies to the open video until you open a different video. The text 
 
 The options page also shows these keys, in **Colors and shortcuts**.
 
+## Read a file
+
+The Minerr reader shows the text of a book or a subtitle file. The words get underlines, and the popup, the keys, and the i+1 highlight work as on a web page.
+
+1. Click the Minerr button in the Chrome toolbar.
+2. Click **Read a file**. The reader opens in a new tab.
+3. Drop a file on the page, or click **Choose a file**.
+
+The reader reads these files:
+
+| File | Content |
+| --- | --- |
+| `.epub` | Each chapter of the book. The **Chapter** list shows the first heading of each chapter. |
+| `.txt` | Each line with text is a paragraph. A long file is cut into parts of about 10,000 characters. |
+| `.srt`, `.vtt` | Each subtitle is a paragraph. The reader does not show the times. |
+
+The reader keeps only the text of an EPUB file. It keeps the paragraphs, the headings, and the furigana (ruby). It removes the scripts, the styles, the links, and the images. The furigana is not page text, so a card sentence does not contain it.
+
+Use these keys to turn the pages:
+
+| Key | Action |
+| --- | --- |
+| `PageDown`, `Space`, `↓` | Go to the next page. At the end of a chapter, open the next chapter. |
+| `PageUp`, `Shift+Space`, `↑` | Go to the previous page. At the start of a chapter, open the end of the chapter before. |
+| `→` | Go to the next page. In vertical text, go to the previous page. |
+| `←` | Go to the previous page. In vertical text, go to the next page. |
+
+The keys do not work when the focus is in a text field or a list.
+
+To show vertical text, click **Vertical text**. The lines go from top to bottom, and from right to left. The mouse wheel also turns the lines. Click **Vertical text** again to show horizontal text. Minerr keeps this setting for all files.
+
+Minerr keeps the place where you stop in each file. When you open the same file again, the reader shows the same chapter and the same place. Minerr knows a file by its name and its size.
+
+## Paste text
+
+You can read text that you copy, for example from a game or a different program.
+
+1. Click the Minerr button in the Chrome toolbar.
+2. Click **Paste text**.
+3. Copy Japanese text, then press `Ctrl+V` on the page.
+
+Each paste adds the text at the bottom of the page. To remove all the texts, click **Clear**.
+
+### Auto-paste
+
+With **Auto-paste**, the page adds the text from the clipboard each time the page gets the focus. You do not press `Ctrl+V`.
+
+1. Select **Auto-paste**.
+2. Chrome asks for the permission to read the clipboard. Click **Allow**.
+3. Copy text in a different program, then click the Minerr page.
+
+If the clipboard has the same text as the last paste, the page adds nothing. Minerr asks for the clipboard permission only when you select **Auto-paste**, so the installation of Minerr asks for no clipboard permission.
+
 ## The note type
 
 You do not make the note type yourself. When you add the first card, Minerr makes the deck and the note type in Anki through AnkiConnect. The default deck is `Minerr`. You can change the deck on the options page. Minerr adds the tag `minerr` to each note.
@@ -506,6 +590,36 @@ You can choose when the word popup opens.
 
 In all modes, `Shift` opens the popup at once. You can press `Shift` before or after you move the mouse onto the word. If a popup is open, the popup of the next word opens after 0.05 seconds. A quick pass of the mouse over a word does not open a popup. The change applies at once in all tabs.
 
+## Word browser
+
+The word browser lists all words with the status learning, known, or ignored. A word that is not in the list is unknown.
+
+1. Click the Minerr button in the Chrome toolbar.
+2. Click **Word browser**. The page opens in a new tab.
+
+Use the page as follows:
+
+- To find a word, type a part of it in **Search**.
+- To show only one status, select it in **Status**.
+- To sort the list, select **Word** or **Status** in **Sort by**. The word order is the Japanese order of Chrome.
+- To change the status of one word, select the new status in its row.
+- To change the status of many words, select their check boxes, then click a status above the list. The check box in the table header selects all the words that match the search and the status.
+- To remove words, select them and click **Unknown (remove)**. A removed word is unknown again.
+
+The page shows 200 words at a time. Click **Next** and **Previous** to see the other words. A status change in a different tab updates the list at once.
+
+### Add words
+
+You can give a status to many words at once, for example the words that you already know.
+
+1. In **Add words**, paste the words or a text.
+2. Select **One word on each line**, or **Japanese text**. With **Japanese text**, Minerr finds the words in the text and uses their dictionary forms.
+3. Select the status. The default is **Known**.
+4. Click **Preview**. The page shows the number of new words, of words with a different status, and of words that already have this status.
+5. Click **Save**.
+
+Minerr does not change a status before you click **Save**.
+
 ## Theme
 
 The options page, the toolbar menu, and the word popup have a light theme and a dark theme.
@@ -551,6 +665,13 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
 | `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 | `server/whisper_server.py`, `server/media.py` | The local server: WhisperX jobs and the HTTP routes, and the video side (cache keys, `yt-dlp`, the audio cache, and line clips). |
+| `src/stats.ts` | The comprehension score and the recommended sentences of a tab, for the toolbar popup. |
+| `src/score.ts` | Pure functions for the score, its label, and the text of the i+1 sentences. |
+| `words.html`, `words.ts` | The word browser page. |
+| `src/wordlist.ts` | Pure functions for the search, the filter, and the sort of the word browser, and for the pasted words. |
+| `reader.html`, `reader.ts` | The reader page for files and pasted text. It loads `src/page.ts`, `src/popup.ts`, `src/iplusone.ts`, and `src/stats.ts` itself. |
+| `src/epub.ts` | The EPUB reader. It makes new DOM nodes from an allowlist of tags, with no attributes from the file. |
+| `src/book.ts` | Pure functions of the reader: the text parts, the page keys, the page turn, and the saved place. |
 
 Node.js runs the `.ts` test files directly, without a build. To run the tests:
 
@@ -583,6 +704,8 @@ The WhisperX server has two endpoints for the player:
 - `POST /clip` takes `{"url": ..., "start": ..., "end": ...}` or `{"sha256": ..., "start": ..., "end": ...}`, with the times in seconds. It returns an MP3 of the audio between the two times. The server downloads the audio of a URL one time, to `~/.cache/minerr/audio/`. While the download runs, the reply is 404, and the extension records the line in the tab. The server keeps the audio of an uploaded file after the WhisperX job for the file.
 
 `node test/media.ts` tests the i+1 highlight and the player, with a mock AnkiConnect and a mock WhisperX server. It uses port 8765 and port 8766. `npm test` runs it after `node test/subtitles.ts`.
+
+`node test/pages-unit.ts` tests the pure functions of the comprehension score, the word browser, and the reader. `node test/pages.ts` tests the comprehension score in the toolbar popup, the word browser, and the reader in Chromium. `npm test` runs both after `node test/media.ts`.
 
 ## Third-party data
 

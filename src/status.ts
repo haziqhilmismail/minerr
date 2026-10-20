@@ -18,11 +18,11 @@ export const STATUS_NAMES: Status[] = Object.keys(STATUSES).filter(isStatus);
 
 // currentColor keeps the hover highlight visible on light text over video and on dark text over a light page.
 export const WORD_CSS = [
-  '.ml-word { border-radius: 2px; cursor: pointer; text-underline-offset: 0.2em; text-decoration-skip-ink: none; }',
+  '.ml-word { border-radius: 2px; text-underline-offset: 0.2em; text-decoration-skip-ink: none; }',
   '.ml-word:hover, .ml-word[data-ml-active] { background-color: color-mix(in srgb, currentColor 16%, transparent); }',
   ...Object.values(STATUSES).filter(s => s.underline)
     .map(s => `.${s.className} { text-decoration: underline ${s.underline} ${s.color}; }`),
-  ':root[data-minerr-off] .ml-word { text-decoration: none; background-color: transparent; cursor: inherit; }',
+  ':root[data-minerr-off] .ml-word { text-decoration: none; background-color: transparent; }',
 ].join('\n');
 
 const PREFIX = 'w:';
@@ -30,11 +30,7 @@ const wordKey = (lemma: string) => PREFIX + lemma;
 const lemmaOfKey = (key: string) => (key.startsWith(PREFIX) ? key.slice(PREFIX.length) : null);
 const storedStatus = (value: unknown): Status => (isStatus(value) ? value : 'unknown');
 
-export function setStatus(lemma: string, status: Status): Promise<void> {
-  return status === 'unknown'
-    ? chrome.storage.local.remove(wordKey(lemma))
-    : chrome.storage.local.set({ [wordKey(lemma)]: status });
-}
+export const setStatus = (lemma: string, status: Status): Promise<void> => setStatuses([lemma], status);
 
 // Calls listener with a Map of lemma -> new status for every word whose status changed in any tab.
 export function onStatusChange(listener: (changed: Map<string, Status>) => void): void {
@@ -50,7 +46,9 @@ export function onStatusChange(listener: (changed: Map<string, Status>) => void)
 }
 
 export function setStatuses(lemmas: string[], status: Status): Promise<void> {
-  return chrome.storage.local.set(Object.fromEntries(lemmas.map(lemma => [wordKey(lemma), status])));
+  return status === 'unknown'
+    ? chrome.storage.local.remove(lemmas.map(wordKey))
+    : chrome.storage.local.set(Object.fromEntries(lemmas.map(lemma => [wordKey(lemma), status])));
 }
 
 export async function getStatuses(lemmas: string[]): Promise<Map<string, Status>> {
@@ -60,7 +58,7 @@ export async function getStatuses(lemmas: string[]): Promise<Map<string, Status>
 
 // A status that storage holds: an unknown word has no key.
 export type StoredStatus = Exclude<Status, 'unknown'>;
-const isStoredStatus = (value: unknown): value is StoredStatus => isStatus(value) && value !== 'unknown';
+export const isStoredStatus = (value: unknown): value is StoredStatus => isStatus(value) && value !== 'unknown';
 
 export async function getAllStatuses(): Promise<Record<string, StoredStatus>> {
   const stored = await chrome.storage.local.get(null);

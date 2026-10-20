@@ -17,7 +17,7 @@ const highlight = new Highlight();
 let shown = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
 
-const statusOf = (span: Element): Status | null => STATUS_NAMES.find(status => span.classList.contains(STATUSES[status].className)) ?? null;
+export const statusOf = (span: Element): Status | null => STATUS_NAMES.find(status => span.classList.contains(STATUSES[status].className)) ?? null;
 
 function ranges(block: Element, cache: Map<Element, Element>): Range[] {
   const pieces: Piece[] = [];
@@ -48,15 +48,20 @@ function ranges(block: Element, cache: Map<Element, Element>): Range[] {
   });
 }
 
+// Every i+1 sentence of the document.
+export function iPlusOneRanges(): Range[] {
+  const cache = new Map<Element, Element>();
+  const blocks = new Set<Element>();
+  for (const span of document.querySelectorAll('.ml-word')) blocks.add(blockOf(span.parentElement ?? span, cache));
+  return [...blocks].flatMap(block => ranges(block, cache));
+}
+
 // Recomputes every i+1 sentence of the document. Exported so a test can measure it.
 export function refresh(): void {
   timer = null;
   highlight.clear();
   if (!shown) return;
-  const cache = new Map<Element, Element>();
-  const blocks = new Set<Element>();
-  for (const span of document.querySelectorAll('.ml-word')) blocks.add(blockOf(span.parentElement ?? span, cache));
-  for (const block of blocks) for (const range of ranges(block, cache)) highlight.add(range);
+  for (const range of iPlusOneRanges()) highlight.add(range);
 }
 
 function schedule(): void {
