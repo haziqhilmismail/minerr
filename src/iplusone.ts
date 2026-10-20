@@ -35,7 +35,8 @@ function ranges(block: Element, cache: Map<Element, Element>): Range[] {
       }
       continue;
     }
-    pieces.push({ text: node.data, status: parent.classList.contains('ml-word') ? statusOf(parent) : null });
+    // The parts after the first of a word that crosses nodes do not count again.
+    pieces.push({ text: node.data, status: parent.matches('.ml-word:not([data-ml-cont])') ? statusOf(parent) : null });
     nodes.push(node);
   }
   return iPlusOneSentences(pieces).flatMap(({ start, end }) => {

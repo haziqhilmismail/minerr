@@ -1,15 +1,15 @@
-import type { Segment } from './group.ts';
+import { blockOf, isInline } from './dom.ts';
+import { JAPANESE, splitSegments } from './group.ts';
 import { call } from './rpc.ts';
-import { getStatuses, onStatusChange, type Status, STATUSES, WORD_CSS } from './status.ts';
+import { getStatuses, onStatusChange, WORD_CSS } from './status.ts';
+import { RUBY_TEXT, setSpanStatus, wordFragment } from './words.ts';
 import { installFurigana } from './furigana.ts';
 import { installPitchColors } from './pitch-colors.ts';
 import { watchActive } from './site.ts';
 
-const JAPANESE = /[぀-ヿ一-鿿]/;
 // The YouTube caption window is hidden; src/subtitles.ts shows its text in an overlay.
-const SKIP = 'script, style, noscript, textarea, input, select, svg, .ml-word, .ytp-caption-window-container';
+const SKIP = `script, style, noscript, textarea, input, select, svg, .ml-word, .ytp-caption-window-container, ${RUBY_TEXT}`;
 const BATCH = 100;
-const STATUS_CLASSES = Object.values(STATUSES).map(s => s.className);
 
 // Plain text nodes we inserted between word spans; the observer sees them as additions and must not re-parse them.
 const created = new WeakSet<Node>();
@@ -34,49 +34,61 @@ function collect(root: Node): void {
   for (let node = walker.nextNode(); node; node = walker.nextNode()) if (isText(node) && wanted(node)) pending.add(node);
 }
 
-function setSpanStatus(span: HTMLElement, status: Status): void {
-  span.classList.remove(...STATUS_CLASSES);
-  span.classList.add(STATUSES[status].className);
-}
-
-function render(segments: Segment[], statuses: Map<string, Status>): DocumentFragment {
-  const fragment = document.createDocumentFragment();
-  for (const { text, lemma, reading } of segments) {
-    if (!lemma) {
-      const node = document.createTextNode(text);
-      created.add(node);
-      fragment.append(node);
-      continue;
-    }
-    const span = document.createElement('span');
-    span.className = 'ml-word';
-    span.dataset.mlLemma = lemma;
-    if (reading) span.dataset.mlReading = reading;
-    span.textContent = text;
-    setSpanStatus(span, statuses.get(lemma) ?? 'unknown');
-    fragment.append(span);
+// True if text node b follows text node a in the text flow: no other text (ruby annotation aside), no line break,
+// and no block between them.
+function follows(a: Text, b: Text, cache: Map<Element, Element>): boolean {
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  walker.currentNode = a;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node === b) return a.parentElement !== null && b.parentElement !== null && blockOf(a.parentElement, cache) === blockOf(b.parentElement, cache);
+    if (node instanceof Element ? node.tagName === 'BR' || !(isInline(node) || node.closest(RUBY_TEXT)) : !node.parentElement?.closest(RUBY_TEXT)) return false;
   }
-  return fragment;
+  return false;
 }
 
-async function wrap(nodes: Text[]): Promise<void> {
-  const texts = nodes.map(node => node.data);
-  const parsed = await call({ type: 'parse', texts });
+// The nodes in page order, cut into runs of text that reads as one: <ruby>暖<rt>あたた</rt></ruby>かくて is one run.
+function runsOf(nodes: Text[]): Text[][] {
+  const cache = new Map<Element, Element>();
+  const sorted = [...nodes].sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+  const runs: Text[][] = [];
+  for (const node of sorted) {
+    const run = runs.at(-1);
+    const last = run?.at(-1);
+    if (run && last && follows(last, node, cache)) run.push(node);
+    else runs.push([node]);
+  }
+  return runs;
+}
+
+// Parses each run as one text, so a word that crosses nodes is one word, and puts the parts of the segments into the nodes.
+async function wrap(runs: Text[][]): Promise<void> {
+  const texts = runs.map(run => run.map(node => node.data));
+  const parsed = await call({ type: 'parse', texts: texts.map(parts => parts.join('')) });
   const lemmas = [...new Set(parsed.flat().flatMap(s => (s.lemma ? [s.lemma] : [])))];
   const statuses = await getStatuses(lemmas);
-  nodes.forEach((node, i) => {
+  runs.forEach((run, i) => {
     const segments = parsed[i];
-    // The page may have replaced or edited the node while the parse was in flight; the observer queued the new text.
-    if (!segments || !node.isConnected || node.data !== texts[i] || !segments.some(s => s.lemma)) return;
-    node.replaceWith(render(segments, statuses));
+    if (!segments) return;
+    // The page may have replaced or edited a node while the parse was in flight; the observer queued the new text,
+    // and the other nodes of the run go again with it.
+    if (run.some((node, j) => !node.isConnected || node.data !== texts[i]?.[j])) {
+      for (const node of run) if (node.isConnected && wanted(node)) pending.add(node);
+      schedule();
+      return;
+    }
+    const parts = splitSegments(segments, run.map(node => node.data.length));
+    run.forEach((node, j) => {
+      const own = parts[j] ?? [];
+      if (own.some(s => s.lemma)) node.replaceWith(wordFragment(own, statuses, node.parentElement?.closest('ruby') != null, text => created.add(text)));
+    });
   });
 }
 
 async function flush(): Promise<void> {
-  const nodes = [...pending];
+  const runs = runsOf([...pending]);
   pending.clear();
-  for (let i = 0; i < nodes.length; i += BATCH) {
-    await wrap(nodes.slice(i, i + BATCH)).catch(error => console.warn('minerr parse failed', error));
+  for (let i = 0; i < runs.length; i += BATCH) {
+    await wrap(runs.slice(i, i + BATCH)).catch(error => console.warn('minerr parse failed', error));
   }
   timer = null;
   if (pending.size) schedule();

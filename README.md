@@ -21,6 +21,7 @@ The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedi
 
 - The extension parses the text on all pages, and also the text that appears later. Subtitles on YouTube and Netflix are page text, so Minerr parses them too.
 - It joins a verb or adjective with its inflections into one word. For example, 食べなかった is one word with the dictionary form 食べる.
+- It reads text across inline markup as one text. For example, in `<ruby>暖<rt>あたた</rt></ruby>かくて`, 暖かくて is one word with the dictionary form 暖かい. Minerr does not parse the ruby text あたた, and it does not put it in the card sentence.
 - It looks up definitions in a Yomitan dictionary that you import, for example JMdict.
 - It shows the tags of the dictionary in color, as Yomitan does. The tags of the word, for example `⭐` (high priority) and `ichi` or `news13k` (frequent), are next to the reading. The tags of each definition, for example `v1` (Ichidan verb) and `uk` (usually in kana), are before the definition. Move the mouse over a tag to see what it means.
 - If the word has more than one reading in the dictionaries, the popup shows each reading with its own definitions.
@@ -479,6 +480,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/page.ts` | Finds Japanese text on the page and wraps each word. |
 | `src/popup.ts` | The dictionary popup: when it opens, its keys, and the card that it adds. |
 | `src/popup-view.ts` | The content of the popup and its position. |
+| `src/words.ts` | The word spans of parsed text. A word that crosses text nodes gets one span for each part. |
 | `src/furigana.ts` | The furigana setting, and the CSS that shows the reading over a word. |
 | `src/pitch-colors.ts` | The pitch colors of the words on a page. |
 | `src/sentence-hover.ts` | The highlight of the sentence of the word under the mouse. |

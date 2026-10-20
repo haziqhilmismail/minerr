@@ -5,13 +5,16 @@ export function byId<T extends HTMLElement>(id: string, type: new () => T): T {
   return element;
 }
 
+// Inline for the text flow: inline boxes, display: contents, and ruby (<ruby> has display: ruby).
+export const isInline = (element: Element) => /^(inline|contents|ruby)/.test(getComputedStyle(element).display);
+
 // The nearest ancestor-or-self of element that is not inline: the block that holds a sentence.
 // cache keeps the answer for each element that the walk visits, for callers that ask for many elements.
 export function blockOf(element: Element, cache = new Map<Element, Element>()): Element {
   const known = cache.get(element);
   if (known) return known;
   const parent = element.parentElement;
-  const block = parent && /^(inline|contents)/.test(getComputedStyle(element).display) ? blockOf(parent, cache) : element;
+  const block = parent && isInline(element) ? blockOf(parent, cache) : element;
   cache.set(element, block);
   return block;
 }

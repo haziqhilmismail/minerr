@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import kuromoji from 'kuromoji';
 import { chord, statusTarget } from '../src/chord.ts';
-import { groupTokens, toHiragana } from '../src/group.ts';
+import { groupTokens, splitSegments, toHiragana } from '../src/group.ts';
 import { entryStars, highs, morae, pitchPattern, stars, toMeta, withMeta } from '../src/meta.ts';
 import { at, isStringList } from '../src/parse.ts';
 import { sentenceBounds } from '../src/sentence.ts';
@@ -127,4 +127,19 @@ test('statusTarget: a selection wins over the popup, and the subtitle line count
   const target = (selectedWords: number, popupOpen: boolean, lineUnknowns: number) => statusTarget({ selectedWords, popupOpen, lineUnknowns });
   assert.deepEqual([target(2, true, 1), target(0, true, 1), target(0, false, 1), target(0, false, 2), target(0, false, 0)],
     ['selection', 'popup', 'line', null, null]);
+});
+
+test('splitSegments cuts the segments of a run at its text nodes and marks the parts of a split word', async () => {
+  const tokenizer = await new Promise<kuromoji.Tokenizer>((resolve, reject) =>
+    kuromoji.builder({ dicPath: join(here, '..', 'node_modules', 'kuromoji', 'dict') }).build((err, t) => (err ? reject(err) : resolve(t))));
+  const parse = (text: string) => groupTokens(tokenizer.tokenize(text));
+  assert.deepEqual(splitSegments(parse('低いところ'), [1, 4]), [
+    [{ text: '低', lemma: '低い', part: 'first' }],
+    [{ text: 'い', lemma: '低い', part: 'rest' }, { text: 'ところ', lemma: 'ところ' }],
+  ]);
+  assert.deepEqual(splitSegments(parse('に暖かくて湿った'), [2, 6]), [
+    [{ text: 'に' }, { text: '暖', lemma: '暖かい', part: 'first' }],
+    [{ text: 'かくて', lemma: '暖かい', part: 'rest' }, { text: '湿った', lemma: '湿る', reading: 'しめった' }],
+  ]);
+  assert.deepEqual(splitSegments([{ text: 'あいう' }], [1, 1, 1]), [[{ text: 'あ' }], [{ text: 'い' }], [{ text: 'う' }]]);
 });

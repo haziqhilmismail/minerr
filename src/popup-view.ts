@@ -2,6 +2,7 @@ import { setStatus, type Status, STATUS_NAMES, STATUSES } from './status.ts';
 import { minerrEnabled } from './settings.ts';
 import { TAG_CSS, tagClass } from './tags.ts';
 import { applyTheme } from './theme.ts';
+import { wordText } from './words.ts';
 import { type Entry, entryStars, highs, morae, PITCH, pitchPattern } from './meta.ts';
 import type { Sense, Tag } from './yomitan.ts';
 
@@ -208,7 +209,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, close }: Acti
   const { lemma, groups } = view;
   const [first, ...others] = groups;
   const reading = first?.reading ?? '';
-  const surface = view.span.textContent;
+  const surface = wordText(view.span);
   const notes = [
     ...(surface !== lemma ? [`On the page: ${surface}`] : []),
     ...(view.count ? [`Appears ${view.count} ${view.count === 1 ? 'time' : 'times'} on this page`] : []),

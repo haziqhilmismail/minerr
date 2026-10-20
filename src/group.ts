@@ -1,7 +1,7 @@
 const CONTENT_POS = new Set(['名詞', '動詞', '形容詞', '副詞', '連体詞', '感動詞', '接続詞']);
 const INFLECTING_POS = new Set(['動詞', '形容詞']);
 const CONJUNCTIVE = new Set(['て', 'で', 'ば']);
-const JAPANESE = /[぀-ヿ一-鿿]/;
+export const JAPANESE = /[぀-ヿ一-鿿]/;
 const KANJI = /[一-鿿々]/;
 
 // A piece of the parsed text. A content word also has its dictionary form, and a word with kanji has its reading in hiragana.
@@ -55,4 +55,33 @@ export function groupTokens(tokens: kuromoji.Token[]): Segment[] {
     const reading = readings[i];
     return segment.lemma && reading && KANJI.test(segment.text) ? { ...segment, reading: toHiragana(reading) } : segment;
   });
+}
+
+// A segment, or the part of a segment that falls in one text node. part is set when a word crosses text nodes,
+// for example 暖 and かくて in <ruby>暖<rt>あたた</rt></ruby>かくて: 'first' for its first part, 'rest' for the others.
+// A split word has no reading, because the reading would show over one part only.
+export type NodeSegment = Segment & { part?: 'first' | 'rest' };
+
+// The segments of the joined text of a run of text nodes, cut at the node boundaries. lengths are the lengths of the nodes.
+export function splitSegments(segments: Segment[], lengths: number[]): NodeSegment[][] {
+  const nodes: NodeSegment[][] = lengths.map(() => []);
+  let node = 0;
+  let nodeStart = 0;
+  let start = 0;
+  for (const segment of segments) {
+    const end = start + segment.text.length;
+    const parts: { node: number; text: string }[] = [];
+    for (let at = start; at < end;) {
+      while (node < lengths.length - 1 && nodeStart + (lengths[node] ?? 0) <= at) nodeStart += lengths[node++] ?? 0;
+      const stop = Math.min(end, nodeStart + (lengths[node] ?? 0));
+      parts.push({ node, text: segment.text.slice(at - start, stop - start) });
+      at = stop;
+    }
+    const split = segment.lemma !== undefined && parts.length > 1;
+    parts.forEach((part, i) => nodes[part.node]?.push(split
+      ? { text: part.text, lemma: segment.lemma ?? '', part: i === 0 ? 'first' : 'rest' }
+      : { ...segment, text: part.text }));
+    start = end;
+  }
+  return nodes;
 }

@@ -33,7 +33,7 @@ function selectedWords(): HTMLElement[] {
 }
 
 // The unknown words of the subtitle lines that show now, on YouTube and in the player.
-const lineUnknowns = () => [...document.querySelectorAll<HTMLElement>('.minerr-subs-line:not([hidden]) .ml-word.ml-unknown')];
+const lineUnknowns = () => [...document.querySelectorAll<HTMLElement>('.minerr-subs-line:not([hidden]) .ml-word.ml-unknown:not([data-ml-cont])')];
 
 async function markSelection(spans: HTMLElement[], status: Status): Promise<void> {
   const lemmas = [...new Set(spans.flatMap(span => span.dataset.mlLemma ?? []))];

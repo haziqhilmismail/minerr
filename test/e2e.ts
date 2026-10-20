@@ -59,7 +59,10 @@ await listen(anki, 8765);
 
 const site = createServer((req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.end('<!doctype html><meta charset="utf-8"><title>猫 &amp; 魚</title><body><p id="line">猫が魚を食べなかった。</p><div id="subs"></div></body>');
+  res.end('<!doctype html><meta charset="utf-8"><title>猫 &amp; 魚</title><body><p id="line">猫が魚を食べなかった。</p><div id="subs"></div>'
+    + '<p id="ruby">日本に<ruby>暖<rt>あたた</rt></ruby>かくて湿った空気が入っています。</p>'
+    + '<p id="low"><ruby>低<rt>ひく</rt></ruby>いところ</p><p id="bold"><b>食</b>べた</p>'
+    + '<p id="kanji"><ruby>漢字<rt>かんじ</rt></ruby>を読む</p></body>');
 });
 const sitePort = await listen(site, 0);
 const pageUrl = `http://127.0.0.1:${sitePort}/watch`;
@@ -109,6 +112,28 @@ try {
   console.log('page words:', words);
   assert.deepEqual(words, ['猫=猫 ml-word ml-unknown', '魚=魚 ml-word ml-unknown', '食べなかった=食べる ml-word ml-unknown']);
   assert.equal(await tab.textContent('#line'), '猫が魚を食べなかった。');
+
+  const parts = (selector: string) => tab.$$eval(`${selector} .ml-word`, spans => spans.map(span =>
+    `${span.textContent}=${span.dataset.mlLemma}${span.dataset.mlWord ? ' part' : ''}${span.hasAttribute('data-ml-cont') ? ' cont' : ''}`));
+  await tab.waitForSelector('#bold .ml-word');
+  assert.deepEqual(await parts('#ruby'), ['日本=日本', '暖=暖かい part', 'かくて=暖かい part cont', '湿った=湿る', '空気=空気', '入っています=入る']);
+  assert.deepEqual(await parts('#low'), ['低=低い part', 'い=低い part cont', 'ところ=ところ']);
+  assert.deepEqual(await parts('#bold'), ['食=食べる part', 'べた=食べる part cont']);
+  assert.equal(await tab.$$eval('#ruby rt .ml-word, #low rt .ml-word', spans => spans.length), 0, 'ruby text is not parsed');
+  await tab.waitForSelector('#kanji .ml-word[data-ml-lemma="読む"]');
+  assert.deepEqual(await tab.$$eval('#kanji .ml-word', spans => spans.map(span => `${span.textContent}:${span.dataset.mlReading}`)),
+    ['漢字:undefined', '読む:よむ'], 'a word in page ruby gets no furigana reading');
+  assert.equal(await tab.$eval('#ruby', block => {
+    const [first, second] = [...block.querySelectorAll<HTMLElement>('.ml-word[data-ml-lemma="暖かい"]')];
+    return first?.dataset.mlWord !== undefined && first.dataset.mlWord === second?.dataset.mlWord;
+  }), true, 'the parts of 暖かい share one word id');
+  await tab.hover('#ruby .ml-word[data-ml-lemma="暖かい"] >> nth=0');
+  await tab.locator('minerr-popup .popup .lemma', { hasText: '暖かい' }).waitFor();
+  assert.equal(await tab.locator('minerr-popup .popup .surface').innerText(), 'On the page: 暖かくて · Appears 1 time on this page');
+  assert.equal(await tab.$$eval('#ruby .ml-word[data-ml-active]', spans => spans.map(span => span.textContent).join()), '暖,かくて');
+  await tab.keyboard.press('Escape');
+  await tab.mouse.move(0, 0);
+  console.log('a word across text nodes is one word: 暖かくて, 低い, 食べた; ruby text is not parsed');
 
   await tab.evaluate(() => {
     const line = document.createElement('div');
@@ -488,6 +513,17 @@ try {
     'Import failed. The word "本" has the status "mastered". Use learning, known, or ignored. No status changed.');
   assert.deepEqual(await worker.evaluate(() => chrome.storage.local.get(null)), before);
   console.log('import of a malformed file:', await options.textContent('#status-message'));
+
+  await tab.bringToFront();
+  await tab.keyboard.press('Escape');
+  await tab.mouse.move(0, 0);
+  await tab.hover('#ruby .ml-word[data-ml-lemma="暖かい"] >> nth=1');
+  await tab.locator('minerr-popup .popup .lemma', { hasText: '暖かい' }).waitFor();
+  await tab.keyboard.press('a');
+  await tab.locator('minerr-popup .popup .message', { hasText: 'Added to Anki.' }).waitFor();
+  assert.equal(at(ankiRequests.at(-1), 'params', 'note', 'fields', 'Sentence'), '日本に<b>暖かくて</b>湿った空気が入っています。');
+  await tab.keyboard.press('Escape');
+  console.log('card of a word across text nodes: the whole word in bold, no ruby text in the sentence');
 
   await new Promise(resolve => anki.close(resolve));
   anki.closeAllConnections();

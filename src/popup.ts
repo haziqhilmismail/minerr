@@ -10,17 +10,26 @@ import { installSentenceHover, setPopupWord } from './sentence-hover.ts';
 import { watchActive } from './site.ts';
 import { getStatuses, onStatusChange, setStatus, STATUSES } from './status.ts';
 import { installKeys } from './keys.ts';
+import { RUBY_TEXT, sameWord, wordParts } from './words.ts';
 
-// The sentence around the word inside its nearest block ancestor, with the word in <b>.
+// The sentence around the word inside its nearest block ancestor, with the whole word in <b> when it has parts.
+// Ruby annotation text is not part of the sentence.
 function sentenceHtml(span: HTMLElement): string {
-  const block = blockOf(span.parentElement ?? span);
-  const range = document.createRange();
-  range.selectNodeContents(block);
-  range.setEndBefore(span);
-  const before = range.toString();
-  range.selectNodeContents(block);
-  range.setStartAfter(span);
-  const { start, word, end } = sentenceAround(before, span.textContent ?? '', range.toString());
+  const parts = wordParts(span);
+  const last = parts.at(-1) ?? span;
+  const text = { before: '', word: '', after: '' };
+  let state: keyof typeof text = 'before';
+  let reachedLast = false;
+  const walker = document.createTreeWalker(blockOf(span.parentElement ?? span), NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!(node instanceof Text) || node.parentElement?.closest(RUBY_TEXT)) continue;
+    const inWord = parts.some(part => part.contains(node));
+    if (state === 'before' && inWord) state = 'word';
+    else if (state === 'word' && !inWord && reachedLast) state = 'after';
+    if (inWord && last.contains(node)) reachedLast = true;
+    text[state] += node.data;
+  }
+  const { start, word, end } = sentenceAround(text.before, text.word, text.after);
   return `${escapeHtml(start)}<b>${escapeHtml(word)}</b>${escapeHtml(end)}`;
 }
 
@@ -32,8 +41,8 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 
 // Keeps the word highlighted while the mouse is on the popup, so the user sees which word it belongs to.
 function markActive(span: HTMLElement | null): void {
-  document.querySelector('.ml-word[data-ml-active]')?.removeAttribute('data-ml-active');
-  span?.setAttribute('data-ml-active', '');
+  for (const active of document.querySelectorAll('.ml-word[data-ml-active]')) active.removeAttribute('data-ml-active');
+  for (const part of span ? wordParts(span) : []) part.setAttribute('data-ml-active', '');
   setPopupWord(span);
 }
 
@@ -43,7 +52,7 @@ let opening: View | null = null;
 export async function openWord(span: HTMLElement): Promise<void> {
   const lemma = span.dataset.mlLemma;
   if (lemma === undefined) return;
-  const count = document.querySelectorAll(`.ml-word[data-ml-lemma="${CSS.escape(lemma)}"]`).length;
+  const count = document.querySelectorAll(`.ml-word[data-ml-lemma="${CSS.escape(lemma)}"]:not([data-ml-cont])`).length;
   const view: View = { span, lemma, status: 'unknown', groups: [], count };
   opening = view;
   try {
@@ -112,7 +121,7 @@ hoverMode.watch(value => { mode = value; });
 
 function consider(span: HTMLElement, shift: boolean, buttonDown: boolean): void {
   clearTimeout(timer);
-  if (!enabled || span === current?.view.span) return;
+  if (!enabled || sameWord(span, current?.view.span)) return;
   const delay = hoverDelay({
     mode,
     shift,
