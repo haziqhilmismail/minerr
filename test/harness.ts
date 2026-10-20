@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { join } from 'node:path';
-import { chromium } from 'playwright';
+import { chromium, type Page, type Worker } from 'playwright';
 import { BUILTIN, type NoteType } from '../src/anki.ts';
 import type { MetaRow } from '../src/meta.ts';
 import { at } from '../src/parse.ts';
@@ -39,6 +39,15 @@ export async function launch(profileDir: string, noteType: NoteType | null = BUI
   const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
   await worker.evaluate(value => chrome.storage.local.set(value), { enabledSites, ...(noteType ? { noteType } : {}) });
   return { context, worker, extensionId: new URL(worker.url()).host };
+}
+
+// Runs a browser shortcut of manifest.json on page, as Chrome does for the active tab. Playwright cannot press a browser shortcut.
+export async function runCommand(worker: Worker, page: Page, command: string): Promise<void> {
+  await page.bringToFront();
+  await worker.evaluate(async name => {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    await (globalThis as unknown as { runCommand: (command: string, tab?: chrome.tabs.Tab) => Promise<void> }).runCommand(name, tab);
+  }, command);
 }
 
 // If CJK_FONT_DIR is set, Chromium launched after this call also uses the fonts in that folder.

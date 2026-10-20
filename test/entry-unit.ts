@@ -55,12 +55,13 @@ const JMDICT_ROWS: [string, string, number, number][] = [
   ['ネコ属', 'ネコぞく', -200, 1900510], ['猫族', 'ねこぞく', -10200, 1900510],
   ['目', 'もく', -200, 2021500],
   ['猫', 'ねこま', -200, 2698030],
+  ['恥ずい', 'はずい', -200, 2092890],
   ['出す', 'だす', 1999800, 1338180], ['接する', 'せっする', 1999800, 1385350], ['面する', 'めんする', 1999800, 1533400],
 ];
 const rows = JMDICT_ROWS.map(([expression, reading, score, sequence]) => ({ dict: 'JMdict', expression, reading, score, sequence }));
 const words = dictionaryWords(memoryIndex(rows));
-const parse = (text: string, dict = words) => entrySegments(tokenizer.tokenize(text), dict);
-const keys = async (text: string, dict = words) => (await parse(text, dict))
+const parse = (text: string, dict = words, joins: string[] = []) => entrySegments(tokenizer.tokenize(text), dict, joins);
+const keys = async (text: string, dict = words, joins: string[] = []) => (await parse(text, dict, joins))
   .flatMap(({ text: surface, lemma, entry }) => (lemma ? [`${surface}=${lemma}=${entry?.key ?? lemma}`] : []));
 
 const CAT = { key: '猫', headword: '猫', reading: 'ねこ' };
@@ -124,6 +125,15 @@ test('runs of nouns join by the longest dictionary headword', async () => {
   assert.deepEqual(await keys('食肉目', noCompound), ['食肉=食肉=食肉', '目=目=目']);
 });
 
+test('a word override joins the tokens of its text: は|ずい is はずい, the entry 恥ずい; it never cuts a token', async () => {
+  const split = ['ちょっと=ちょっと=ちょっと', 'ずい=ずい=ずい'];
+  assert.deepEqual(await keys('ちょっとはずいね。'), split);
+  assert.deepEqual(await keys('ちょっとはずいね。', words, ['はずい']), ['ちょっと=ちょっと=ちょっと', 'はずい=はずい=恥ずい']);
+  assert.deepEqual((await parse('ちょっとはずいね。', words, ['はずい'])).map(({ text }) => text), ['ちょっと', 'はずい', 'ね', '。']);
+  assert.deepEqual(await keys('ちょっとはずいね。', words, ['とはず', 'ずいね。x']), split);
+  assert.deepEqual((await parse('ここでは猫だ', words, ['はずい'])).map(({ text }) => text), ['ここ', 'で', 'は', '猫', 'だ']);
+});
+
 test('a sequence with more rows than one word has is not an entry', async () => {
   const shared = Array.from({ length: 250 }, (_, i) => ({ dict: 'Bad', expression: `語${i}`, reading: 'ご', score: 0, sequence: 1 }));
   const bad = dictionaryWords(memoryIndex([...shared, { dict: 'Bad', expression: '猫', reading: 'ねこ', score: 0, sequence: 1 }, ...rows]));
@@ -140,7 +150,7 @@ test('a parse reads each index key one time', async () => {
     headwords: index.headwords,
   };
   const fresh = dictionaryWords(counted);
-  await entrySegments(tokenizer.tokenize('猫とねことネコ。ねこが猫を見た。'), fresh);
+  await entrySegments(tokenizer.tokenize('猫とねことネコ。ねこが猫を見た。'), fresh, []);
   assert.deepEqual(reads.filter((read, i) => reads.indexOf(read) !== i), []);
 });
 

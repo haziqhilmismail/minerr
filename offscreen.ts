@@ -18,10 +18,10 @@ async function dictionaryWordsNow(): Promise<Words> {
 
 serve(
   {
-    parse: async ({ texts }) => {
+    segments: async ({ texts, joins }) => {
       // Without the dictionary list, the reads fail too, and entrySegments falls back to the kuromoji grouping.
       const [parser, words] = await Promise.all([tokenizer, dictionaryWordsNow().catch(() => dictionaryWords(entryIndex))]);
-      return Promise.all(texts.map(text => entrySegments(parser.tokenize(text), words)));
+      return Promise.all(texts.map(text => entrySegments(parser.tokenize(text), words, joins)));
     },
     lookup: ({ lemma }) => lookup(lemma),
     pitch: ({ words }) => pitchPatterns(words),

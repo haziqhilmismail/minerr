@@ -264,7 +264,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, editCard, clo
       notes.length ? el('div', { className: 'surface', textContent: notes.join(' · ') }) : '',
       statusRow,
       el('div', { className: 'corner' },
-        el('button', { className: 'off', innerHTML: POWER_ICON, title: 'Turn Minerr off in all tabs (Alt+Shift+M turns it on)', ariaLabel: 'Turn Minerr off', onclick: () => minerrEnabled.set(false) }),
+        el('button', { className: 'off', innerHTML: POWER_ICON, title: 'Turn Minerr off in all tabs. The Minerr toolbar menu turns it on.', ariaLabel: 'Turn Minerr off', onclick: () => minerrEnabled.set(false) }),
         el('button', { className: 'close', textContent: '✕', title: 'Close (Esc)', ariaLabel: 'Close', onclick: close }))),
     el('div', { className: 'definitions' }, ...definitions),
     el('footer', {}, el('div', { className: 'actions' }, addButton, editButton), message),

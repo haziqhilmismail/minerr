@@ -128,6 +128,9 @@
     <progress id="dict-progress" hidden></progress>
     <p id="dict-status" class="status" role="status"></p>
     <ul id="dict-list" class="rows"></ul>
+    <h3 id="joins-heading">Word overrides</h3>
+    <p class="help">If Minerr cuts a word in two, select the word on a page and press Alt+J. Minerr then reads that text as one word. The text must be a dictionary word.</p>
+    <ul id="word-joins" class="rows" aria-labelledby="joins-heading"></ul>
   </section>
 
   <section aria-labelledby="anki-heading">
@@ -220,16 +223,17 @@
         <tr><td><kbd>A</kbd></td><td>Add an Anki card</td><td></td></tr>
         <tr><td><kbd>E</kbd></td><td>Edit the card, then send it to Anki</td><td></td></tr>
         <tr><td><kbd>Esc</kbd></td><td>Close the popup</td><td></td></tr>
-        <tr><td><kbd>Alt+S</kbd></td><td>Look up the selected text</td><td></td></tr>
         <tr><td><kbd>Shift</kbd></td><td>On a word in a popup: open a popup over it (up to 4)</td><td></td></tr>
         <tr><td><kbd>N</kbd></td><td>Open the popup of the next unknown word of the subtitle line</td><td></td></tr>
-        <tr><td><kbd>Alt+Shift+D</kbd></td><td>Turn the page text of this site on or off</td><td></td></tr>
         <tr><td><kbd>Alt+Shift+S</kbd></td><td>Turn the sentence highlight on or off</td><td></td></tr>
         <tr><td><kbd>PageDown</kbd> <kbd>Space</kbd> <kbd>↓</kbd></td><td>Reader: next page</td><td></td></tr>
         <tr><td><kbd>PageUp</kbd> <kbd>Shift+Space</kbd> <kbd>↑</kbd></td><td>Reader: previous page</td><td></td></tr>
         <tr><td><kbd>→</kbd> <kbd>←</kbd></td><td>Reader: next and previous page. In vertical text, ← is the next page.</td><td></td></tr>
       </tbody>
+      <tbody id="browser-keys"></tbody>
     </table>
+    <p class="help">Chrome runs the Minerr keys that start with Alt, so a page cannot take them. If one of these keys does not work, another extension or program can use it. Change the key on the Chrome shortcuts page.</p>
+    <button id="shortcuts" type="button">Change the keys</button>
     <h3 id="video-keys-heading">Video keys</h3>
     <p class="help">These keys work on a video with the Minerr subtitle overlay: on YouTube, in the video player, and on other sites. They do not work in a text field. On YouTube, Minerr takes a key only while the overlay shows subtitles. Some keys need subtitles with times, for example from WhisperX or a subtitle file.</p>
     <table aria-labelledby="video-keys-heading">

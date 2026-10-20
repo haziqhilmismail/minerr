@@ -1,4 +1,5 @@
 import type { CardFields, MediaFile, NoteDraft } from './anki.ts';
+import type { PageCommand } from './chord.ts';
 import type { SubtitleSegment } from './captions.ts';
 import type { WordEntry } from './entry.ts';
 import type { Segment } from './group.ts';
@@ -11,13 +12,17 @@ import type { Entry, PitchPattern } from './meta.ts';
 import type { Health, Job } from './whisper.ts';
 
 // Every message type, with the fields that call() sends and the value that its handler replies with.
-// The service worker handles parse to siteCaptions; it passes parse, lookup, pitch, lookupText, and wordKeys on to the offscreen document.
+// The service worker handles parse to siteCaptions; it passes parse (as segments), lookup, pitch, lookupText, and wordKeys on to the offscreen document.
 // The content scripts of a YouTube tab handle subsState, subsGenerate, and subsUse.
 // The page with the video overlay (a content script, or the player page) handles videoLine and videoRecord.
 // The content scripts of a page that is not YouTube handle videoAttach.
 // The content scripts of every tab, and the reader page, handle pageStats and pageStatsShow (src/stats.ts).
+// The content scripts and the pages of Minerr handle command (src/keys.ts).
 interface Protocol {
   parse: { request: { texts: string[] }; reply: Segment[][] };
+  // The parse of the offscreen document. joins are the word overrides (src/settings.ts wordJoins): the service worker reads them,
+  // as the offscreen document cannot read the storage.
+  segments: { request: { texts: string[]; joins: string[] }; reply: Segment[][] };
   lookup: { request: { lemma: string }; reply: Entry[] };
   pitch: { request: { words: { lemma: string; reading: string }[] }; reply: (PitchPattern | null)[] };
   // The longest dictionary word at the start of text, and the number of characters of text that it covers.
@@ -46,6 +51,8 @@ interface Protocol {
   videoAttach: { request: {}; reply: string };
   pageStats: { request: {}; reply: PageStats };
   pageStatsShow: { request: { index: number }; reply: void };
+  // A browser shortcut of manifest.json for the page of the active tab.
+  command: { request: { command: PageCommand }; reply: void };
 }
 
 type MessageType = keyof Protocol;
