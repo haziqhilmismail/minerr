@@ -1,6 +1,6 @@
 # Minerr design: teal and coral
 
-Minerr uses the design rules of Migaku with its own colors. `src/tokens.ts` holds the one list of tokens. `npm run build` writes it to `dist/theme.css` for the extension pages. The word popup declares it on its shadow host. The subtitle layer `.minerr-subs` declares it with `color-scheme: dark`. The sidebar `.minerr-lines` declares it too and takes the `color-scheme` of its host: the theme on the player page, `html[dark]` on YouTube. Each value is `light-dark(light, dark)`. The `color-scheme` of the element selects the value.
+Minerr uses the design rules of Migaku with its own colors. `src/tokens.ts` holds the one list of tokens. `npm run build` writes it to `dist/theme.css` for the extension pages. The word popup declares it on its shadow host. The subtitle layer `.minerr-subs` declares it with `color-scheme: dark`. To use the tokens on a new surface, such as the subtitle sidebar, put `${TOKENS}` in the CSS rule of its root element. Then set `color-scheme` on that root, or let it inherit the `color-scheme` of the host (the theme on the player page, `html[dark]` on YouTube). Each value is `light-dark(light, dark)`. The `color-scheme` of the element selects the value.
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
