@@ -132,7 +132,7 @@ Minerr sets each word that the selection touches to that status. A short message
 
 - To close the popup, press `Esc`, click outside it, or click **✕** in its top-right corner.
 - To turn Minerr off in all tabs, click the power button in the popup, or press `Alt+Shift+M`. The underlines and the popup stop at once.
-- To turn Minerr on again, press `Alt+Shift+M`.
+- To turn Minerr on again, press `Alt+Shift+M`, or click the Minerr button in the Chrome toolbar and turn on **Minerr on**.
 
 To turn Minerr off for one site only:
 

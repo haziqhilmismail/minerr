@@ -4,7 +4,7 @@ import type { PageStats } from './src/stats.ts';
 import { STATUS_NAMES, STATUSES } from './src/status.ts';
 import type { Snapshot, Source } from './src/subtitles.ts';
 import { applyTheme } from './src/theme.ts';
-import { iPlusOne } from './src/settings.ts';
+import { iPlusOne, minerrEnabled } from './src/settings.ts';
 import { disabledSites, toggleSiteOf } from './src/site.ts';
 import type { JobStatus } from './src/whisper.ts';
 
@@ -165,6 +165,10 @@ for (const button of sourceButtons) {
     if (isSource(source)) act({ type: 'subsUse', source });
   });
 }
+const enabled = byId('enabled', HTMLInputElement);
+enabled.addEventListener('change', () => minerrEnabled.set(enabled.checked));
+minerrEnabled.watch(on => { enabled.checked = on; });
+
 const plusOne = byId('iplusone', HTMLInputElement);
 plusOne.checked = await iPlusOne.get();
 plusOne.addEventListener('change', () => iPlusOne.set(plusOne.checked));

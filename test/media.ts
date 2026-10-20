@@ -157,9 +157,12 @@ try {
 
   await setStorage({ enabled: false });
   await waitHighlighted(tab, null);
-  await setStorage({ enabled: true });
+  const power = action.locator('#enabled');
+  await action.waitForFunction(() => !(document.querySelector('#enabled') as HTMLInputElement).checked);
+  await power.click();
   await waitHighlighted(tab, ['本を読む。']);
-  console.log('Minerr off: no highlight; on: highlight back');
+  assert.deepEqual(await worker.evaluate(() => chrome.storage.local.get('enabled')), { enabled: true });
+  console.log('Minerr off: no highlight; the toolbar switch turns it on: highlight back');
 
   await setStorage({ 'w:魚': 'unknown', 'w:読む': 'unknown' });
   const dark = await context.newPage();
