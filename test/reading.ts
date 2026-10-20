@@ -164,6 +164,17 @@ try {
   await tab.keyboard.press('Escape');
   console.log('furigana: all words, unknown words, on hover, and off; the readings never cover the line above; saved', join(work, 'furigana-all.png'));
 
+  const colors = () => tab.$$eval('#line .ml-word', spans => spans.map(span => `${span.textContent}:${span.dataset.mlPitch}:${getComputedStyle(span).color}`));
+  await options.check('#pitch-colors');
+  await tab.waitForFunction(() => document.querySelectorAll('#line .ml-word[data-ml-pitch]').length === 3);
+  assert.deepEqual(await colors(), ['猫:atamadaka:rgb(229, 72, 77)', '魚:heiban:rgb(74, 134, 232)', '食べなかった:nakadaka:rgb(240, 140, 0)']);
+  await tab.evaluate(() => document.body.append(Object.assign(document.createElement('p'), { id: 'late', textContent: '雨が降る。' })));
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('#late .ml-word[data-ml-lemma="雨"]')?.dataset.mlPitch === 'none');
+  await options.uncheck('#pitch-colors');
+  await tab.waitForFunction(() => !document.documentElement.hasAttribute('data-ml-pitch-colors'));
+  assert.deepEqual(await colors(), ['猫:atamadaka:rgb(0, 0, 0)', '魚:heiban:rgb(0, 0, 0)', '食べなかった:nakadaka:rgb(0, 0, 0)']);
+  console.log('pitch colors: words colored by pattern, new words too, and back to the page color when off');
+
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('READING E2E PASS');
 } finally {

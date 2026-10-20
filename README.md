@@ -415,6 +415,22 @@ The popup then shows a row under the word:
 
 If a word has more than one reading, each reading shows its own frequency and pitch accent.
 
+## Pitch colors
+
+Minerr can color the words on a page by their pitch accent pattern, as Migaku does. You need a pitch accent dictionary for this, see [Frequency and pitch accent](#frequency-and-pitch-accent).
+
+1. Open the options page.
+2. In **Pitch colors**, select **Color the words by pitch accent**.
+
+| Pattern | Color | The pitch |
+| --- | --- | --- |
+| Heiban | Blue | Goes up after the first mora and does not drop. |
+| Atamadaka | Red | Drops after the first mora. |
+| Nakadaka | Orange | Drops after a mora in the middle of the word. |
+| Odaka | Green | Drops after the last mora. |
+
+Minerr uses the pitch accent of the dictionary form of the word. If the word has more than one reading, Minerr uses the reading on the page, or else the first reading in the dictionary. A word that is not in a pitch accent dictionary keeps the color of the page. The underline still shows the status of the word.
+
 ## Theme
 
 The options page, the toolbar menu, and the word popup have a light theme and a dark theme.
@@ -440,6 +456,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/popup.ts` | The dictionary popup: when it opens, its keys, and the card that it adds. |
 | `src/popup-view.ts` | The content of the popup and its position. |
 | `src/furigana.ts` | The furigana setting, and the CSS that shows the reading over a word. |
+| `src/pitch-colors.ts` | The pitch colors of the words on a page. |
 | `src/site.ts` | Minerr on or off for each site, and the state that says if Minerr shows on a page. |
 | `src/keys.ts`, `src/chord.ts` | The keys that work on a page without a popup, and the names of the keys. |
 | `src/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |

@@ -92,6 +92,8 @@
     border-radius: 6px; background: var(--field); font: 600 13px/1.5 system-ui, sans-serif; text-align: center; }
   .swatch { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; }
 
+  .check { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer; }
+  .check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
   .segmented { display: inline-grid; grid-auto-flow: column; grid-auto-columns: auto; gap: 2px; margin: 0; padding: 3px;
     border: 0; border-radius: 8px; background: var(--raised); }
   .segmented label { position: relative; min-width: 88px; padding: 5px 14px; border-radius: 6px; color: var(--muted); white-space: nowrap;
@@ -227,6 +229,13 @@
       <label><input type="radio" name="furigana" value="all">All words</label>
       <label><input type="radio" name="furigana" value="hover">On hover</label>
     </div>
+  </section>
+
+  <section aria-labelledby="pitch-heading">
+    <h2 id="pitch-heading">Pitch colors</h2>
+    <p class="help">Color the words on a page by their pitch accent pattern. Minerr needs a pitch accent dictionary for this. Words that are not in the dictionary keep their color.</p>
+    <label class="check"><input type="checkbox" id="pitch-colors">Color the words by pitch accent</label>
+    <ul id="pitch-legend" class="counts"></ul>
   </section>
 
   <section aria-labelledby="theme-heading">

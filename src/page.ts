@@ -2,6 +2,7 @@ import type { Segment } from './group.ts';
 import { call } from './rpc.ts';
 import { getStatuses, onStatusChange, type Status, STATUSES, WORD_CSS } from './status.ts';
 import { installFurigana } from './furigana.ts';
+import { installPitchColors } from './pitch-colors.ts';
 import { watchActive } from './site.ts';
 
 const JAPANESE = /[぀-ヿ一-鿿]/;
@@ -107,5 +108,6 @@ onStatusChange(changed => {
 document.head.append(Object.assign(document.createElement('style'), { textContent: WORD_CSS }));
 watchActive(active => document.documentElement.toggleAttribute('data-minerr-off', !active));
 installFurigana();
+installPitchColors();
 collect(document.body);
 schedule();
