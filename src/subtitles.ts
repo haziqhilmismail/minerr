@@ -10,8 +10,10 @@ const MAX_RETRY_MS = 60000;
 
 // YouTube's caption window stays in the DOM (the overlay reads it), but it is invisible and takes no mouse events.
 // When Minerr is off (page.ts sets data-minerr-off on the root), YouTube's own captions come back and the overlay hides.
-// The open subtitle sidebar (src/linelist.ts) narrows the page. The masthead is fixed, so it gets its own right edge;
-// the theater player is as high as the narrower page is wide, where YouTube makes it as high as the window is wide.
+// The open subtitle sidebar (src/linelist.ts) narrows the page. The masthead is fixed, so it gets its own right edge.
+// The theater player is as high as the narrower page is wide, where YouTube makes it as high as the window is wide.
+// YouTube sizes the two columns from the window, wider than the narrower page, so the recommended videos hide and
+// the player column takes the width of the page.
 // The sidebar has the colors of YouTube's light or dark theme; :root makes them win over the colors of src/linelist.ts.
 const STYLE = `
   :root:not([data-minerr-off]) .ytp-caption-window-container { opacity: 0 !important; pointer-events: none !important; }
@@ -20,6 +22,8 @@ const STYLE = `
   :root[data-minerr-side]:not([data-minerr-off]) ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container {
     height: calc((100vw - var(--minerr-side-width)) * 9 / 16) !important;
   }
+  :root[data-minerr-side]:not([data-minerr-off]) ytd-watch-flexy #columns { min-width: 0 !important; }
+  :root[data-minerr-side]:not([data-minerr-off]) ytd-watch-flexy #secondary { display: none !important; }
   :root .minerr-lines {
     color-scheme: light;
     --minerr-side-bg: light-dark(#ffffff, #0f0f0f); --minerr-side-card: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.1));

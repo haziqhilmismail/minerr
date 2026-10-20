@@ -1,6 +1,7 @@
 // The subtitle sidebar: a card for each timed line of the video, in a panel as high as the window at its right side.
 // The open panel sets data-minerr-side on the root, and the page gets narrower by the width of the panel, so the panel
-// covers nothing. Fixed parts of a page (the YouTube masthead) need their own rule; src/subtitles.ts has the YouTube rules.
+// covers nothing. The root is positioned, so an absolute page (YouTube's ytd-app) also gets narrower. Fixed parts
+// of a page (the YouTube masthead) need their own rule; src/subtitles.ts has the YouTube rules.
 // The cards are page text (VIDEO in src/site.ts), so page.ts underlines their words and the popup works on them.
 import type { SubtitleSegment } from './captions.ts';
 import { statusOf } from './iplusone.ts';
@@ -16,7 +17,7 @@ const PAUSED = ':hover, :has(.pick)';
 // A host can set the --minerr-side-* properties to match its own palette.
 const STYLE = `
   :root { --minerr-side-width: min(400px, 40vw); }
-  :root[data-minerr-side]:not([data-minerr-off]) { margin-right: var(--minerr-side-width) !important; }
+  :root[data-minerr-side]:not([data-minerr-off]) { position: relative !important; margin-right: var(--minerr-side-width) !important; }
   .minerr-lines {
     --minerr-side-bg: light-dark(#ffffff, #1f2027); --minerr-side-card: light-dark(#f4f5f8, #2b2c35);
     --minerr-side-text: light-dark(#1c1d24, #ecedf2); --minerr-side-muted: light-dark(#5f6270, #a3a5b3);

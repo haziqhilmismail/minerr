@@ -92,22 +92,26 @@ await listen(whisper, 8766);
 // A fake watch page with the parts of YouTube's player DOM that the overlay uses. The data URL keeps the clip seekable.
 const WATCH = `<!doctype html><html dark><meta charset="utf-8"><title>Fake YouTube</title>
 <style>
-  body { margin: 0; padding: 24px; background: #0f0f0f; color: #f1f1f1; font: 14px sans-serif; }
+  body { margin: 0; background: #0f0f0f; color: #f1f1f1; font: 14px sans-serif; }
   html:not([dark]) body { background: #fff; color: #0f0f0f; }
+  /* As on YouTube: the app is absolute, so a margin of the root does not make it narrower, and the masthead is fixed.
+     In the two-column view, the columns are as wide as the smallest player and the recommended videos together. */
+  ytd-app { position: absolute; top: 0; left: 0; display: block; box-sizing: border-box; width: 100%; padding: 24px; }
   #columns { display: flex; flex-wrap: wrap; gap: 24px; }
+  @media (min-width: 1000px) { #columns { min-width: 1221px; } }
   #secondary { width: 402px; }
   #masthead-container { position: fixed; top: 0; width: 100%; height: 24px; display: flex; justify-content: space-between; background: #212121; }
   ytd-watch-flexy[theater] #full-bleed-container { margin: 0 -24px 24px; height: 56.25vw; max-height: calc(100vh - 169px); }
   ytd-watch-flexy[theater] #movie_player { width: 100%; height: 100%; }
   #movie_player { position: relative; width: 854px; height: 480px; overflow: hidden; background: #000; user-select: none; }
-  .full body { padding: 0; } .full #movie_player { position: fixed; inset: 0; width: auto; height: auto; }
+  .full ytd-app { padding: 0; } .full #movie_player { position: fixed; inset: 0; width: auto; height: auto; }
   video { width: 100%; height: 100%; }
   .ytp-chrome-bottom { position: absolute; left: 12px; right: 12px; bottom: 0; z-index: 59; height: 48px;
     border-top: 3px solid #f00; background: rgba(0, 0, 0, .35); }
   .caption-window { position: absolute; left: 50%; bottom: 2%; transform: translateX(-50%); text-align: center; }
   .ytp-caption-segment { font-size: 20px; color: #fff; background: rgba(8, 8, 8, .75); }
 </style>
-<div id="masthead-container"><span>YouTube</span><span id="avatar">Avatar</span></div>
+<ytd-app><div id="masthead-container"><span>YouTube</span><span id="avatar">Avatar</span></div>
 <h1 id="title">猫の動画</h1>
 <ytd-watch-flexy><div id="full-bleed-container"></div><div id="columns"><div id="primary">
 <div id="movie_player">
@@ -118,7 +122,7 @@ const WATCH = `<!doctype html><html dark><meta charset="utf-8"><title>Fake YouTu
   </span></div></div>
   <div class="ytp-chrome-bottom"></div>
 </div>
-</div><div id="secondary"><div id="related">Recommended videos</div></div></div></ytd-watch-flexy>`;
+</div><div id="secondary"><div id="related">Recommended videos</div></div></div></ytd-watch-flexy></ytd-app>`;
 
 const { context, worker, extensionId } = await launch(join(work, 'profile'));
 await context.route('https://www.youtube.com/**', route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: WATCH }));
@@ -197,7 +201,7 @@ try {
   assert.equal(await sidebar.locator('.minerr-lines-empty').innerText(),
     'The subtitle sidebar needs subtitles with times. Generate them with WhisperX, or start the Minerr server for the YouTube subtitles.');
   assert.equal(await sidebar.locator('li').count(), 0);
-  assert.equal(await related.isVisible(), true, 'the recommended videos stay');
+  assert.equal(await related.isVisible(), false, 'the recommended videos hide while the sidebar is open');
   console.log('sidebar on mirrored captions: a message');
 
   await tab.evaluate(() => {
@@ -361,7 +365,7 @@ try {
 
   await worker.evaluate(() => chrome.storage.local.set({ 'w:猫': 'known' }));
   await tab.setViewportSize({ width: 1360, height: 900 });
-  const PARTS = ['#masthead-container', '#avatar', '#movie_player', '#secondary', '#full-bleed-container'];
+  const PARTS = ['#masthead-container', '#avatar', '#movie_player', '#columns', '#full-bleed-container'];
   const boxes = () => tab.evaluate(selectors => Object.fromEntries(selectors.map(selector => {
     const box = document.querySelector(selector)?.getBoundingClientRect();
     if (!box) throw new Error(`The page has no ${selector}`);
@@ -387,6 +391,7 @@ try {
     return found;
   };
   await nothingCovered('default view');
+  assert.equal(await related.isVisible(), false, 'the recommended videos hide while the sidebar is open');
   await shot(tab, 'sidebar-youtube-dark.png');
   assert.equal(await sidebar.evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(15, 15, 15)', 'the sidebar has the colors of the dark theme');
   assert.ok(await sidebar.locator('.text').first().evaluate(node => parseFloat(getComputedStyle(node).fontSize)) >= 18, 'the line text is 18 px or larger');
@@ -457,6 +462,7 @@ try {
   await tab.keyboard.press('g');
   await sidebar.waitFor({ state: 'hidden' });
   assert.deepEqual(await pageBoxes(), closedPage, 'a closed sidebar gives the page its layout back');
+  assert.equal(await related.isVisible(), true, 'the recommended videos come back');
   await tab.setViewportSize({ width: 902, height: 528 });
   console.log('YouTube sidebar: a full-height panel that the page makes room for, Play, a card from +, the follow mark, filters, and bookmarks');
 
