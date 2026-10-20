@@ -172,6 +172,9 @@ try {
   await options.goto(`chrome-extension://${extensionId}/options.html`);
   await options.setInputFiles('#dict-file', dictionary);
   await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'));
+  const keyRows = await options.locator('#video-keys tr').evaluateAll(rows => rows.map(row => (row as HTMLElement).innerText.replace(/\s+/g, ' ').trim()));
+  assert.equal(keyRows[0], '→ or D Go to the next line Needs subtitles with times');
+  assert.ok(keyRows.includes('Alt+O Show the subtitles 0.1 seconds later Needs subtitles with times'), 'the options page lists the video keys');
   await options.close();
 
   const player = await context.newPage();
@@ -232,6 +235,47 @@ try {
   assert.ok(picture.startsWith('/9j/'), 'picture is base64 JPEG');
   await player.keyboard.press('Escape');
   await player.mouse.move(0, 0);
+
+  const videoTime = () => player.evaluate(() => document.querySelector('video')?.currentTime ?? -1);
+  const toast = player.locator('.minerr-subs-toast');
+  await player.evaluate(() => {
+    const copied: string[] = [];
+    Object.assign(window, { copied });
+    navigator.clipboard.writeText = async text => { copied.push(text); };
+  });
+  await seek(1);
+  await player.keyboard.press('d');
+  await line.locator('.ml-word[data-ml-lemma="雨"]').waitFor();
+  assert.equal(await videoTime(), 3, 'D goes to the next line');
+  await player.keyboard.press('ArrowLeft');
+  await line.locator('.ml-word[data-ml-lemma="食べる"]').waitFor();
+  assert.equal(await videoTime(), 0, 'ArrowLeft goes to the previous line');
+  await player.keyboard.press('c');
+  await toast.filter({ hasText: 'Copied the line.' }).waitFor();
+  assert.deepEqual(await player.evaluate(() => Reflect.get(window, 'copied')), ['猫が魚を食べた']);
+  await player.keyboard.press('s');
+  await player.waitForFunction(() => document.querySelector('video')?.paused === false);
+  await player.keyboard.press('.');
+  const stepped = await videoTime();
+  assert.equal(await player.evaluate(() => document.querySelector('video')?.paused), true, 'a frame step pauses the video');
+  await player.keyboard.press('.');
+  assert.ok(Math.abs(await videoTime() - stepped - 1 / 30) < 0.001, 'a frame step moves 1/30 s');
+  await player.keyboard.press('Alt+o');
+  await toast.filter({ hasText: 'Subtitle offset: +0.1 s' }).waitFor();
+  await seek(3.05);
+  await line.locator('.ml-word[data-ml-lemma="食べる"]').waitFor();
+  await player.keyboard.press('Alt+i');
+  await line.locator('.ml-word[data-ml-lemma="雨"]').waitFor();
+  console.log('player keys: next, previous, copy, replay, frame step, and offset work');
+  const fontSize = () => line.evaluate(node => parseFloat(getComputedStyle(node).fontSize));
+  const before = await fontSize();
+  await player.keyboard.press('Alt+=');
+  await toast.filter({ hasText: 'Subtitle size: 110%' }).waitFor();
+  await player.waitForFunction(size => parseFloat(getComputedStyle(document.querySelector('.minerr-subs-line') ?? document.body).fontSize) > size, before);
+  assert.ok(Math.abs(await fontSize() - before * 1.1) < 0.5, 'Alt+= makes the text 10% larger');
+  await player.keyboard.press('Alt+-');
+  await player.waitForFunction(size => parseFloat(getComputedStyle(document.querySelector('.minerr-subs-line') ?? document.body).fontSize) === size, before);
+  assert.deepEqual(await worker.evaluate(() => chrome.storage.local.get('subScale')), { subScale: 1 });
 
   await player.setInputFiles('#video-file', clip);
   await status.filter({ hasText: 'No subtitles.' }).waitFor();

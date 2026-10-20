@@ -70,7 +70,7 @@ function render(): void {
   // WhisperX reports 0% until its first chunk is done, so 0 shows the moving bar of unknown progress too.
   if (subs.state === 'working' && subs.progress) progress.value = subs.progress;
   else progress.removeAttribute('value');
-  setLines(subs.state === 'ready' ? { kind: 'timed', segments: subs.segments } : { kind: 'none' });
+  setLines(subs.state === 'ready' && file ? { kind: 'timed', id: `file:${file.name}:${file.size}`, segments: subs.segments } : { kind: 'none' });
 }
 
 function setSubs(next: Subtitles): void {

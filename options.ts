@@ -12,6 +12,7 @@ import {
 } from './src/status.ts';
 import { TAG_CSS } from './src/tags.ts';
 import { applyTheme, theme } from './src/theme.ts';
+import './src/videooptions.ts';
 
 applyTheme();
 

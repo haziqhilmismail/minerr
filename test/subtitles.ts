@@ -143,6 +143,15 @@ try {
   assert.deepEqual(words, ['猫=猫', '魚=魚', '食べなかった=食べる', '今日=今日', '雨=雨']);
 
   await tab.evaluate(() => {
+    const seen: string[] = [];
+    Object.assign(window, { seen });
+    document.addEventListener('keydown', event => seen.push(event.key));
+  });
+  await tab.keyboard.press('d');
+  await tab.locator('.minerr-subs-toast', { hasText: 'This key needs subtitles with times.' }).waitFor();
+  assert.deepEqual(await tab.evaluate(() => Reflect.get(window, 'seen')), ['d'], 'on mirrored captions YouTube gets the key');
+
+  await tab.evaluate(() => {
     const segment = document.querySelectorAll('.ytp-caption-segment')[1];
     if (!segment) throw new Error('The page has no second caption line');
     segment.textContent = '魚が好き';
@@ -221,6 +230,10 @@ try {
   await line.locator('.ml-word[data-ml-lemma="雨"]').waitFor();
   assert.equal(await line.innerText(), '今日は雨が降っています。');
   console.log('WhisperX overlay after a seek to 4 s:', await line.innerText());
+  await tab.keyboard.press('ArrowLeft');
+  await line.locator('.ml-word[data-ml-lemma="食べる"]').waitFor();
+  assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 0);
+  assert.deepEqual(await tab.evaluate(() => Reflect.get(window, 'seen')), ['d'], 'with timed lines Minerr takes the key, not YouTube');
 
   await action.click('[data-source="youtube"]');
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べなかった\n魚が好き');

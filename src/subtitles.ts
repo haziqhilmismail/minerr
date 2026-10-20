@@ -47,7 +47,7 @@ attach({ video, blocked: () => player?.classList.contains('ad-showing') ?? false
 
 function render(): void {
   setLines(state.source === 'whisperx'
-    ? { kind: 'timed', segments: state.segments }
+    ? { kind: 'timed', id: `youtube:${state.videoId}`, segments: state.segments }
     : { kind: 'mirror', text: captionText([...(player?.querySelectorAll('.caption-visual-line') ?? [])].map(l => l.textContent ?? '')) });
 }
 

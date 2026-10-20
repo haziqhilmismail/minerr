@@ -258,6 +258,35 @@ Keep the player tab open while the server works. If you close the tab, open the 
 
 Click **Save subtitles** to download the WhisperX subtitles as an `.srt` file. The file gets the name of the video, for example `lesson.srt` for `lesson.mp4`. Keep the `.srt` file in the same folder as the video. Next time, open the video and the `.srt` file together. Then you do not need the server. Most video players also show an `.srt` file that has the name of the video.
 
+## Video keys
+
+These keys work on a video with the Minerr subtitle overlay: on YouTube, in the video player, and on other sites. They do not work when the focus is in a text field.
+
+| Key | Action | Note |
+| --- | --- | --- |
+| `→` or `D` | Go to the next line. | Needs subtitles with times. |
+| `←` | Go to the previous line. | Needs subtitles with times. |
+| `↓` or `S` | Play the current line again. | Needs subtitles with times. |
+| `Alt+A` | Go back 5 seconds. | |
+| `Alt+D` | Go forward 5 seconds. | |
+| `C` | Copy the current line. | |
+| `.` | Go one frame forward. The video pauses. | Needs subtitles with times. |
+| `,` | Go one frame back. The video pauses. | Needs subtitles with times. |
+| `Alt+O` | Show the subtitles 0.1 seconds later. | Needs subtitles with times. |
+| `Alt+I` | Show the subtitles 0.1 seconds earlier. | Needs subtitles with times. |
+| `Alt+=` | Make the subtitles larger. | |
+| `Alt+-` | Make the subtitles smaller. | |
+
+Subtitles with times come from WhisperX, from a subtitle file, or from the YouTube subtitles that the Minerr server downloads. The YouTube captions that Minerr copies from the player have no times. With these captions, a key that needs times shows a hint, and YouTube gets the key.
+
+YouTube also uses some of these keys, for example `C`, `.`, `,`, and the arrow keys. While the overlay shows subtitles, the Minerr action replaces the YouTube action. `C` copies a line only when the overlay shows one. Otherwise YouTube gets `C` and turns the captions on or off.
+
+`A` is not a video key, because `A` adds a card in the word popup.
+
+The offset applies to the open video until you open a different video. The text size applies to all videos, and Minerr keeps it.
+
+The options page also shows these keys, in **Colors and shortcuts**.
+
 ## The note type
 
 You do not make the note type yourself. When you add the first card, Minerr makes the deck and the note type in Anki through AnkiConnect. The default deck is `Minerr`. You can change the deck on the options page. Minerr adds the tag `minerr` to each note.
@@ -408,6 +437,8 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/iplusone.ts` | The i+1 highlight. The pure part is `iPlusOneSentences` in `src/sentence.ts`. |
 | `src/video.ts` | The video, its subtitle lines, and the overlay over it. YouTube, the player, and other sites use it. |
 | `src/overlay.ts` | The subtitle overlay line, for YouTube and the player. |
+| `src/playback.ts`, `src/videokeys.ts` | Pure rules for timed lines (jumps, play modes, gaps, text clean-up), and the table of the video keys. |
+| `src/videosettings.ts`, `src/videooptions.ts` | The video settings, and their part of the options page. |
 | `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 
 Node.js runs the `.ts` test files directly, without a build. To run the tests:
@@ -415,7 +446,7 @@ Node.js runs the `.ts` test files directly, without a build. To run the tests:
 1. Run `npm ci`.
 2. Download `JMdict_english.zip` to `test/fixtures/JMdict_english.zip`.
 3. Run `npm run build`. The browser tests load the extension from `dist`.
-4. Run `node test/unit.ts`.
+4. Run `node test/unit.ts` and `node test/video-unit.ts`.
 5. Close Anki, because the next test uses port 8765.
 6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect.
 7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it.
