@@ -99,10 +99,11 @@ export function installKeys(popup: PopupKeys): void {
     return true;
   };
   // Each binding returns false when it does not apply now, so the page gets the key.
-  const bindings: Record<string, () => boolean> = {
+  const bindings: Record<string, (event: KeyboardEvent) => boolean> = {
     ...Object.fromEntries(STATUS_NAMES.map(status => [STATUSES[status].hotkey, statusKey(status)])),
     a: whenOpen(popup.addCard),
-    n: nextUnknown,
+    // Shift+N is the next video on YouTube; only a popup that Shift opened takes it.
+    n: event => (!event.shiftKey || popup.isOpen()) && nextUnknown(),
     'alt+s': popup.lookupSelection,
     Escape: whenOpen(popup.close),
     'alt+shift+s': () => {
@@ -117,10 +118,10 @@ export function installKeys(popup: PopupKeys): void {
 
   // Capture on window so page shortcuts (YouTube uses 1-4 to seek) do not also fire.
   window.addEventListener('keydown', event => {
-    if (event.ctrlKey || event.metaKey || isEditable(event.target)) return;
+    if (event.ctrlKey || event.metaKey || isEditable(event)) return;
     const name = chord(event);
     // A site that is off still takes the key that turns it on.
-    if ((!active && name !== 'alt+shift+d') || !bindings[name]?.()) return;
+    if ((!active && name !== 'alt+shift+d') || !bindings[name]?.(event)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   }, true);

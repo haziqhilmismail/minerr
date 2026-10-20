@@ -22,25 +22,31 @@ export function toBase64(buffer: ArrayBuffer): string {
   return btoa(text);
 }
 
+// A seek or a play that never ends (a stalled network) ends the recording 5 seconds after the length of the part.
 async function record(video: HTMLVideoElement, start: number, end: number): Promise<MediaFile | null> {
+  // The line plays at the speed of the video, so a slow speed needs more time.
+  const timeout = AbortSignal.timeout(((end - start) / video.playbackRate + 5) * 1000);
+  const gaveUp = once(timeout, 'abort');
   video.pause();
   video.currentTime = start;
-  await once(video, 'seeked');
+  await Promise.race([once(video, 'seeked'), gaveUp]);
+  if (timeout.aborted) return null;
   const stream = video.captureStream();
-  await video.play();
+  await Promise.race([video.play(), gaveUp]);
   const tracks = stream.getAudioTracks();
-  if (!tracks.length) return null;
+  if (timeout.aborted || !tracks.length) return null;
   const recorder = new MediaRecorder(new MediaStream(tracks), { mimeType: MIME });
   const chunks: Blob[] = [];
   recorder.addEventListener('dataavailable', event => chunks.push(event.data));
   const stopped = once(recorder, 'stop');
   recorder.start();
   await new Promise<void>(resolve => {
-    const check = () => (video.currentTime >= end || video.paused || video.ended ? resolve() : requestAnimationFrame(check));
+    const check = () => (video.currentTime >= end || video.paused || video.ended || timeout.aborted ? resolve() : requestAnimationFrame(check));
     check();
   });
   recorder.stop();
   await stopped;
+  if (timeout.aborted) return null;
   return { filename: `minerr-${Date.now()}.webm`, data: toBase64(await new Blob(chunks, { type: MIME }).arrayBuffer()) };
 }
 

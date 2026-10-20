@@ -13,7 +13,12 @@ const BATCH = 100;
 
 // Plain text nodes we inserted between word spans; the observer sees them as additions and must not re-parse them.
 const created = new WeakSet<Node>();
+// The first walk of the page finds its nodes in page order. The observer finds nodes in any order, so only they get sorted.
+let ordered: Text[] = [];
 const pending = new Set<Text>();
+// A task that runs longer than this gives the page a turn, so a big page does not freeze while Minerr reads it.
+const TASK_MS = 20;
+const nextTask = () => new Promise(resolve => setTimeout(resolve));
 let timer: ReturnType<typeof setTimeout> | null = null;
 
 const isText = (node: Node): node is Text => node.nodeType === Node.TEXT_NODE;
@@ -24,41 +29,48 @@ function wanted(node: Text): boolean {
     && !parent.isContentEditable && !parent.closest(SKIP);
 }
 
-function collect(root: Node): void {
+function collect(root: Node, keep: (node: Text) => void = node => pending.add(node)): void {
   if (isText(root)) {
-    if (wanted(root)) pending.add(root);
+    if (wanted(root)) keep(root);
     return;
   }
   if (root.nodeType !== Node.ELEMENT_NODE) return;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) if (isText(node) && wanted(node)) pending.add(node);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) if (isText(node) && wanted(node)) keep(node);
 }
 
 // True if text node b follows text node a in the text flow: no other text (ruby annotation aside), no line break,
-// and no block between them.
+// image, or button, and no block between them.
+const BREAKS = /^(BR|IMG|BUTTON)$/;
 function follows(a: Text, b: Text, cache: Map<Element, Element>): boolean {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
   walker.currentNode = a;
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     if (node === b) return a.parentElement !== null && b.parentElement !== null && blockOf(a.parentElement, cache) === blockOf(b.parentElement, cache);
-    if (node instanceof Element ? node.tagName === 'BR' || !(isInline(node) || node.closest(RUBY_TEXT)) : !node.parentElement?.closest(RUBY_TEXT)) return false;
+    if (node instanceof Element ? BREAKS.test(node.tagName) || !(isInline(node) || node.closest(RUBY_TEXT)) : !node.parentElement?.closest(RUBY_TEXT)) return false;
   }
   return false;
 }
 
-// The nodes in page order, cut into runs of text that reads as one: <ruby>暖<rt>あたた</rt></ruby>かくて is one run.
-function runsOf(nodes: Text[]): Text[][] {
+// Nodes in page order, cut into runs of text that reads as one: <ruby>暖<rt>あたた</rt></ruby>かくて is one run.
+async function runsOf(sorted: Text[]): Promise<Text[][]> {
   const cache = new Map<Element, Element>();
-  const sorted = [...nodes].sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
   const runs: Text[][] = [];
+  let since = performance.now();
   for (const node of sorted) {
     const run = runs.at(-1);
     const last = run?.at(-1);
     if (run && last && follows(last, node, cache)) run.push(node);
     else runs.push([node]);
+    if (performance.now() - since > TASK_MS) {
+      await nextTask();
+      since = performance.now();
+    }
   }
   return runs;
 }
+
+const inPageOrder = (nodes: Text[]) => nodes.sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
 
 // Parses each run as one text, so a word that crosses nodes is one word, and puts the parts of the segments into the nodes.
 async function wrap(runs: Text[][]): Promise<void> {
@@ -83,8 +95,11 @@ async function wrap(runs: Text[][]): Promise<void> {
 }
 
 async function flush(): Promise<void> {
-  const runs = runsOf([...pending]);
+  const first = ordered;
+  const added = inPageOrder([...pending]);
+  ordered = [];
   pending.clear();
+  const runs = [...await runsOf(first), ...await runsOf(added)];
   for (let i = 0; i < runs.length; i += BATCH) {
     await wrap(runs.slice(i, i + BATCH)).catch(error => console.warn('minerr parse failed', error));
   }
@@ -102,7 +117,7 @@ new MutationObserver(records => {
       created.delete(record.target);
       collect(record.target);
     } else {
-      record.addedNodes.forEach(collect);
+      record.addedNodes.forEach(node => collect(node));
     }
   }
   if (pending.size) schedule();
@@ -115,5 +130,5 @@ watchActive(active => document.documentElement.toggleAttribute('data-minerr-off'
 installFurigana();
 installPitchColors();
 installSentenceHover();
-collect(document.body);
+collect(document.body, node => ordered.push(node));
 schedule();

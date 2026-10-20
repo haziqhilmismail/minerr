@@ -1,6 +1,6 @@
 // Highlights the sentence of the word under the mouse, or of the word of the open popup, with the CSS Custom Highlight API.
-import { blockOf } from './dom.ts';
 import { sentenceBounds } from './sentence.ts';
+import { sentenceText, wordRange } from './sentence-text.ts';
 import { isBoolean, setting } from './settings.ts';
 import { watchActive } from './site.ts';
 
@@ -12,21 +12,10 @@ const STYLE = `
   .minerr-subs-line::highlight(${NAME}), .minerr-subs-line *::highlight(${NAME}) { background-color: rgba(120, 150, 255, 0.35); }
 `;
 
-// The range of the sentence of span in the text of its block.
+// The range of the sentence of span.
 function sentenceRange(span: HTMLElement): Range | null {
-  const nodes: Text[] = [];
-  const starts: number[] = [];
-  let text = '';
-  let at = -1;
-  const walker = document.createTreeWalker(blockOf(span.parentElement ?? span), NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (!(node instanceof Text)) continue;
-    if (at < 0 && span.contains(node)) at = text.length;
-    nodes.push(node);
-    starts.push(text.length);
-    text += node.data;
-  }
-  if (at < 0) return null;
+  const { nodes, starts, text, from: at } = sentenceText(wordRange(span, span));
+  if (!nodes.length) return null;
   const [start, end] = sentenceBounds(text, at);
   // The node of offset: an end point stays at the end of the node before, not at the start of the next word.
   const point = (offset: number, isEnd: boolean): [Text, number] | null => {

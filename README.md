@@ -247,7 +247,7 @@ The overlay text is page text. Minerr underlines its words, and the popup and th
 
 You can also use the keyboard on the subtitle line:
 
-- Press `N` to open the popup of the first unknown word of the line. Press `N` again to go to the next unknown word. After the last unknown word, `N` goes back to the first one.
+- Press `N` to open the popup of the first unknown word of the line. Press `N` again to go to the next unknown word. After the last unknown word, `N` goes back to the first one. If no popup is open, YouTube gets `Shift+N` (the next video).
 - If the line has exactly one unknown word, press a status key, `1` to `4`, to set that word. You do not need to open the popup. A short message shows the change.
 
 These keys work in the Minerr video player too. If the line has no unknown word, the page gets the key, so YouTube keys still work.
@@ -378,6 +378,8 @@ The audio comes from one of these sources:
 2. If the server is off or has no audio of the video, Minerr records the line in the tab. The video goes back to the start of the line and plays it again. Then the video goes back to where it was. The recording is a WebM file.
 
 The sentence audio needs subtitles with times. A card from the YouTube captions that Minerr copies from the player has no sentence audio.
+
+The `SentenceAudio` field is new. If your note type is from an earlier version, Anki asks for a full sync one time after the update. Sync all your devices before you update Minerr. See [The note type](#the-note-type).
 
 Anki on a computer plays MP3 and WebM files. If a phone app does not play a WebM file, start the server before you add the card. Then the card gets an MP3 file.
 
@@ -544,6 +546,8 @@ The card has a light theme and a night mode theme. It also fits phone screens. I
 
 Minerr keeps the note type up to date. Each time its background service worker starts, the first card that you add sets the templates and the CSS to the current version. If you change the templates or the CSS in Anki, Minerr replaces your changes. If the note type does not have a field of the current version, Minerr adds the field. For example, a note type from an earlier version gets the `SentenceAudio` field. Minerr does not remove or rename a field. If you want your own design, make a copy of the note type in Anki and edit the copy.
 
+A new field changes the schema of the note type. After this change, Anki asks for a full sync one time. A full sync replaces the collection on one side with the collection on the other side. Before you update Minerr, sync Anki on all your devices. Then add the first card, and upload the collection from this computer when Anki asks.
+
 If an Anki window to add, browse, or edit cards is open, AnkiConnect cannot change the note type. Then the popup tells you to close the window.
 
 ## Use your own note type
@@ -635,7 +639,7 @@ In all modes, `Shift` opens the popup at once. You can press `Shift` before or a
 
 ### Look up selected text
 
-Select text on the page, then press `Alt+S`. Minerr looks up the longest dictionary word at the start of the selection, also in its dictionary form. For example, if you select 食べなかった, the popup shows 食べる. Use this for a word that Minerr cuts in a different way, or for a word in text that Minerr does not underline. If no dictionary has a word at the start of the selection, a short message tells you.
+Select text on the page, then press `Alt+S`. Minerr looks up the longest dictionary word at the start of the selection, also in its dictionary form. For example, if you select 食べなかった, the popup shows 食べる. Use this for a word that Minerr cuts in a different way, or for a word in text that Minerr does not underline. If no dictionary has a word at the start of the selection, a short message tells you. When the popup opens, the selection goes away. Thus the status keys change the word of the popup.
 
 `A` in this popup adds a card with the sentence around the selected word.
 
@@ -768,6 +772,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/furigana.ts` | The furigana setting, and the CSS that shows the reading over a word. |
 | `src/pitch-colors.ts` | The pitch colors of the words on a page. |
 | `src/sentence-hover.ts` | The highlight of the sentence of the word under the mouse. |
+| `src/sentence-text.ts` | The text of the sentence around a word on the page, for the highlight and the card. The walk stops at the sentence ends and at a `<br>`. |
 | `src/site.ts` | Minerr on or off for each site, and the state that says if Minerr shows on a page. |
 | `src/keys.ts`, `src/chord.ts` | The keys that work on a page without a popup, and the names of the keys. |
 | `src/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |
@@ -819,6 +824,7 @@ More scripts:
 
 - `node test/screenshots.ts` saves screenshots of the page, the popup, and the options page to `/tmp/minerr-ui`.
 - `node test/card-preview.ts` saves screenshots of the card to `/tmp/minerr-card`.
+- `node test/page-perf.ts [lines]` measures the first parse of a page with many lines of Japanese text, 50000 by default. It prints the time until all the words show and the longest tasks of the page.
 - `node test/parse-time.ts` imports the real JMdict and prints the parse time of a long page. To time a different build, set `EXTENSION_DIR`.
 - `node test/readme-shots.ts` saves the two screenshots at the top of this README to `docs/`. It needs the network and a WhisperX server that has the subtitles of the video.
 - If the system has no Japanese font, set `CJK_FONT_DIR` to a folder that contains one. Put an emoji font in the same folder, for example `seguiemj.ttf` from Windows. Without it, the `⭐` tag shows as a box.

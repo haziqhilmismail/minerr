@@ -64,10 +64,11 @@ def yt_dlp(*args, timeout):
 
 
 def cached_audio(key):
-    """The finished audio file of key in AUDIO, or None. yt-dlp writes .part and .ytdl files while it downloads."""
+    """The finished audio file of key in AUDIO, or None. Only <key>.<ext> is finished: yt-dlp also writes names such as
+    <key>.webm.part-Frag3 and <key>.temp.m4a, and a killed download leaves them."""
     if not AUDIO.is_dir():
         return None
-    return next((path for path in AUDIO.glob(f'{key}.*') if path.suffix not in ('.part', '.ytdl')), None)
+    return next((path for path in AUDIO.glob(f'{key}.*') if path.stem == key and path.suffix not in ('.part', '.ytdl')), None)
 
 
 # One lock for each key, so a WhisperX job and a clip never download the same audio at the same time.
@@ -84,7 +85,10 @@ def download_audio(url, key):
         if found:
             return found
         AUDIO.mkdir(parents=True, exist_ok=True)
-        yt_dlp('-f', 'bestaudio/best', '-o', str(AUDIO / f'{key}.%(ext)s'), '--', page_url(key, url), timeout=1800)
+        # The partial files stay in .tmp until yt-dlp moves the finished file to AUDIO, so /clip never reads one.
+        # A site without an audio-only format gets a small video, and a page with many videos gets its first.
+        yt_dlp('-f', 'bestaudio/best[height<=480]/worst', '--playlist-items', '1', '-P', str(AUDIO), '-P', f'temp:{AUDIO / ".tmp"}',
+               '-o', f'{key}.%(ext)s', '--', page_url(key, url), timeout=1800)
         found = cached_audio(key)
         if not found:
             raise RuntimeError('yt-dlp wrote no audio file.')
@@ -132,9 +136,10 @@ def pick_track(info, lang):
     return None
 
 
-# The info of yt-dlp for each video, for some minutes: the extension asks for two languages at once.
+# The info of yt-dlp for the last videos, for some minutes: the extension asks for two languages at once.
 # ponytail: one lock for all videos, so a second video waits for the first; a lock per key if that gets slow.
 INFO_SECONDS = 600
+INFO_VIDEOS = 32
 infos = {}
 info_lock = threading.Lock()
 
@@ -143,6 +148,9 @@ def video_info(url, key):
     with info_lock:
         found = infos.get(key)
         if not found or time.monotonic() - found[0] > INFO_SECONDS:
+            infos.pop(key, None)
+            while len(infos) >= INFO_VIDEOS:
+                del infos[next(iter(infos))]
             found = infos[key] = (time.monotonic(), json.loads(yt_dlp('-J', '--', page_url(key, url), timeout=300)))
         return found[1]
 
@@ -153,6 +161,9 @@ def fetch_captions(url, key, lang):
     track = pick_track(info, lang)
     if not track:
         return None
+    # The generic extractor of yt-dlp takes the src of a <track> on the page as it is, file: URLs too.
+    if urlsplit(track[0]).scheme not in ('http', 'https'):
+        raise ValueError('The subtitle track is not an http or https URL.')
     with urllib.request.urlopen(track[0], timeout=60) as response:
         return {'ext': track[1], 'text': response.read().decode('utf-8', 'replace')}
 
