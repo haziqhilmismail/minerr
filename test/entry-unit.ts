@@ -116,6 +116,20 @@ test('a sequence with more rows than one word has is not an entry', async () => 
   assert.equal(await bad.entry('猫', 'ねこ'), null);
 });
 
+test('a parse reads each index key one time', async () => {
+  const index = memoryIndex(rows);
+  const reads: string[] = [];
+  const counted: EntryIndex = {
+    byExpression: text => (reads.push(`expression ${text}`), index.byExpression(text)),
+    byReading: text => (reads.push(`reading ${text}`), index.byReading(text)),
+    bySequence: (dict, sequence) => (reads.push(`sequence ${sequence}`), index.bySequence(dict, sequence)),
+    headwords: index.headwords,
+  };
+  const fresh = dictionaryWords(counted);
+  await entrySegments(tokenizer.tokenize('猫とねことネコ。ねこが猫を見た。'), fresh);
+  assert.deepEqual(reads.filter((read, i) => reads.indexOf(read) !== i), []);
+});
+
 test('no dictionary: the parse is the kuromoji grouping and no word has an entry', async () => {
   const none = dictionaryWords(memoryIndex([]));
   for (const text of ['猫とねことネコ', '食肉目ネコ科ネコ属', '本を開いた']) {

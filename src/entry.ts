@@ -43,55 +43,72 @@ export const MAX_ENTRY_ROWS = 200;
 // The first row with the highest score.
 const best = (rows: EntryRow[]) => rows.reduce<EntryRow | undefined>((top, row) => (top && top.score >= row.score ? top : row), undefined);
 
+// The one entry of rows: the sequence of the first dictionary title, if the rows of that dictionary have one sequence.
+function entryOf(rows: EntryRow[]): { dict: string; sequence: number } | null {
+  const dict = rows.map(row => row.dict).sort()[0];
+  const [sequence, ...others] = new Set(rows.flatMap(row => (row.dict === dict ? [row.sequence] : [])));
+  return dict === undefined || sequence === undefined || others.length ? null : { dict, sequence };
+}
+
 // The entry of one spelling. With a reading, only the rows of that reading fit, unless no row has it.
-async function resolve(index: EntryIndex, lemma: string, reading: string | null): Promise<Omit<WordEntry, 'oldKey'> | null> {
+// The entry is alone when the spelling without its reading has this entry only; then the lemma was its status key.
+async function resolve(index: EntryIndex, lemma: string, reading: string | null): Promise<(Omit<WordEntry, 'oldKey'> & { alone: boolean }) | null> {
   const kana = KANA.test(lemma);
   const found = (await Promise.all([
     index.byExpression(lemma),
     ...(kana ? [index.byReading(toHiragana(lemma)), index.byReading(toKatakana(lemma))] : []),
   ])).flat();
   const fits = found.filter(row => toHiragana(row.reading) === reading);
-  const rows = fits.length ? fits : found;
-  // With more than one dictionary, the first title decides.
-  const dict = rows.map(row => row.dict).sort()[0];
-  const sequences = new Set(rows.flatMap(row => (row.dict === dict ? [row.sequence] : [])));
-  const [sequence, ...others] = sequences;
-  if (dict === undefined || sequence === undefined || others.length) return null;
+  const one = entryOf(fits.length ? fits : found);
+  if (!one) return null;
+  const { dict, sequence } = one;
   const entry = await index.bySequence(dict, sequence);
   const head = best(entry);
   if (!head || entry.length > MAX_ENTRY_ROWS) return null;
-  const spelled = head.expression === lemma ? found.filter(row => row.expression === lemma) : await index.byExpression(head.expression);
+  const spelled = await index.byExpression(head.expression);
   const main = best(spelled.filter(row => row.dict === dict));
+  const alone = entryOf(found);
   return {
     key: main?.sequence === sequence ? head.expression : `${head.expression}【${head.reading}】`,
     headword: head.expression,
     reading: entry.find(row => row.expression === head.expression && toHiragana(row.reading) === reading)?.reading ?? head.reading,
+    alone: alone?.dict === dict && alone.sequence === sequence,
   };
 }
 
-// Caches each lookup, for the life of one set of dictionaries.
-export function dictionaryWords(index: EntryIndex): Words {
-  const entries = new Map<string, Promise<WordEntry | null>>();
-  const known = new Map<string, boolean>();
-  async function find(lemma: string, reading: string | null): Promise<WordEntry | null> {
-    const entry = await resolve(index, lemma, reading);
-    if (!entry || entry.key === lemma) return entry;
-    // The old key of a spelling with more than one entry (上手) is the status of all of them; it stays.
-    const alone = reading === null ? entry : await entryOf(lemma, null);
-    return alone?.key === entry.key ? { ...entry, oldKey: lemma } : entry;
-  }
-  function entryOf(lemma: string, reading: string | null): Promise<WordEntry | null> {
-    const id = `${lemma}\n${reading ?? ''}`;
-    let entry = entries.get(id);
-    if (!entry) {
-      entry = find(lemma, reading);
-      entries.set(id, entry);
-      entry.catch(() => entries.delete(id));
+// Keeps the promise of each call by its arguments, and forgets a promise that fails.
+function remember<Args extends unknown[], T>(load: (...args: Args) => Promise<T>): (...args: Args) => Promise<T> {
+  const kept = new Map<string, Promise<T>>();
+  return (...args) => {
+    const id = JSON.stringify(args);
+    let value = kept.get(id);
+    if (!value) {
+      value = load(...args);
+      kept.set(id, value);
+      value.catch(() => kept.delete(id));
     }
-    return entry;
-  }
+    return value;
+  };
+}
+
+// Caches each read and each entry, for the life of one set of dictionaries.
+// ponytail: the caches grow with each new word of the session; bound them if the offscreen document gets too big.
+export function dictionaryWords(source: EntryIndex): Words {
+  const index: EntryIndex = {
+    byExpression: remember(source.byExpression),
+    byReading: remember(source.byReading),
+    bySequence: remember(source.bySequence),
+    headwords: source.headwords,
+  };
+  const known = new Map<string, boolean>();
   return {
-    entry: entryOf,
+    entry: remember(async (lemma: string, reading: string | null): Promise<WordEntry | null> => {
+      const found = await resolve(index, lemma, reading);
+      if (!found) return null;
+      const { alone, ...entry } = found;
+      // The old key of a spelling with more than one entry (上手) is the status of all of them; it stays.
+      return alone && entry.key !== lemma ? { ...entry, oldKey: lemma } : entry;
+    }),
     headwords: async texts => {
       const missing = [...new Set(texts.filter(text => !known.has(text)))];
       const found = missing.length ? await index.headwords(missing) : new Set<string>();
