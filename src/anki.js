@@ -66,17 +66,27 @@ async function invoke(action, params = {}) {
     throw new Error(`AnkiConnect is unreachable at ${ENDPOINT}. Open Anki and install the AnkiConnect add-on.`);
   }
   const { result, error } = await response.json();
+  if (error?.startsWith('Close the affected editor')) {
+    throw new Error('Anki has a Browse, Add, or Edit window open. Close it, then try again.');
+  }
   if (error) throw new Error(`AnkiConnect ${action}: ${error}`);
   return result;
 }
 
 // Creates the note type, or converges an existing one to the current templates and CSS.
+// It writes only what differs: AnkiConnect refuses note type writes while an Anki editor window is open.
 // An existing note type that lacks one of FIELDS is not migrated; addNote then fails with the AnkiConnect error.
 async function ensureModel() {
   if (!(await invoke('modelNames')).includes(MODEL)) return invoke('createModel', NOTE_TYPE);
   const [{ Name, Front, Back }] = NOTE_TYPE.cardTemplates;
-  await invoke('updateModelTemplates', { model: { name: MODEL, templates: { [Name]: { Front, Back } } } });
-  await invoke('updateModelStyling', { model: { name: MODEL, css: CSS } });
+  const [templates, styling] = await Promise.all([
+    invoke('modelTemplates', { modelName: MODEL }),
+    invoke('modelStyling', { modelName: MODEL }),
+  ]);
+  if (templates[Name]?.Front !== Front || templates[Name]?.Back !== Back) {
+    await invoke('updateModelTemplates', { model: { name: MODEL, templates: { [Name]: { Front, Back } } } });
+  }
+  if (styling.css !== CSS) await invoke('updateModelStyling', { model: { name: MODEL, css: CSS } });
 }
 
 // Once per service worker lifetime; a failed attempt (Anki closed) clears it so the next add tries again.

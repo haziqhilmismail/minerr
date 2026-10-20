@@ -30,7 +30,13 @@ const anki = createServer((req, res) => {
     const request = JSON.parse(body);
     ankiRequests.push(request);
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ result: ankiReplies[request.action](request.params), error: null }));
+    let reply;
+    try {
+      reply = { result: ankiReplies[request.action](request.params), error: null };
+    } catch (error) {
+      reply = { result: null, error: error.message };
+    }
+    res.end(JSON.stringify(reply));
   });
 });
 await listen(anki, 8765);
@@ -146,27 +152,59 @@ try {
   assert.equal(ankiRequests.at(-1).action, 'version');
   console.log('check connection:', await options.textContent('#anki-status'));
 
+  const created = ankiRequests[2].params;
+  const [{ Front, Back }] = created.cardTemplates;
+  let storedTemplates = { Recognition: { Front: 'old front', Back: 'old back' } };
+  let storedCss = 'old css';
   ankiReplies.modelNames = () => ['Basic', 'Minerr'];
-  ankiReplies.updateModelTemplates = () => null;
-  ankiReplies.updateModelStyling = () => null;
+  ankiReplies.modelTemplates = () => storedTemplates;
+  ankiReplies.modelStyling = () => ({ css: storedCss });
+  ankiReplies.updateModelTemplates = ({ model }) => { storedTemplates = model.templates; return null; };
+  ankiReplies.updateModelStyling = ({ model }) => { storedCss = model.css; return null; };
   const cdp = await context.newCDPSession(tab);
   await cdp.send('ServiceWorker.enable');
-  await cdp.send('ServiceWorker.stopAllWorkers');
-  await tab.bringToFront();
-  await tab.hover('#line .ml-word[data-ml-lemma="食べる"]');
-  await popup.locator('li').first().waitFor();
-  const sent = ankiRequests.length;
-  await tab.keyboard.press('a');
-  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
-  const restartActions = ankiRequests.slice(sent).map(r => r.action);
-  console.log('AnkiConnect actions after a restart with the note type present:', restartActions);
-  assert.deepEqual(restartActions, ['createDeck', 'modelNames', 'updateModelTemplates', 'updateModelStyling', 'addNote']);
-  const [templates, styling] = ankiRequests.slice(sent + 2, sent + 4).map(r => r.params.model);
+  const addAfterRestart = async () => {
+    await cdp.send('ServiceWorker.stopAllWorkers');
+    // A restarted worker forgets its capture spacing; Chrome allows two captures per second.
+    await tab.waitForTimeout(1100);
+    await tab.bringToFront();
+    await tab.hover('#line .ml-word[data-ml-lemma="魚"]');
+    await tab.hover('#line .ml-word[data-ml-lemma="食べる"]');
+    await popup.locator('.lemma', { hasText: '食べる' }).waitFor();
+    const sent = ankiRequests.length;
+    await tab.keyboard.press('a');
+    await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+    return ankiRequests.slice(sent);
+  };
+
+  const stale = await addAfterRestart();
+  const staleActions = stale.map(r => r.action).sort();
+  console.log('AnkiConnect actions after a restart with an old note type:', staleActions);
+  assert.deepEqual(staleActions, ['addNote', 'createDeck', 'modelNames', 'modelStyling', 'modelTemplates', 'updateModelStyling', 'updateModelTemplates']);
+  const templates = stale.find(r => r.action === 'updateModelTemplates').params.model;
+  const styling = stale.find(r => r.action === 'updateModelStyling').params.model;
   assert.equal(templates.name, 'Minerr');
-  const [{ Front, Back }] = ankiRequests[2].params.cardTemplates;
   assert.deepEqual(templates.templates, { Recognition: { Front, Back } });
   assert.equal(styling.name, 'Minerr');
-  assert.equal(styling.css, ankiRequests[2].params.css);
+  assert.equal(styling.css, created.css);
+
+  const current = (await addAfterRestart()).map(r => r.action).sort();
+  console.log('AnkiConnect actions after a restart with the current note type:', current);
+  assert.deepEqual(current, ['addNote', 'createDeck', 'modelNames', 'modelStyling', 'modelTemplates']);
+
+  ankiReplies.modelStyling = () => ({ css: 'edited in Anki' });
+  ankiReplies.updateModelStyling = () => { throw new Error('Close the affected editor before this API write, even if its content is saved.'); };
+  await cdp.send('ServiceWorker.stopAllWorkers');
+  await tab.waitForTimeout(1100);
+  await tab.bringToFront();
+  await tab.hover('#line .ml-word[data-ml-lemma="魚"]');
+  await tab.hover('#line .ml-word[data-ml-lemma="食べる"]');
+  await popup.locator('.lemma', { hasText: '食べる' }).waitFor();
+  await tab.keyboard.press('a');
+  const conflict = popup.locator('.message', { hasText: 'Browse, Add, or Edit window' });
+  await conflict.waitFor();
+  console.log('popup error with an Anki editor open:', await conflict.textContent());
+  ankiReplies.modelStyling = () => ({ css: storedCss });
 
   await new Promise(resolve => anki.close(resolve));
   anki.closeAllConnections();
