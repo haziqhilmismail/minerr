@@ -12,5 +12,6 @@
   "web_accessible_resources": [
     { "resources": ["src/anki.js", "src/captions.js", "src/page.js", "src/popup.js", "src/rpc.js", "src/sentence.js", "src/status.js", "src/subtitles.js"], "matches": ["<all_urls>"] }
   ],
+  "action": { "default_title": "Minerr", "default_popup": "action.html" },
   "options_page": "options.html"
 }
