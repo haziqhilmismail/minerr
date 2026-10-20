@@ -1,6 +1,7 @@
 import { byId } from './src/dom.ts';
 import { call, type Message, messageOf } from './src/rpc.ts';
 import type { Snapshot, Source } from './src/subtitles.ts';
+import { iPlusOne } from './src/switch.ts';
 import type { JobStatus } from './src/whisper.ts';
 
 const POLL_MS = 2000;
@@ -98,6 +99,10 @@ for (const button of sourceButtons) {
     if (isSource(source)) act({ type: 'subsUse', source });
   });
 }
+const plusOne = byId('iplusone', HTMLInputElement);
+plusOne.checked = await iPlusOne.get();
+plusOne.addEventListener('change', () => iPlusOne.set(plusOne.checked));
+byId('player', HTMLButtonElement).addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('player.html') }));
 byId('options', HTMLAnchorElement).addEventListener('click', event => {
   event.preventDefault();
   chrome.runtime.openOptionsPage();
