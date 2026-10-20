@@ -4,8 +4,10 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { chord } from '../src/chord.ts';
 import { entryStars, highs, morae, pitchPattern, stars, toMeta, withMeta } from '../src/meta.ts';
 import { at, isStringList } from '../src/parse.ts';
+import { toggleSite } from '../src/site.ts';
 import { readYomitan } from '../src/yomitan.ts';
 
 const here = import.meta.dirname;
@@ -82,4 +84,15 @@ test('every module that a content script module imports is in web_accessible_res
     .matchAll(/^import (?!type )[^;]*?from '\.\/([\w-]+)\.ts';/gms)]
     .map(([, name]) => `src/${name}.js`).filter(name => !listed.has(name)).map(name => `${module} imports ${name}`));
   assert.deepEqual(missing, []);
+});
+
+test('chord names a key with Alt from the physical key, and Shift only with Alt', () => {
+  const key = (key: string, code: string, altKey = false, shiftKey = false) => chord({ key, code, altKey, shiftKey });
+  assert.deepEqual([key('Î', 'KeyD', true, true), key('ß', 'KeyS', true), key('N', 'KeyN', false, true), key('1', 'Digit1'),
+    key('Escape', 'Escape'), key('Shift', 'ShiftLeft', true, true)], ['alt+shift+d', 'alt+s', 'n', '1', 'Escape', 'alt+shift+Shift']);
+});
+
+test('toggleSite adds a site that is on and removes a site that is off', () => {
+  assert.deepEqual(toggleSite(['a.com'], 'b.org'), ['a.com', 'b.org']);
+  assert.deepEqual(toggleSite(['a.com', 'b.org'], 'a.com'), ['b.org']);
 });

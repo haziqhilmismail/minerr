@@ -6,8 +6,10 @@ import {
 } from './popup-view.ts';
 import { call, messageOf } from './rpc.ts';
 import { sentenceAround } from './sentence.ts';
+import { watchActive } from './site.ts';
 import { getStatuses, onStatusChange, setStatus, STATUS_NAMES, STATUSES } from './status.ts';
-import { minerrEnabled } from './settings.ts';
+import { isEditable } from './chord.ts';
+import './keys.ts';
 
 // The sentence around the word inside its nearest block ancestor, with the word in <b>.
 function sentenceHtml(span: HTMLElement): string {
@@ -95,9 +97,6 @@ async function addCard(): Promise<void> {
   }
 }
 
-const isEditable = (target: EventTarget | null) => target instanceof HTMLElement
-  && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
-
 const HOTKEYS: Record<string, () => void> = {
   ...Object.fromEntries(STATUS_NAMES.map(status => [STATUSES[status].hotkey, () => {
     if (current) setStatus(current.view.lemma, status);
@@ -107,7 +106,7 @@ const HOTKEYS: Record<string, () => void> = {
 };
 
 let enabled = true;
-minerrEnabled.watch(value => {
+watchActive(value => {
   enabled = value;
   if (!enabled) close();
 });

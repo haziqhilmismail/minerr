@@ -91,6 +91,38 @@ try {
   await tab.screenshot({ path: join(work, 'popup-meta.png') });
   console.log('popup: frequency stars and ranks per reading, pitch accent in marked kana; saved', join(work, 'popup-meta.png'));
 
+  await tab.keyboard.press('Escape');
+  const other = await context.newPage();
+  await other.goto(pageUrl);
+  await other.waitForSelector('#line .ml-word[data-ml-lemma="猫"]');
+  await tab.bringToFront();
+  await tab.keyboard.press('Alt+Shift+D');
+  const toast = tab.locator('minerr-popup .toast');
+  await toast.filter({ hasText: 'Minerr is off for 127.0.0.1. Press Alt+Shift+D to turn it on.' }).waitFor();
+  assert.deepEqual(await options.evaluate(() => chrome.storage.local.get('disabledSites')), { disabledSites: ['127.0.0.1'] });
+  await other.waitForFunction(() => document.documentElement.hasAttribute('data-minerr-off'));
+  assert.equal(await tab.$eval('#line .ml-word[data-ml-lemma="猫"]', word => getComputedStyle(word).textDecorationLine), 'none');
+  await tab.mouse.move(0, 0);
+  await tab.hover('#line .ml-word[data-ml-lemma="魚"]');
+  await tab.waitForTimeout(500);
+  assert.equal(await popup.isVisible(), false, 'a site that is off opens no popup');
+  const tabId = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, pageUrl);
+  const action = await context.newPage();
+  await action.goto(`chrome-extension://${extensionId}/action.html?tab=${tabId}`);
+  assert.equal(await action.innerText('#site-toggle'), 'Minerr on this site\nAlt+Shift+D on 127.0.0.1');
+  assert.equal(await action.isChecked('#site'), false);
+  await action.click('#site-toggle');
+  await tab.waitForFunction(() => !document.documentElement.hasAttribute('data-minerr-off'));
+  assert.equal(await action.isChecked('#site'), true);
+  assert.deepEqual(await options.evaluate(() => chrome.storage.local.get('disabledSites')), { disabledSites: [] });
+  const optionsTabId = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, options.url());
+  assert.equal(typeof optionsTabId, 'number');
+  await action.goto(`chrome-extension://${extensionId}/action.html?tab=${optionsTabId}`);
+  await action.locator('#server').filter({ hasNotText: 'Checking' }).waitFor();
+  assert.equal(await action.isVisible('#site-toggle'), false, 'an extension page gets no site switch');
+  await action.close();
+  console.log('per site: Alt+Shift+D turns this site off in all its tabs; the toolbar switch turns it on');
+
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('READING E2E PASS');
 } finally {

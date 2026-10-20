@@ -68,6 +68,11 @@ const STYLE = `
   .mora.high { border-top-color: currentColor; }
   .mora.drop { border-right: 1.5px solid currentColor; }
   .pattern { font-weight: 600; }
+  .toast { position: fixed; left: 50%; bottom: 56px; transform: translateX(-50%); z-index: 1; max-width: calc(100vw - 32px);
+    padding: 8px 16px; border-radius: 8px; background: rgba(28, 29, 36, .94); color: #fff; text-align: center;
+    font: 600 14px/1.5 "Hiragino Sans", "Yu Gothic UI", "Meiryo", "Noto Sans JP", system-ui, sans-serif;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .3); pointer-events: none; }
+  .toast[hidden] { display: none; }
   footer { padding: 10px 16px 12px; border-top: 1px solid var(--line); }
   .add { width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent);
     font-weight: 700; }
@@ -103,6 +108,19 @@ export function createBox(): HTMLDivElement {
 }
 
 export const mount = () => (document.fullscreenElement ?? document.documentElement).append(host);
+
+const toastBox = el('div', { className: 'toast', role: 'status', hidden: true });
+shadow.append(toastBox);
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+// A short message at the bottom of the window, for keys that change something without a popup.
+export function toast(text: string): void {
+  mount();
+  toastBox.textContent = text;
+  toastBox.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastBox.hidden = true; }, 1800);
+}
 
 // Hides the popup during the screenshot of a new card.
 export const setPopupVisible = (visible: boolean) => { host.style.visibility = visible ? '' : 'hidden'; };

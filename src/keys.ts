@@ -1,0 +1,22 @@
+// The keys that work on a page without a popup. The keys of an open popup are in popup.ts.
+import { chord, isEditable } from './chord.ts';
+import { toast } from './popup-view.ts';
+import { toggleSiteOf } from './site.ts';
+
+// Each binding returns false when it does not apply now, so the page gets the key.
+const BINDINGS: Record<string, () => boolean> = {
+  'alt+shift+d': () => {
+    const host = location.hostname;
+    toggleSiteOf(host).then(on => toast(on ? `Minerr is on for ${host}.` : `Minerr is off for ${host}. Press Alt+Shift+D to turn it on.`));
+    return true;
+  },
+};
+
+// Capture on window so page shortcuts do not also fire.
+window.addEventListener('keydown', event => {
+  if (event.ctrlKey || event.metaKey || isEditable(event.target)) return;
+  const binding = BINDINGS[chord(event)];
+  if (!binding?.()) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}, true);

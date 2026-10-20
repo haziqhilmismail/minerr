@@ -3,6 +3,7 @@ import { call, type Message, messageOf } from './src/rpc.ts';
 import type { Snapshot, Source } from './src/subtitles.ts';
 import { applyTheme } from './src/theme.ts';
 import { iPlusOne } from './src/settings.ts';
+import { disabledSites, toggleSiteOf } from './src/site.ts';
 import type { JobStatus } from './src/whisper.ts';
 
 applyTheme();
@@ -105,6 +106,15 @@ for (const button of sourceButtons) {
 const plusOne = byId('iplusone', HTMLInputElement);
 plusOne.checked = await iPlusOne.get();
 plusOne.addEventListener('change', () => iPlusOne.set(plusOne.checked));
+// The switch for the site of the tab. Only web pages get one: Minerr does not run on browser pages.
+const siteHost = /^https?:/.test(tab?.url ?? '') ? new URL(tab?.url ?? '').hostname : '';
+if (siteHost) {
+  const siteSwitch = byId('site', HTMLInputElement);
+  byId('site-name', HTMLElement).textContent = `Alt+Shift+D on ${siteHost}`;
+  siteSwitch.checked = !(await disabledSites.get()).includes(siteHost);
+  siteSwitch.addEventListener('change', async () => { siteSwitch.checked = await toggleSiteOf(siteHost); });
+  byId('site-toggle', HTMLElement).hidden = false;
+}
 byId('player', HTMLButtonElement).addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('player.html') }));
 byId('options', HTMLAnchorElement).addEventListener('click', event => {
   event.preventDefault();

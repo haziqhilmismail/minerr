@@ -122,6 +122,13 @@ The keys do not work when the focus is in a text field.
 - To turn Minerr off in all tabs, click the power button in the popup, or press `Alt+Shift+M`. The underlines and the popup stop at once.
 - To turn Minerr on again, press `Alt+Shift+M`.
 
+To turn Minerr off for one site only:
+
+- Press `Alt+Shift+D` on a page of the site. A short message at the bottom of the page confirms the change.
+- Or click the Minerr button in the Chrome toolbar, then click the **Minerr on this site** switch.
+
+Minerr stays off on all pages of that site, also after a restart of Chrome. To turn it on again, press `Alt+Shift+D` again or click the switch again. The other sites do not change.
+
 When Minerr is off, YouTube shows its own captions again, and the Minerr subtitle overlay is hidden.
 
 Use this when you want to compare Minerr with another dictionary extension, for example Yomitan. To change the shortcut, open `chrome://extensions/shortcuts`.
@@ -416,6 +423,8 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/page.ts` | Finds Japanese text on the page and wraps each word. |
 | `src/popup.ts` | The dictionary popup: when it opens, its keys, and the card that it adds. |
 | `src/popup-view.ts` | The content of the popup and its position. |
+| `src/site.ts` | Minerr on or off for each site, and the state that says if Minerr shows on a page. |
+| `src/keys.ts`, `src/chord.ts` | The keys that work on a page without a popup, and the names of the keys. |
 | `src/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |
 | `src/subtitles.ts` | The subtitle overlay on YouTube. |
 | `src/status.ts` | The word statuses, their colors, and their storage. |
