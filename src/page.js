@@ -2,7 +2,7 @@ import { call } from './rpc.js';
 import { getStatuses, onStatusChange, STATUSES, WORD_CSS } from './status.js';
 
 const JAPANESE = /[぀-ヿ一-鿿]/;
-const SKIP = 'script, style, noscript, textarea, input, select, svg, .ml-word';
+const SKIP = 'script, style, noscript, textarea, input, select, svg, .ml-word, .ytp-caption-window-container';
 const BATCH = 100;
 const STATUS_CLASSES = Object.values(STATUSES).map(s => s.className);
 

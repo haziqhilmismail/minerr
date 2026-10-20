@@ -10,7 +10,7 @@
     { "matches": ["<all_urls>"], "js": ["content.js"] }
   ],
   "web_accessible_resources": [
-    { "resources": ["src/anki.js", "src/page.js", "src/popup.js", "src/rpc.js", "src/sentence.js", "src/status.js"], "matches": ["<all_urls>"] }
+    { "resources": ["src/anki.js", "src/captions.js", "src/page.js", "src/popup.js", "src/rpc.js", "src/sentence.js", "src/status.js", "src/subtitles.js"], "matches": ["<all_urls>"] }
   ],
   "options_page": "options.html"
 }

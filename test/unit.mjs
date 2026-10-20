@@ -139,3 +139,15 @@ test('real JMdict Yomitan zip parses with 食べる -> "to eat"', async () => {
   assert.equal(taberu.reading, 'たべる');
   assert.ok(taberu.glossary.some(g => /\beat\b/.test(g)), JSON.stringify(taberu.glossary));
 });
+
+test('captionText joins the caption lines with line breaks and drops empty lines', async () => {
+  const { captionText } = await import('../src/captions.js');
+  assert.equal(captionText([' 猫が好きです ', '', '魚も好き']), '猫が好きです\n魚も好き');
+  assert.equal(captionText([]), '');
+});
+
+test('segmentAt finds the segment that covers a time, with the end exclusive', async () => {
+  const { segmentAt } = await import('../src/captions.js');
+  const segments = [{ start: 0, end: 2, text: 'あ' }, { start: 2, end: 4, text: 'い' }, { start: 6, end: 8, text: 'う' }];
+  assert.deepEqual([0, 1.99, 2, 5, 7, 8].map(t => segmentAt(segments, t)?.text ?? null), ['あ', 'あ', 'い', null, 'う', null]);
+});
