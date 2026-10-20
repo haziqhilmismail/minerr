@@ -90,7 +90,7 @@ const WATCH = `<!doctype html><meta charset="utf-8"><title>Fake YouTube</title>
 <div id="movie_player">
   <video src="data:video/webm;base64,${readFileSync(clip).toString('base64')}" muted></video>
   <div class="ytp-caption-window-container"><span class="captions-text">
-    <span class="caption-visual-line">猫が魚を食べなかった</span><br><span class="caption-visual-line">今日は雨</span>
+    <span class="caption-visual-line">猫が魚を食べなかった。</span><br><span class="caption-visual-line">今日は雨</span>
   </span></div>
 </div>`;
 
@@ -175,7 +175,7 @@ try {
   await youtube.setViewportSize({ width: 902, height: 528 });
   await youtube.goto('https://www.youtube.com/watch?v=testvideo');
   await youtube.locator('.minerr-subs-line .ml-word[data-ml-lemma="雨"]').waitFor({ timeout: 20000 });
-  await waitHighlighted(youtube, ['猫が魚を食べなかった']);
+  await waitHighlighted(youtube, ['猫が魚を食べなかった。']);
   console.log('i+1 highlight in the YouTube overlay:', await highlighted(youtube));
   const youtubeTab = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, youtube.url());
   const youtubeMenu = await context.newPage();
