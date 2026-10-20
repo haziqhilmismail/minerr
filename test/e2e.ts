@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -405,6 +405,43 @@ try {
   assert.deepEqual(at(builtinNote, 'fields'), { Word: '食べる', Reading: 'たべる', Sentence: '猫が魚を<b>食べなかった</b>。', Definition: DEFINITION, Image: '' });
   assert.deepEqual(at(builtinNote, 'picture', 0, 'fields'), ['Image']);
   console.log('back to the built-in note type: the Minerr note type and a picture again');
+
+  const counts = () => options.$$eval('#status-counts li', items => items.map(item => item.textContent));
+  const storedWords = () => worker.evaluate(async () => Object.fromEntries(Object.entries(await chrome.storage.local.get(null))
+    .filter(([key]) => key.startsWith('w:')).map(([key, value]) => [key.slice(2), value])));
+  await options.bringToFront();
+  assert.deepEqual(await counts(), ['Learning1', 'Known2', 'Ignored0']);
+  const [download] = await Promise.all([options.waitForEvent('download'), options.click('#status-export')]);
+  const now = new Date();
+  const today = [now.getFullYear(), now.getMonth() + 1, now.getDate()].map(n => String(n).padStart(2, '0')).join('-');
+  assert.equal(download.suggestedFilename(), `minerr-statuses-${today}.json`);
+  const exported: unknown = JSON.parse(readFileSync(await download.path(), 'utf8'));
+  console.log('exported status file:', JSON.stringify(exported));
+  assert.match(String(at(exported, 'exported')), /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  assert.deepEqual(exported, { format: 'minerr-statuses', version: 1, exported: at(exported, 'exported'), words: { 食べる: 'known', 魚: 'learning', 猫: 'known' } });
+  assert.deepEqual(at(exported, 'words'), await storedWords());
+  assert.equal(await options.textContent('#status-message'), 'Exported 3 words.');
+
+  const crafted = join(work, 'statuses.json');
+  writeFileSync(crafted, JSON.stringify({ format: 'minerr-statuses', version: 1, exported: '2026-01-01T00:00:00.000Z',
+    words: { 猫: 'ignored', 食べる: 'known', 雨: 'learning' } }));
+  await options.setInputFiles('#status-file', crafted);
+  await options.locator('#status-message', { hasText: 'Imported 3 words: 1 added, 1 changed, 1 unchanged.' }).waitFor();
+  await other.waitForSelector('#line .ml-word[data-ml-lemma="猫"].ml-ignored', { timeout: 5000 });
+  await options.waitForFunction(() => document.querySelector('#status-counts')?.textContent === 'Learning2Known1Ignored1');
+  assert.deepEqual(await storedWords(), { 食べる: 'known', 魚: 'learning', 猫: 'ignored', 雨: 'learning' });
+  console.log('import of a status file: counts reported, 猫 ignored in an open tab');
+
+  const before = await worker.evaluate(() => chrome.storage.local.get(null));
+  const malformed = join(work, 'malformed.json');
+  writeFileSync(malformed, JSON.stringify({ format: 'minerr-statuses', version: 1, exported: '2026-01-01T00:00:00.000Z',
+    words: { 魚: 'ignored', 本: 'mastered' } }));
+  await options.setInputFiles('#status-file', malformed);
+  await options.locator('#status-message.error').waitFor();
+  assert.equal(await options.textContent('#status-message'),
+    'Import failed. The word "本" has the status "mastered". Use learning, known, or ignored. No status changed.');
+  assert.deepEqual(await worker.evaluate(() => chrome.storage.local.get(null)), before);
+  console.log('import of a malformed file:', await options.textContent('#status-message'));
 
   await new Promise(resolve => anki.close(resolve));
   anki.closeAllConnections();

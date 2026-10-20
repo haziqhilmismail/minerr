@@ -5,7 +5,9 @@ import {
 import { deleteDictionary, importDictionary, listDictionaries } from './src/db.ts';
 import { byId } from './src/dom.ts';
 import { call, messageOf } from './src/rpc.ts';
-import { STATUSES, WORD_CSS } from './src/status.ts';
+import {
+  getAllStatuses, importStatuses, onStatusChange, parseStatusFile, STATUS_NAMES, STATUSES, statusFile, WORD_CSS,
+} from './src/status.ts';
 import { TAG_CSS } from './src/tags.ts';
 import { applyTheme, getTheme, isTheme, setTheme } from './src/theme.ts';
 
@@ -18,6 +20,12 @@ function el<K extends keyof HTMLElementTagNameMap>(
   node.append(...children);
   return node;
 }
+
+const swatch = (color: string) => {
+  const dot = el('span', { className: 'swatch' });
+  dot.style.background = color;
+  return dot;
+};
 
 function showStatus(node: HTMLElement, text: string, kind = ''): void {
   node.textContent = text;
@@ -239,14 +247,47 @@ byId('known-import', HTMLButtonElement).onclick = async () => {
 };
 
 document.head.append(el('style', { textContent: WORD_CSS + TAG_CSS }));
-byId('legend', HTMLElement).prepend(...Object.values(STATUSES).map(({ hotkey, label, className, color }) => {
-  const swatch = el('span', { className: 'swatch' });
-  swatch.style.background = color;
-  return el('tr', {},
-    el('td', {}, el('kbd', { textContent: hotkey })),
-    el('td', {}, swatch, `Mark as ${label.toLowerCase()}`),
-    el('td', { className: 'sample' }, el('span', { className: `ml-word ${className}`, textContent: '単語' })));
-}));
+byId('legend', HTMLElement).prepend(...Object.values(STATUSES).map(({ hotkey, label, className, color }) => el('tr', {},
+  el('td', {}, el('kbd', { textContent: hotkey })),
+  el('td', {}, swatch(color), `Mark as ${label.toLowerCase()}`),
+  el('td', { className: 'sample' }, el('span', { className: `ml-word ${className}`, textContent: '単語' })))));
+
+const statusCounts = byId('status-counts', HTMLElement);
+const statusMessage = byId('status-message', HTMLElement);
+const statusFileInput = byId('status-file', HTMLInputElement);
+
+async function showCounts(): Promise<void> {
+  const statuses = Object.values(await getAllStatuses());
+  statusCounts.replaceChildren(...STATUS_NAMES.filter(status => status !== 'unknown').map(status => el('li', {},
+    swatch(STATUSES[status].color), STATUSES[status].label,
+    el('strong', { textContent: String(statuses.filter(value => value === status).length) }))));
+}
+onStatusChange(showCounts);
+
+const localDate = (date: Date) => [date.getFullYear(), date.getMonth() + 1, date.getDate()].map(n => String(n).padStart(2, '0')).join('-');
+
+byId('status-export', HTMLButtonElement).onclick = async () => {
+  const now = new Date();
+  const file = statusFile(await getAllStatuses(), now);
+  const url = URL.createObjectURL(new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }));
+  el('a', { href: url, download: `minerr-statuses-${localDate(now)}.json` }).click();
+  // The download reads the blob after this task, so the URL lives a little longer.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  showStatus(statusMessage, `Exported ${Object.keys(file.words).length} words.`, 'ok');
+};
+
+statusFileInput.onchange = async () => {
+  const file = statusFileInput.files?.[0];
+  if (!file) return;
+  try {
+    const { added, changed, unchanged } = await importStatuses(parseStatusFile(await file.text()));
+    showStatus(statusMessage, `Imported ${added + changed + unchanged} words: ${added} added, ${changed} changed, ${unchanged} unchanged.`, 'ok');
+  } catch (error) {
+    showStatus(statusMessage, `Import failed. ${messageOf(error)} No status changed.`, 'error');
+  } finally {
+    statusFileInput.value = '';
+  }
+};
 
 const theme = await getTheme();
 for (const input of document.querySelectorAll('input[name="theme"]')) {
@@ -257,4 +298,4 @@ for (const input of document.querySelectorAll('input[name="theme"]')) {
   };
 }
 
-await Promise.all([showDictionaries(), showModels()]);
+await Promise.all([showDictionaries(), showModels(), showCounts()]);

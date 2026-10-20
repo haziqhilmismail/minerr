@@ -1,3 +1,5 @@
+import { at, isList } from './parse.ts';
+
 // The one definition of word statuses. Storage holds one key per lemma; a missing key means unknown.
 // color is the status color on every surface; underline is the thickness of the colored underline on page words (null: none).
 export const STATUSES = {
@@ -54,4 +56,78 @@ export function setStatuses(lemmas: string[], status: Status): Promise<void> {
 export async function getStatuses(lemmas: string[]): Promise<Map<string, Status>> {
   const stored = await chrome.storage.local.get(lemmas.map(wordKey));
   return new Map(lemmas.map(lemma => [lemma, storedStatus(stored[wordKey(lemma)])]));
+}
+
+// A status that storage holds: an unknown word has no key.
+export type StoredStatus = Exclude<Status, 'unknown'>;
+const isStoredStatus = (value: unknown): value is StoredStatus => isStatus(value) && value !== 'unknown';
+
+export async function getAllStatuses(): Promise<Record<string, StoredStatus>> {
+  const stored = await chrome.storage.local.get(null);
+  return Object.fromEntries(Object.entries(stored).flatMap(([key, value]) => {
+    const lemma = lemmaOfKey(key);
+    return lemma !== null && isStoredStatus(value) ? [[lemma, value]] : [];
+  }));
+}
+
+const FORMAT = 'minerr-statuses';
+
+// The backup file of the word statuses. exported is an ISO date.
+export interface StatusFile {
+  format: typeof FORMAT;
+  version: 1;
+  exported: string;
+  words: Record<string, StoredStatus>;
+}
+
+export const statusFile = (words: Record<string, StoredStatus>, now: Date): StatusFile =>
+  ({ format: FORMAT, version: 1, exported: now.toISOString(), words });
+
+// The words of the text of a status file. Throws an Error that names the problem.
+export function parseStatusFile(text: string): Record<string, StoredStatus> {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    throw new Error('The file is not JSON.');
+  }
+  if (at(value, 'format') !== FORMAT) throw new Error(`The file is not a Minerr status file. Its format must be "${FORMAT}".`);
+  const version = at(value, 'version');
+  if (version !== 1) throw new Error(`The file has version ${JSON.stringify(version)}. Minerr reads version 1.`);
+  if (typeof at(value, 'exported') !== 'string') throw new Error('The file has no export date.');
+  const words = at(value, 'words');
+  if (typeof words !== 'object' || words === null || isList(words)) throw new Error('The file has no words object.');
+  return Object.fromEntries(Object.entries(words).map(([lemma, status]) => {
+    if (!lemma) throw new Error('The file has a word with no text.');
+    if (!isStoredStatus(status)) throw new Error(`The word "${lemma}" has the status ${JSON.stringify(status)}. Use learning, known, or ignored.`);
+    return [lemma, status];
+  }));
+}
+
+export interface ImportCounts {
+  added: number;
+  changed: number;
+  unchanged: number;
+}
+
+// The imported status wins. changes holds only the words whose status is new.
+export function mergeStatuses(current: Record<string, StoredStatus>, imported: Record<string, StoredStatus>) {
+  const counts: ImportCounts = { added: 0, changed: 0, unchanged: 0 };
+  const changes: Record<string, StoredStatus> = {};
+  for (const [lemma, status] of Object.entries(imported)) {
+    const old = Object.hasOwn(current, lemma) ? current[lemma] : undefined;
+    if (old === status) {
+      counts.unchanged++;
+      continue;
+    }
+    counts[old === undefined ? 'added' : 'changed']++;
+    changes[lemma] = status;
+  }
+  return { changes, counts };
+}
+
+export async function importStatuses(imported: Record<string, StoredStatus>): Promise<ImportCounts> {
+  const { changes, counts } = mergeStatuses(await getAllStatuses(), imported);
+  await chrome.storage.local.set(Object.fromEntries(Object.entries(changes).map(([lemma, status]) => [wordKey(lemma), status])));
+  return counts;
 }

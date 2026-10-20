@@ -31,9 +31,15 @@
     background: var(--field); color: inherit; font: inherit; }
   button { padding: 7px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--card);
     color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
-  button:hover:not(:disabled) { border-color: var(--muted); }
+  button:hover:not(:disabled), .file-button:hover { border-color: var(--muted); }
+  .file-button { position: relative; padding: 7px 14px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--card); font-weight: 600; cursor: pointer; }
+  .file-button input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .counts { display: flex; flex-wrap: wrap; gap: 6px 28px; margin: 0 0 16px; padding: 0; list-style: none; }
+  .counts li { display: flex; align-items: center; color: var(--muted); }
+  .counts strong { margin-left: 8px; color: var(--text); font-size: 20px; font-variant-numeric: tabular-nums; }
   button:disabled { cursor: progress; opacity: .6; }
-  :focus-visible, .drop:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  :focus-visible, .drop:has(input:focus-visible), .file-button:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
   input[type="text"]:focus-visible { outline-offset: 0; border-color: var(--accent); }
   select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: inherit; font: inherit; }
   select:focus-visible { outline-offset: 0; border-color: var(--accent); }
@@ -181,6 +187,20 @@
     <div class="row">
       <button id="known-import" type="button">Import known words</button>
       <span id="known-status" class="status" role="status"></span>
+    </div>
+  </section>
+
+  <section aria-labelledby="statuses-heading">
+    <h2 id="statuses-heading">Word statuses</h2>
+    <p class="help">Save the statuses of your words to a file, or load them from a file. An import keeps your other words, and the status in the file wins. Unknown words are not in the file.</p>
+    <ul id="status-counts" class="counts"></ul>
+    <div class="row">
+      <button id="status-export" type="button">Export statuses</button>
+      <label class="file-button">
+        <input id="status-file" type="file" accept=".json,application/json">
+        Import statuses
+      </label>
+      <span id="status-message" class="status" role="status"></span>
     </div>
   </section>
 

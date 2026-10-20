@@ -279,3 +279,53 @@ test('parseNoteType reads a stored note type and falls back to the built-in one'
   assert.equal(wordField({ kind: 'custom', model: 'Mining', fields: { Front: '{sentence}' } }), 'Word');
   assert.equal(wordField({ kind: 'builtin' }), 'Word');
 });
+
+test('statusFile and parseStatusFile round-trip the words, and a wrong file throws a clear error', async () => {
+  const { parseStatusFile, statusFile } = await import('../src/status.ts');
+  const words = { 猫: 'known', 魚: 'learning', 田中: 'ignored' } as const;
+  const file = statusFile(words, new Date('2026-10-20T03:04:05.000Z'));
+  assert.deepEqual(file, { format: 'minerr-statuses', version: 1, exported: '2026-10-20T03:04:05.000Z', words });
+  assert.deepEqual(parseStatusFile(JSON.stringify(file)), words);
+  assert.deepEqual(parseStatusFile(JSON.stringify({ ...file, words: {} })), {});
+  const errorOf = (text: string) => {
+    try {
+      parseStatusFile(text);
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error);
+    }
+    return 'no error';
+  };
+  const withWords = (value: unknown) => JSON.stringify({ ...file, words: value });
+  assert.deepEqual([
+    errorOf('{"format": "minerr-statuses",'),
+    errorOf('null'),
+    errorOf(JSON.stringify({ ...file, format: 'yomitan' })),
+    errorOf(JSON.stringify({ ...file, version: 2 })),
+    errorOf(JSON.stringify({ ...file, exported: undefined })),
+    errorOf(withWords(['猫'])),
+    errorOf(withWords({ 猫: 'known', 魚: 'unknown' })),
+    errorOf(withWords({ 猫: 'mastered' })),
+    errorOf(withWords({ '': 'known' })),
+  ], [
+    'The file is not JSON.',
+    'The file is not a Minerr status file. Its format must be "minerr-statuses".',
+    'The file is not a Minerr status file. Its format must be "minerr-statuses".',
+    'The file has version 2. Minerr reads version 1.',
+    'The file has no export date.',
+    'The file has no words object.',
+    'The word "魚" has the status "unknown". Use learning, known, or ignored.',
+    'The word "猫" has the status "mastered". Use learning, known, or ignored.',
+    'The file has a word with no text.',
+  ]);
+});
+
+test('mergeStatuses lets the imported status win and counts added, changed, and unchanged words', async () => {
+  const { mergeStatuses, parseStatusFile } = await import('../src/status.ts');
+  const imported = parseStatusFile(JSON.stringify({ format: 'minerr-statuses', version: 1, exported: '2026-10-20T00:00:00.000Z',
+    words: { 猫: 'known', 魚: 'ignored', 雨: 'learning', constructor: 'known' } }));
+  assert.deepEqual(mergeStatuses({ 猫: 'known', 魚: 'learning', 本: 'known' }, imported), {
+    changes: { 魚: 'ignored', 雨: 'learning', constructor: 'known' },
+    counts: { added: 2, changed: 1, unchanged: 1 },
+  });
+  assert.deepEqual(mergeStatuses({ 猫: 'known' }, {}), { changes: {}, counts: { added: 0, changed: 0, unchanged: 0 } });
+});

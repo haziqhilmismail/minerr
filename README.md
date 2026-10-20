@@ -266,6 +266,40 @@ The **Word field** in **Known words** changes to the field that contains `{word}
 
 To use the Minerr note type again, select **Minerr (built-in)**.
 
+## Back up word statuses
+
+Minerr keeps the word statuses in the browser. If you remove the extension or load it from a different folder, the statuses are lost. Export them to a file to keep a copy.
+
+The **Word statuses** section of the options page shows the number of words with each status.
+
+To export the statuses:
+
+1. Open the options page.
+2. In **Word statuses**, click **Export statuses**.
+
+Chrome downloads the file `minerr-statuses-YYYY-MM-DD.json`. The file contains all words with the status learning, known, or ignored. Unknown words are not in the file.
+
+To import the statuses:
+
+1. Open the options page.
+2. In **Word statuses**, click **Import statuses**.
+3. Select a file that you exported.
+
+The import keeps the words that are not in the file. If a word is in the file, the status from the file replaces the current status. The page shows the number of words that the import added, changed, and did not change. The new statuses apply at once in all open tabs.
+
+If the file is not a correct Minerr status file, the page shows the problem, and Minerr changes no status.
+
+The file is JSON:
+
+```json
+{
+  "format": "minerr-statuses",
+  "version": 1,
+  "exported": "2026-10-20T04:19:56.137Z",
+  "words": { "猫": "known", "魚": "learning", "田中": "ignored" }
+}
+```
+
 ## Theme
 
 The options page, the toolbar menu, and the word popup have a light theme and a dark theme.

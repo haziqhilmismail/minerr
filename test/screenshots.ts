@@ -87,6 +87,12 @@ try {
   await worker.evaluate(() => chrome.storage.local.set({
     'w:魚': 'learning', 'w:雨': 'learning', 'w:食べる': 'known', 'w:今日': 'known', 'w:本': 'known', 'w:家': 'ignored',
   }));
+  const statuses = options.locator('section[aria-labelledby="statuses-heading"]');
+  await options.locator('#status-counts', { hasText: 'Known3' }).waitFor();
+  await shot(statuses, 'options-statuses-light.png');
+  await options.emulateMedia({ colorScheme: 'dark' });
+  await shot(statuses, 'options-statuses-dark.png');
+
   const tab = await context.newPage();
   await tab.setViewportSize({ width: 1000, height: 720 });
   await tab.goto(pageUrl);
