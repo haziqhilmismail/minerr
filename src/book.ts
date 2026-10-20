@@ -8,7 +8,6 @@ export interface TextChapter {
 // A text part of about this many characters keeps the parse of the shown part quick.
 const PART_CHARS = 10_000;
 
-// The lines of a text file that have text, without a byte order mark.
 export const textParagraphs = (text: string): string[] => text.replace(/^﻿/, '').split(/\r\n?|\n/).filter(line => line.trim());
 
 // Splits the paragraphs into parts at paragraph ends. One part takes the title of the file.
@@ -66,7 +65,8 @@ export interface Position {
 }
 
 export const isPosition = (value: unknown): value is Position => typeof value === 'object' && value !== null
-  && 'chapter' in value && Number.isInteger(value.chapter) && 'progress' in value && typeof value.progress === 'number';
+  && 'chapter' in value && Number.isInteger(value.chapter) && Number(value.chapter) >= 0
+  && 'progress' in value && typeof value.progress === 'number' && value.progress >= 0 && value.progress <= 1;
 
 // The same file has the same name and size, also when it comes from a different folder.
 export const positionKey = (name: string, size: number) => `reader:${size}:${name}`;

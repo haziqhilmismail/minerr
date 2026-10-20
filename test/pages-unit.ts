@@ -72,6 +72,7 @@ test('zipPath resolves a link against the file that holds it; isPosition and pos
   assert.equal(zipPath('OEBPS/content.opf', 'Text/ch%201.xhtml#part'), 'OEBPS/Text/ch 1.xhtml');
   assert.equal(zipPath('OEBPS/Text/ch1.xhtml', '../Images/a.png'), 'OEBPS/Images/a.png');
   assert.equal(zipPath('content.opf', 'ch1.xhtml'), 'ch1.xhtml');
-  assert.deepEqual([{ chapter: 2, progress: 0.5 }, { chapter: 1.5, progress: 0 }, { chapter: 1 }, null, 'x'].map(isPosition), [true, false, false, false, false]);
+  assert.deepEqual([{ chapter: 2, progress: 0.5 }, { chapter: 1.5, progress: 0 }, { chapter: -1, progress: 0 }, { chapter: 0, progress: 2 }, { chapter: 1 }, null, 'x']
+    .map(isPosition), [true, false, false, false, false, false, false]);
   assert.equal(positionKey('本.epub', 1234), 'reader:1234:本.epub');
 });

@@ -17,7 +17,7 @@ const highlight = new Highlight();
 let shown = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
 
-const statusOf = (span: Element): Status | null => STATUS_NAMES.find(status => span.classList.contains(STATUSES[status].className)) ?? null;
+export const statusOf = (span: Element): Status | null => STATUS_NAMES.find(status => span.classList.contains(STATUSES[status].className)) ?? null;
 
 function ranges(block: Element, cache: Map<Element, Element>): Range[] {
   const pieces: Piece[] = [];
@@ -48,7 +48,7 @@ function ranges(block: Element, cache: Map<Element, Element>): Range[] {
   });
 }
 
-// Every i+1 sentence of the document. src/stats.ts lists them in the toolbar popup.
+// Every i+1 sentence of the document.
 export function iPlusOneRanges(): Range[] {
   const cache = new Map<Element, Element>();
   const blocks = new Set<Element>();

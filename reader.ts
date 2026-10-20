@@ -24,7 +24,7 @@ const SAVE_MS = 300;
 type View =
   | { kind: 'start' }
   | { kind: 'book'; key: string; book: Book; chapter: number }
-  | { kind: 'paste'; entries: string[] };
+  | { kind: 'paste' };
 
 const start = byId('start', HTMLElement);
 const text = byId('text', HTMLElement);
@@ -144,14 +144,12 @@ function entry(pasted: string): HTMLElement {
   return section;
 }
 
-function showPaste(): Extract<View, { kind: 'paste' }> {
-  if (view.kind === 'paste') return view;
-  const paste: View = { kind: 'paste', entries: [] };
-  view = paste;
+function showPaste(): void {
+  if (view.kind === 'paste') return;
+  view = { kind: 'paste' };
   article.replaceChildren();
   render();
   showStatus('Press Ctrl+V to read the text in the clipboard.');
-  return paste;
 }
 
 // The last text from the clipboard, so a focus without a new copy adds nothing.
@@ -159,7 +157,7 @@ let lastPasted = '';
 function addPasted(pasted: string): void {
   lastPasted = pasted;
   if (!pasted.trim()) return;
-  showPaste().entries.push(pasted);
+  showPaste();
   article.append(entry(pasted));
   showStatus('');
   scrollToProgress(1);
@@ -171,6 +169,8 @@ const isEditable = (target: EventTarget | null) => target instanceof HTMLElement
 // Capture on window, as the popup keys do; the popup does not use these keys.
 window.addEventListener('keydown', event => {
   if (view.kind === 'start' || event.ctrlKey || event.metaKey || event.altKey || isEditable(event.target)) return;
+  // Space presses a focused button; the arrows and the page keys still turn the page.
+  if (event.key === ' ' && event.target instanceof HTMLButtonElement) return;
   const move = pageMove(event.key, event.shiftKey, isVertical());
   if (!move) return;
   event.preventDefault();

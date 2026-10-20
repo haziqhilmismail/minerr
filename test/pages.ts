@@ -267,7 +267,11 @@ try {
   await reader.keyboard.press('ArrowRight');
   assert.equal(await reader.$eval('#text', text => text.scrollLeft), 0);
   await reader.click('#vertical');
-  console.log('vertical text: the left arrow turns the page forward');
+  await reader.keyboard.press('Space');
+  await reader.waitForFunction(() => document.querySelector('#text')?.classList.contains('vertical'));
+  await reader.keyboard.press('Space');
+  await reader.waitForFunction(() => !document.querySelector('#text')?.classList.contains('vertical'));
+  console.log('vertical text: the left arrow turns the page forward; Space presses a focused button');
 
   const txt = join(work, 'long.txt');
   writeFileSync(txt, `﻿${Array.from({ length: 25 }, (_, i) => `${'猫'.repeat(999)}${i}`).join('\r\n')}`);

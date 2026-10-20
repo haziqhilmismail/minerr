@@ -30,11 +30,7 @@ const wordKey = (lemma: string) => PREFIX + lemma;
 const lemmaOfKey = (key: string) => (key.startsWith(PREFIX) ? key.slice(PREFIX.length) : null);
 const storedStatus = (value: unknown): Status => (isStatus(value) ? value : 'unknown');
 
-export function setStatus(lemma: string, status: Status): Promise<void> {
-  return status === 'unknown'
-    ? chrome.storage.local.remove(wordKey(lemma))
-    : chrome.storage.local.set({ [wordKey(lemma)]: status });
-}
+export const setStatus = (lemma: string, status: Status): Promise<void> => setStatuses([lemma], status);
 
 // Calls listener with a Map of lemma -> new status for every word whose status changed in any tab.
 export function onStatusChange(listener: (changed: Map<string, Status>) => void): void {
@@ -62,7 +58,7 @@ export async function getStatuses(lemmas: string[]): Promise<Map<string, Status>
 
 // A status that storage holds: an unknown word has no key.
 export type StoredStatus = Exclude<Status, 'unknown'>;
-const isStoredStatus = (value: unknown): value is StoredStatus => isStatus(value) && value !== 'unknown';
+export const isStoredStatus = (value: unknown): value is StoredStatus => isStatus(value) && value !== 'unknown';
 
 export async function getAllStatuses(): Promise<Record<string, StoredStatus>> {
   const stored = await chrome.storage.local.get(null);

@@ -1,19 +1,14 @@
 // The comprehension score of the tab and its i+1 sentences, for the toolbar popup.
 // On a page with the subtitle overlay (YouTube), the score covers the subtitle lines that the tab showed; elsewhere, the page text.
-import { iPlusOneRanges } from './iplusone.ts';
+import { iPlusOneRanges, statusOf } from './iplusone.ts';
 import { serve } from './rpc.ts';
 import { comprehension, type Comprehension, iPlusOneTexts, type Word } from './score.ts';
 import type { Piece } from './sentence.ts';
-import { getStatuses, type Status, STATUS_NAMES, STATUSES } from './status.ts';
+import { getStatuses } from './status.ts';
 
-export interface PageStats {
-  source: 'page' | 'video';
-  // The number of subtitle lines in the score; 0 for a page.
-  lines: number;
-  score: Comprehension | null;
-  // The i+1 sentences, each one time, in text order. Only page sentences can be shown (pageStatsShow).
-  sentences: string[];
-}
+// sentences are the i+1 sentences, each one time, in text order. pageStatsShow scrolls to a page sentence;
+// a subtitle line is not on the page now. lines is the number of subtitle lines in the score.
+export type PageStats = { score: Comprehension | null; sentences: string[] } & ({ source: 'page' } | { source: 'video'; lines: number });
 
 // A part of a subtitle line: a word with its lemma, or plain text with lemma null.
 interface Token {
@@ -27,7 +22,6 @@ document.head.append(Object.assign(document.createElement('style'), {
   textContent: `::highlight(${FOCUS}) { background-color: rgba(250, 204, 21, 0.75); color: #000; }`,
 }));
 
-const statusOf = (span: Element): Status => STATUS_NAMES.find(status => span.classList.contains(STATUSES[status].className)) ?? 'unknown';
 const tidy = (text: string) => text.replace(/\s+/g, ' ').trim();
 
 // The ranges of the sentences in the last page reply, in the order of its list.
@@ -35,14 +29,14 @@ let shownRanges: Range[] = [];
 
 function pageStats(): PageStats {
   const words: Word[] = [...document.querySelectorAll<HTMLElement>('.ml-word')]
-    .map(span => ({ lemma: span.dataset.mlLemma ?? '', status: statusOf(span) }));
+    .map(span => ({ lemma: span.dataset.mlLemma ?? '', status: statusOf(span) ?? 'unknown' }));
   const sentences = new Map<string, Range>();
   for (const range of iPlusOneRanges()) {
     const text = tidy(range.toString());
     if (!sentences.has(text)) sentences.set(text, range);
   }
   shownRanges = [...sentences.values()];
-  return { source: 'page', lines: 0, score: comprehension(words), sentences: [...sentences.keys()] };
+  return { source: 'page', score: comprehension(words), sentences: [...sentences.keys()] };
 }
 
 // The subtitle lines of the current video that the overlay showed, by their text.

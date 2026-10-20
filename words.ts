@@ -2,7 +2,7 @@
 import { byId } from './src/dom.ts';
 import { call, messageOf } from './src/rpc.ts';
 import {
-  getAllStatuses, importStatuses, isStatus, mergeStatuses, onStatusChange, setStatuses, type Status, STATUS_NAMES, STATUSES, type StoredStatus,
+  getAllStatuses, importStatuses, isStatus, isStoredStatus, mergeStatuses, onStatusChange, setStatuses, type Status, STATUS_NAMES, STATUSES, type StoredStatus,
 } from './src/status.ts';
 import { applyTheme } from './src/theme.ts';
 import { type Filter, lemmasOf, listWords, wordsOfLines } from './src/wordlist.ts';
@@ -26,7 +26,6 @@ const pasteStatus = byId('paste-status', HTMLSelectElement);
 const preview = byId('paste-preview', HTMLElement);
 const save = byId('paste-save', HTMLButtonElement);
 
-const isStoredStatus = (value: unknown): value is StoredStatus => isStatus(value) && value !== 'unknown';
 const isFilter = (value: unknown): value is Filter => value === 'all' || isStoredStatus(value);
 
 const words = new Map(Object.entries(await getAllStatuses()));

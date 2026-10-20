@@ -89,24 +89,28 @@ const scoreEmpty = byId('score-empty', HTMLElement);
 const scoreLabel = byId('score-label', HTMLElement);
 const scoreBasis = byId('score-basis', HTMLElement);
 
-function sentenceItem(text: string, index: number, source: PageStats['source']): HTMLLIElement {
+// tabId is null for sentences that the tab cannot show.
+function sentenceItem(text: string, index: number, tabId: number | null): HTMLLIElement {
   const item = document.createElement('li');
-  if (source === 'video' || tab?.id === undefined) {
+  if (tabId === null) {
     item.textContent = text;
     return item;
   }
-  const tabId = tab.id;
   const button = Object.assign(document.createElement('button'), { textContent: text, title: 'Show this sentence in the tab' });
   button.addEventListener('click', () => call({ type: 'pageStatsShow', index }, tabId).catch(error => { scoreBasis.textContent = messageOf(error); }));
   item.append(button);
   return item;
 }
 
-function showStats({ source, lines, score, sentences }: PageStats): void {
+const sourceText = (stats: PageStats) => (stats.source === 'video'
+  ? { empty: 'Play the video with Japanese subtitles. The score uses the subtitle lines that the overlay showed.', where: `in ${stats.lines} subtitle lines`, showable: false }
+  : { empty: 'This page has no Japanese words.', where: 'on this page', showable: true });
+
+function showStats(stats: PageStats, tabId: number): void {
+  const { score, sentences } = stats;
+  const { empty, where, showable } = sourceText(stats);
   if (!score) {
-    scoreEmpty.textContent = source === 'video'
-      ? 'Play the video with Japanese subtitles. The score uses the subtitle lines that the overlay showed.'
-      : 'This page has no Japanese words.';
+    scoreEmpty.textContent = empty;
     return;
   }
   scoreEmpty.hidden = true;
@@ -121,20 +125,18 @@ function showStats({ source, lines, score, sentences }: PageStats): void {
     item.append(dot, `${STATUSES[status].label} ${score.unique[status]}`);
     return item;
   }));
-  scoreBasis.textContent = `${score.words} words ${source === 'video' ? `in ${lines} subtitle lines` : 'on this page'}. Known and ignored words are understood.`;
+  scoreBasis.textContent = `${score.words} words ${where}. Known and ignored words are understood.`;
   byId('sentences-title', HTMLElement).textContent = sentences.length
     ? `Recommended sentences (${sentences.length})`
     : 'No recommended sentences. No sentence has exactly one unknown word.';
-  byId('sentences', HTMLElement).replaceChildren(...sentences.map((text, index) => sentenceItem(text, index, source)));
+  byId('sentences', HTMLElement).replaceChildren(...sentences.map((text, index) => sentenceItem(text, index, showable ? tabId : null)));
 }
 
 async function showTabStats(): Promise<void> {
-  try {
-    if (tab?.id === undefined) throw new Error('No tab');
-    showStats(await call({ type: 'pageStats' }, tab.id));
-  } catch {
-    scoreEmpty.textContent = 'Minerr cannot read this tab. If the tab was open before Minerr started, reload it.';
-  }
+  const tabId = tab?.id;
+  const stats = tabId === undefined ? null : await call({ type: 'pageStats' }, tabId).catch(() => null);
+  if (stats && tabId !== undefined) showStats(stats, tabId);
+  else scoreEmpty.textContent = 'Minerr cannot read this tab. If the tab was open before Minerr started, reload it.';
 }
 
 async function act(message: Message<'subsGenerate'> | Message<'subsUse'>): Promise<void> {

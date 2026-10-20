@@ -42,7 +42,6 @@ export function comprehension(words: Word[]): Comprehension | null {
   return { percent, rating: ratingOf(percent), words: words.length, unique };
 }
 
-// The text of each i+1 sentence of the pieces.
 export function iPlusOneTexts(pieces: Piece[]): string[] {
   const starts: number[] = [];
   let length = 0;
