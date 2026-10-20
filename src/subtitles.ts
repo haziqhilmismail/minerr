@@ -6,7 +6,7 @@ const POLL_MS = 2000;
 
 // YouTube's caption window stays in the DOM (the overlay reads it), but it is invisible and takes no mouse events.
 // The layer fills the player as a size container, so the subtitle size follows the player in every view mode.
-// When Minerr is off (page.js sets data-minerr-off on the root), YouTube's own captions come back and the overlay hides.
+// When Minerr is off (page.ts sets data-minerr-off on the root), YouTube's own captions come back and the overlay hides.
 const STYLE = `
   :root:not([data-minerr-off]) .ytp-caption-window-container { opacity: 0 !important; pointer-events: none !important; }
   :root[data-minerr-off] .minerr-subs { display: none; }
@@ -55,7 +55,7 @@ let shown = '';
 const video = () => player?.querySelector('video');
 const currentVideoId = () => (location.pathname === '/watch' ? new URLSearchParams(location.search).get('v') : null);
 
-// Replace the text only when it changes: page.js swaps the text node for word spans, and that must stay.
+// Replace the text only when it changes: page.ts swaps the text node for word spans, and that must stay.
 function show(text: string): void {
   if (text === shown) return;
   shown = text;

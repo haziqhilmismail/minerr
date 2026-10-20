@@ -24,10 +24,10 @@ interface Protocol {
   subsUse: { request: { source: Source }; reply: Snapshot };
 }
 
-export type MessageType = keyof Protocol;
+type MessageType = keyof Protocol;
 export type Message<K extends MessageType> = { type: K } & Protocol[K]['request'];
 export type Reply<K extends MessageType> = Protocol[K]['reply'];
-export type Handlers<K extends MessageType> = {
+type Handlers<K extends MessageType> = {
   [P in K]: (message: Message<P>, sender: chrome.runtime.MessageSender) => Reply<P> | Promise<Reply<P>>;
 };
 
