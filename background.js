@@ -49,7 +49,30 @@ async function importKnown({ query, field }) {
   return words.length;
 }
 
+const WHISPER = 'http://127.0.0.1:8766';
+
+// Returns the JSON reply, or null for 404 (no such job, no cached subtitles).
+async function whisper(path, body) {
+  let response;
+  try {
+    response = await fetch(WHISPER + path, body && { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  } catch {
+    throw new Error('Start the WhisperX server: uv run server/whisper_server.py');
+  }
+  if (response.status === 404) return null;
+  const reply = await response.json();
+  if (!response.ok) throw new Error(reply.error ?? `The WhisperX server answered ${response.status}.`);
+  return reply;
+}
+
+const whisperHandlers = {
+  whisperHealth: () => whisper('/health'),
+  whisperStart: ({ url }) => whisper('/jobs', { url }),
+  whisperJob: ({ id }) => whisper(`/jobs/${encodeURIComponent(id)}`),
+  whisperCached: ({ videoId }) => whisper(`/subs/${encodeURIComponent(videoId)}`),
+};
+
 serve(
-  { parse: toOffscreen, lookup: toOffscreen, addCard, importKnown, ankiVersion: version },
+  { parse: toOffscreen, lookup: toOffscreen, addCard, importKnown, ankiVersion: version, ...whisperHandlers },
   message => message.target === undefined,
 );
