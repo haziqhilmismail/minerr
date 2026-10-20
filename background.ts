@@ -6,7 +6,7 @@ import { listDictionaries } from './src/db.ts';
 import { cardMedia, widenSentence } from './src/lineaudio.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
 import { getStatuses, moveStatusKeys, setStatus, setStatuses } from './src/status.ts';
-import { minerrEnabled } from './src/settings.ts';
+import { minerrEnabled, wordJoins } from './src/settings.ts';
 import { cachedSegments, getJob, health, siteCaptions, startJob } from './src/whisper.ts';
 import { wordAudio } from './src/wordaudio.ts';
 
@@ -30,7 +30,7 @@ async function ensureOffscreen(): Promise<void> {
 // finishes a move that stopped. It starts there, not at the top of this file, so a worker that only runs a command does not open IndexedDB.
 let moved: Promise<void> | undefined;
 
-async function toOffscreen<K extends 'parse' | 'lookup' | 'pitch' | 'lookupText' | 'wordKeys'>(message: Message<K>): Promise<Reply<K>> {
+async function toOffscreen<K extends 'segments' | 'lookup' | 'pitch' | 'lookupText' | 'wordKeys'>(message: Message<K>): Promise<Reply<K>> {
   await ensureOffscreen();
   moved ??= listDictionaries()
     .then(dictionaries => moveStatusKeys(dictionaries, words => call({ type: 'wordKeys', words, target: 'offscreen' })))
@@ -91,7 +91,7 @@ Object.assign(globalThis, { runCommand });
 
 serve(
   {
-    parse: toOffscreen,
+    parse: async ({ texts }) => toOffscreen({ type: 'segments', texts, joins: await wordJoins.get() }),
     lookup: toOffscreen,
     pitch: toOffscreen,
     lookupText: toOffscreen,

@@ -177,6 +177,7 @@ Chrome runs these keys for Minerr. Thus a page cannot take them. The table shows
 | --- | --- |
 | `Alt+Shift+M` | Turn Minerr on or off in all tabs. |
 | `Alt+S` | Look up the selected text. See [Look up selected text](#look-up-selected-text). |
+| `Alt+J` | Make the selected text one word, or remove that word override. See [Word overrides](#word-overrides). |
 | `Alt+Shift+D` | Turn the page text of this site on or off. |
 | No key | Open the Minerr toolbar menu. |
 | No key | Turn the sentence highlight on or off. `Alt+Shift+S` on a page also does this. |
@@ -786,6 +787,21 @@ Select text on the page, then press `Alt+S`. Minerr looks up the longest diction
 
 `A` in this popup adds a card with the sentence around the selected word.
 
+### Word overrides
+
+Minerr uses an old dictionary to cut text into words. Thus it can cut a new word or a slang word in two. For example, in ちょっとはずいね。 Minerr shows ずい, not はずい (恥ずい). To make such a text one word:
+
+1. Select the text on a page or in a subtitle line, for example はずい.
+2. Press `Alt+J`. A short message confirms the change: `はずい is one word now.`
+
+The words on the open pages change at once. From then on, Minerr reads each match of the text as one word, with the popup and the status of its dictionary entry.
+
+- The text must be one dictionary word. If no dictionary has it, a short message tells you, and Minerr keeps no override.
+- Select the text as it is on the page. Minerr joins only a text that it cuts at the same two ends. It does not cut a word to make the override.
+- An override matches only its exact text. A conjugated form, for example はずかった, keeps the cut of the dictionary.
+
+To remove an override, select the same text and press `Alt+J` again. Or open the options page, find **Word overrides** in **Dictionaries**, and click **Remove**.
+
 ### Popups in a popup
 
 Japanese text in the definitions of a popup is also cut into words. Hold `Shift` and move the mouse onto such a word: a new popup opens over the first one. You can open up to 4 popups in this way. A plain hover in a popup opens nothing, so you can move the mouse over the definitions.
@@ -908,7 +924,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `background.ts` | The service worker. It routes messages and calls AnkiConnect and the WhisperX server. |
 | `offscreen.ts` | Runs kuromoji and the dictionary lookups in an offscreen document. |
 | `src/rpc.ts` | The messages between the parts of the extension, and the type of the reply to each message. |
-| `src/page.ts` | Finds Japanese text on the page and wraps each word. |
+| `src/page.ts` | Finds Japanese text on the page and wraps each word. After a change of the word overrides, it parses the blocks with that text again. |
 | `src/popup.ts` | The dictionary popup: when it opens, its keys, and the card that it adds. |
 | `src/popup-view.ts` | The content of the popup and its position. |
 | `src/words.ts` | The word spans of parsed text. A word that crosses text nodes gets one span for each part. |
@@ -929,7 +945,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/whisper.ts` | The client for the WhisperX server. |
 | `src/lineaudio.ts`, `src/record.ts` | The sentence audio of a card: the server cuts it, or the tab records the line. |
 | `src/db.ts` | The dictionary storage in IndexedDB. |
-| `src/entry.ts` | The dictionary entry and the status key of each word, and the join of compound nouns. |
+| `src/entry.ts` | The dictionary entry and the status key of each word, and the join of word overrides and compound nouns. |
 | `src/group.ts`, `src/sentence.ts`, `src/yomitan.ts`, `src/zip.ts` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
 | `src/theme.ts`, `theme.css` | The theme setting, and the palette of the extension pages. |
 | `src/hover.ts` | The word popup setting, and the rule that decides when the popup opens. |

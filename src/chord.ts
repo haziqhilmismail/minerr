@@ -1,7 +1,7 @@
 // Key names and the rules of the key tables of the page and the popup.
 
 // The browser shortcuts of manifest.json that the service worker sends to the page of the active tab (src/keys.ts).
-export const PAGE_COMMANDS = ['lookup-selection', 'toggle-site', 'toggle-sentence-highlight'] as const;
+export const PAGE_COMMANDS = ['lookup-selection', 'word-join', 'toggle-site', 'toggle-sentence-highlight'] as const;
 export type PageCommand = (typeof PAGE_COMMANDS)[number];
 export const isPageCommand = (name: string): name is PageCommand => PAGE_COMMANDS.some(command => command === name);
 

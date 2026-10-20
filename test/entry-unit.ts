@@ -144,7 +144,7 @@ test('a parse reads each index key one time', async () => {
     headwords: index.headwords,
   };
   const fresh = dictionaryWords(counted);
-  await entrySegments(tokenizer.tokenize('猫とねことネコ。ねこが猫を見た。'), fresh);
+  await entrySegments(tokenizer.tokenize('猫とねことネコ。ねこが猫を見た。'), fresh, []);
   assert.deepEqual(reads.filter((read, i) => reads.indexOf(read) !== i), []);
 });
 

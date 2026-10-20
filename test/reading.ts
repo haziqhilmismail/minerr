@@ -14,6 +14,7 @@ const terms = makeDictionary(join(work, 'terms.zip'), 'Fixture', [
   ['猫', 'ねこ', 'n', '', 100, ['cat (fixture)', '同義: 子猫'], 2, ''],
   ['子猫', 'こねこ', 'n', '', 100, ['小さい猫'], 4, ''],
   ['魚', 'さかな', 'n', '', 100, ['fish (fixture)'], 3, ''],
+  ['恥ずい', 'はずい', 'adj-i', 'adj-i', 100, ['embarrassing (fixture)'], 5, ''],
 ]);
 const ranks = makeDictionary(join(work, 'ranks.zip'), 'Ranks', [], [], [
   ['猫', 'freq', 1200],
@@ -87,13 +88,13 @@ try {
 
   const options = await context.newPage();
   await options.goto(`chrome-extension://${extensionId}/options.html`);
-  for (const [file, message] of [[terms, 'Imported Fixture: 4 terms'], [ranks, 'Imported Ranks: 0 terms, 3 frequency and pitch entries'],
+  for (const [file, message] of [[terms, 'Imported Fixture: 5 terms'], [ranks, 'Imported Ranks: 0 terms, 3 frequency and pitch entries'],
     [pitches, 'Imported Pitches: 0 terms, 3 frequency and pitch entries']]) {
     await options.setInputFiles('#dict-file', file ?? '');
     await options.locator('#dict-status', { hasText: message ?? '' }).waitFor();
   }
   assert.deepEqual(await options.$$eval('#dict-list li', (items: HTMLElement[]) => items.map(li => li.innerText.split('\n')[1])), [
-    '4 terms', '1 terms. Import again so that the spellings of a word share one status.',
+    '5 terms', '1 terms. Import again so that the spellings of a word share one status.',
     '0 terms, 3 frequency and pitch entries', '0 terms, 3 frequency and pitch entries',
   ]);
   console.log('import: version 2 dictionary kept and told to import again for entries, frequency and pitch dictionaries counted');
@@ -103,6 +104,7 @@ try {
     'Alt+Shift+M | Turn Minerr on or off in all tabs | ',
     'Not set | Turn the sentence highlight on or off. Alt+Shift+S on a page also does this. | ',
     'Alt+Shift+D | Turn the page text of this site on or off | ',
+    'Alt+J | Make the selected text one word, or remove that word override | ',
   ], 'the options page shows the browser shortcuts that Chrome has now');
 
   const tab = await context.newPage();
@@ -484,6 +486,51 @@ try {
   await toast.filter({ hasText: 'No dictionary entry for xyz.' }).waitFor();
   await tab.evaluate(() => getSelection()?.removeAllRanges());
   console.log('Alt+S: the longest dictionary word at the start of the selection, with the card sentence around it');
+
+  await tab.evaluate(() => {
+    const range = new Range();
+    const text = document.querySelector('#plain')?.firstChild;
+    if (!text) throw new Error('no text');
+    range.setStart(text, 0);
+    range.setEnd(text, 3);
+    getSelection()?.removeAllRanges();
+    getSelection()?.addRange(range);
+  });
+  await runCommand(worker, tab, 'word-join');
+  await toast.filter({ hasText: 'No dictionary entry for xyz. Select one whole word in its dictionary form.' }).waitFor();
+  await tab.evaluate(() => getSelection()?.removeAllRanges());
+  await tab.evaluate(() => document.body.append(Object.assign(document.createElement('p'), { id: 'join', innerHTML: 'ちょっと<span id="haz">はずい</span>ね。' })));
+  await tab.waitForSelector('#join .ml-word[data-ml-lemma="ずい"]');
+  const joinWords = () => tab.$$eval('#join .ml-word', spans => spans.map(span => `${span.textContent}=${span.dataset.mlKey ?? span.dataset.mlLemma}`));
+  const joinList = () => options.$$eval('#word-joins li', items => items.map(item => item.textContent));
+  const toggleJoin = async (message: string) => {
+    await tab.evaluate(() => getSelection()?.selectAllChildren(document.querySelector('#haz') ?? document.body));
+    await runCommand(worker, tab, 'word-join');
+    await toast.filter({ hasText: message }).waitFor();
+    await tab.evaluate(() => getSelection()?.removeAllRanges());
+  };
+  assert.deepEqual(await joinWords(), ['ちょっと=ちょっと', 'ずい=ずい']);
+  assert.deepEqual(await joinList(), ['No word overrides. Select a word on a page and press Alt+J to add one.']);
+  await toggleJoin('はずい is one word now.');
+  await tab.waitForSelector('#join .ml-word[data-ml-lemma="はずい"]');
+  assert.deepEqual(await joinWords(), ['ちょっと=ちょっと', 'はずい=恥ずい'], 'the page shows はずい as one word at once');
+  assert.deepEqual(await options.evaluate(() => chrome.storage.local.get('wordJoins')), { wordJoins: ['はずい'] });
+  assert.deepEqual(await joinList(), ['はずいRemove']);
+  await tab.mouse.move(0, 0);
+  await tab.hover('#join .ml-word[data-ml-lemma="はずい"]');
+  await popups.locator('.lemma', { hasText: '恥ずい' }).waitFor();
+  assert.match(await popups.locator('.definitions').innerText(), /embarrassing \(fixture\)/);
+  await tab.keyboard.press('Escape');
+  await toggleJoin('はずい is no longer one word.');
+  await tab.waitForSelector('#join .ml-word[data-ml-lemma="ずい"]');
+  assert.deepEqual(await joinWords(), ['ちょっと=ちょっと', 'ずい=ずい']);
+  await toggleJoin('はずい is one word now.');
+  await tab.waitForSelector('#join .ml-word[data-ml-lemma="はずい"]');
+  await options.click('#word-joins button:has-text("Remove")');
+  await tab.waitForSelector('#join .ml-word[data-ml-lemma="ずい"]');
+  assert.deepEqual(await joinWords(), ['ちょっと=ちょっと', 'ずい=ずい'], 'Remove on the options page gives back the split at once');
+  assert.deepEqual(await options.evaluate(() => chrome.storage.local.get('wordJoins')), { wordJoins: [] });
+  console.log('word override: Alt+J makes はずい one word with the popup of 恥ずい, Alt+J again or Remove on the options page splits it again');
 
   const big = await context.newPage();
   const loaded = Date.now();

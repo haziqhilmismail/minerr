@@ -1,8 +1,9 @@
 // The keys of a page and of the open popup. One table, so a key has one meaning at a time.
 import { chord, focused, isEditable, isField, type PageCommand, statusTarget } from './chord.ts';
 import { toast } from './popup-view.ts';
-import { messageOf, serve } from './rpc.ts';
+import { call, messageOf, serve } from './rpc.ts';
 import { sentenceHighlight } from './sentence-hover.ts';
+import { wordJoins } from './settings.ts';
 import { isMinerrPage, siteOf, toggleSiteOf, watchActive } from './site.ts';
 import { setStatus, setStatuses, type Status, STATUS_NAMES, STATUSES, type WordId } from './status.ts';
 import { sameWord, wordOf } from './words.ts';
@@ -72,6 +73,23 @@ async function toggleSite(): Promise<void> {
   toast(on ? `Minerr page text on for ${site}.` : `Minerr page text off for ${site}. Video subtitles stay on. Turn the page text on again in the Minerr toolbar menu.`);
 }
 
+// Alt+J: the text is one word from now on, or no longer one word. Only a dictionary word, so that its popup has an entry.
+async function toggleWordJoin(text: string): Promise<void> {
+  const joins = await wordJoins.get();
+  if (joins.includes(text)) {
+    await wordJoins.set(joins.filter(word => word !== text));
+    toast(`${text} is no longer one word.`);
+    return;
+  }
+  const found = await call({ type: 'lookupText', text });
+  if (found?.length !== text.length) {
+    toast(`No dictionary entry for ${text.slice(0, 10)}. Select one whole word in its dictionary form.`);
+    return;
+  }
+  await wordJoins.set([...joins, text]);
+  toast(`${text} is one word now.`);
+}
+
 // A key starts work that ends later; an error of it shows as a toast.
 const report = (work: Promise<void>) => { work.catch((error: unknown) => toast(messageOf(error))); };
 
@@ -134,6 +152,10 @@ export function installKeys(popup: PopupKeys): void {
   // The browser shortcuts that the service worker sends to the tab. The frame with the focus takes them, as it takes the keys.
   const commands: Record<PageCommand, () => void> = {
     'lookup-selection': () => { popup.lookupSelection(); },
+    'word-join': () => {
+      const text = getSelection()?.toString().trim();
+      if (text) report(toggleWordJoin(text));
+    },
     'toggle-site': () => report(toggleSite()),
     'toggle-sentence-highlight': () => report(toggleSentenceHighlight()),
   };

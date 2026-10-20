@@ -1,3 +1,5 @@
+import { isStringList } from './parse.ts';
+
 // A setting in chrome.storage.local that every tab follows. A missing or invalid value reads as the fallback.
 export function setting<T>(key: string, isValue: (value: unknown) => value is T, fallback: T) {
   const stored = (value: unknown): T => (isValue(value) ? value : fallback);
@@ -29,3 +31,6 @@ export const minerrEnabled = setting('enabled', isBoolean, true);
 
 // The soft highlight on i+1 sentences (src/iplusone.ts). It shows only while Minerr is on.
 export const iPlusOne = setting('iPlusOne', isBoolean, true);
+
+// The texts that the user made one word with the word override key (src/keys.ts). The parse joins their tokens (src/entry.ts).
+export const wordJoins = setting('wordJoins', isStringList, []);

@@ -10,7 +10,7 @@ import { LAPIS_MODEL } from './src/lapis.ts';
 import { PITCH } from './src/meta.ts';
 import { pitchColors } from './src/pitch-colors.ts';
 import { sentenceHighlight } from './src/sentence-hover.ts';
-import { iPlusOne, type Setting } from './src/settings.ts';
+import { iPlusOne, type Setting, wordJoins } from './src/settings.ts';
 import { call, messageOf } from './src/rpc.ts';
 import {
   forgetStatusMove, getAllStatuses, importStatuses, moveStatusKeys, onStatusChange, parseStatusFile, STATUS_NAMES, STATUSES, statusFile, WORD_CSS,
@@ -116,6 +116,14 @@ drop.ondrop = event => {
   const file = event.dataTransfer?.files[0];
   if (file && !fileInput.disabled) importFile(file);
 };
+
+function joinRow(word: string): HTMLLIElement {
+  const remove = el('button', { type: 'button', className: 'delete', textContent: 'Remove' });
+  remove.onclick = async () => wordJoins.set((await wordJoins.get()).filter(other => other !== word));
+  return el('li', {}, el('div', {}, el('span', { className: 'name', textContent: word })), remove);
+}
+const noJoins = el('li', { className: 'empty', textContent: 'No word overrides. Select a word on a page and press Alt+J to add one.' });
+wordJoins.watch(joins => byId('word-joins', HTMLElement).replaceChildren(...(joins.length ? joins.map(joinRow) : [noJoins])));
 
 const deck = byId('deck', HTMLInputElement);
 const deckSaved = byId('deck-saved', HTMLElement);
