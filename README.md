@@ -290,7 +290,7 @@ The **Comprehension** section shows these items:
 | 60% to 69% | Challenging |
 | Less than 60% | Ambitious |
 
-On a video with timed subtitles, the score uses all the subtitle lines of the video. Timed subtitles are WhisperX subtitles, the YouTube subtitles from the Minerr server, or a subtitle file in the player. The score is available when the subtitles load, before you play the video. The menu then shows "N words in all M subtitle lines of the video."
+On a video with timed subtitles, the score uses all the subtitle lines of the video. Timed subtitles are WhisperX subtitles, the YouTube subtitles with times, or a subtitle file in the player. The score is available when the subtitles load, before you play the video. The menu then shows "N words in all M subtitle lines of the video."
 
 If a YouTube video has only the YouTube captions in the overlay, the score uses only the lines that the overlay showed in the tab. The score changes while you watch. When you open a different video, the count starts again. The menu then shows "N words in the M subtitle lines that the overlay showed."
 
@@ -302,11 +302,12 @@ Migaku also uses the number of i+1 sentences in its score. Minerr uses only the 
 
 On a YouTube video page, Minerr shows the subtitles in its own overlay, in large white text on a dark box. The overlay is at the bottom center of the video, above the player controls. The text size changes with the player size, also in theater mode and full screen. Minerr hides the captions of YouTube, because the overlay shows the same text.
 
-To see YouTube captions in the overlay:
+Open a video that has Japanese captions. After some seconds, the overlay shows the Japanese captions at the times of the video. You do not need the Minerr server, and you do not need to turn on **CC**. [YouTube subtitles with times](#youtube-subtitles-with-times) tells how this works.
 
-1. Open a video that has Japanese captions.
-2. Turn on captions in the YouTube player. Click **CC** or press `C`.
-3. If the video has more than one caption track, select the Japanese track in **Settings > Subtitles/CC**.
+If Minerr gets no captions with times, the overlay copies the captions that the YouTube player shows:
+
+1. Turn on captions in the YouTube player. Click **CC** or press `C`.
+2. If the video has more than one caption track, select the Japanese track in **Settings > Subtitles/CC**.
 
 If the captions are off, the overlay shows nothing. When a caption has two lines, the overlay shows two lines.
 
@@ -321,7 +322,16 @@ These keys work in the Minerr video player too. If the line has no unknown word,
 
 ### YouTube subtitles with times
 
-The captions that Minerr copies from the YouTube player have no times. Thus the keys that go to a line, the play modes, and the sentence audio do not work with them. If the Minerr server runs, Minerr gets the Japanese subtitles of the video with times:
+With subtitles that have times, these features work: the keys that go to a line, the play modes, the subtitle sidebar, the score of all the lines, and the sentence audio. The captions that Minerr copies from the YouTube player have no times, so these features do not work with them.
+
+Minerr gets the Japanese subtitles with times in two ways. It uses the subtitles that come first:
+
+- **In the tab, without the server.** The YouTube player of the page gets the captions from YouTube, and Minerr reads them. If **CC** is off, Minerr selects the Japanese track in the player. The YouTube captions stay hidden under the overlay.
+- **From the Minerr server.** The server downloads the subtitles with `yt-dlp`. The server is necessary only when YouTube does not send the captions to the tab.
+
+After the subtitles show, they do not change. When the WhisperX subtitles of the video are ready, the overlay shows them.
+
+To get the subtitles from the server:
 
 1. Start the server, as [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx) shows.
 2. Open a YouTube video.
@@ -329,9 +339,9 @@ The captions that Minerr copies from the YouTube player have no times. Thus the 
 
 If you start the server after you open the video, the tab finds the server in some seconds. You do not need to reload the page.
 
-The server uses the subtitles of the uploader first. If the video has none, it uses the automatic subtitles of YouTube. The overlay then shows the subtitles at the times of the video, also when the YouTube captions are off. If the video has no Japanese subtitles, the overlay copies the YouTube captions as before.
+Both ways use the subtitles of the uploader first. If the video has none, they use the automatic subtitles of YouTube. The overlay then shows the subtitles at the times of the video, also when the YouTube captions are off. If the video has no Japanese subtitles, the overlay copies the YouTube captions as before.
 
-The Japanese subtitles are never a machine translation. YouTube translates its automatic captions into every language, so an English video has "Japanese" captions too. Minerr does not use them: the overlay shows no Japanese subtitles on such a video. The second subtitles, for example English, can be a translation.
+The Japanese subtitles are never a machine translation. YouTube translates its automatic captions into every language, so an English video has "Japanese" captions too. Minerr does not use them: the overlay shows no Japanese subtitles on such a video. YouTube can also dub a video into Japanese with a machine voice. The automatic Japanese captions of that voice are a machine translation too, so Minerr does not use them. The second subtitles, for example English, can be a translation.
 
 The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.captions.ja.v2.json`. The file of a video with no Japanese subtitles contains `{}`. After one day, the server asks YouTube again, because YouTube can add automatic subtitles some hours after the upload. To download the subtitles again at once, delete the file.
 
@@ -535,7 +545,7 @@ Open the options page and go to **Video** to change these settings. They apply t
 
 - **Subtitle size.** Move the slider to make the subtitles larger or smaller. On a video, `Alt+=` and `Alt+-` change the same size.
 - **Obscure the subtitles.** The overlay blurs or hides the text while the video plays. The text shows when you move the mouse onto it or pause the video. Select **Blur** or **Hide**. Press `W` on a video to turn this on or off.
-- **Second subtitles.** A second subtitle track, for example English, shows under the Japanese line. Select **Show**, **On hover or pause**, or **Off**. **Off** is the default. Press `Shift+W` on a video to show or hide it. On YouTube, the server gets the English subtitles of the video, as it does for the Japanese subtitles. In the video player, click **Add second subtitle file**.
+- **Second subtitles.** A second subtitle track, for example English, shows under the Japanese line. Select **Show**, **On hover or pause**, or **Off**. **Off** is the default. Press `Shift+W` on a video to show or hide it. On YouTube, Minerr gets the English subtitles of the video in the same two ways as the Japanese subtitles. If the video has no English subtitles, YouTube translates the Japanese subtitles. In the video player, click **Add second subtitle file**.
 - **Remove bracketed text.** Minerr removes text in brackets, for example （笑）, (laughs), [音楽], and 【拍手】. A line with only bracketed text does not show.
 - **Parts with no subtitles.** For a part of 1.5 seconds or more with no line, the video plays at 2× or 4× speed, or skips the part. The last 0.5 seconds before the next line play at the normal speed. This needs subtitles with times.
 
@@ -963,6 +973,8 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/keys.ts`, `src/chord.ts` | The keys that work on a page without a popup, the browser shortcuts that the service worker sends to the tab, and the names of the keys. |
 | `src/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |
 | `src/subtitles.ts` | The subtitle overlay on YouTube. |
+| `src/youtube-captions.ts` | The YouTube captions with times, read in the tab without the server, and the choice of the caption track. |
+| `src/youtube-main.ts` | Runs in the page of YouTube: it tells `src/youtube-captions.ts` the caption tracks and the token of the player. |
 | `src/status.ts` | The word statuses, their colors, and their storage. |
 | `src/tags.ts` | The colors of the dictionary tags, for the popup and the card. |
 | `src/anki.ts` | The AnkiConnect client, the note types, and the note draft of a card. |

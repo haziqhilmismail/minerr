@@ -55,6 +55,18 @@ test('parseCaptions reads YouTube json3: rolling lines end where the next starts
   assert.deepEqual(parseCaptions('srt', '1\n00:00:01,000 --> 00:00:02,000\n猫\n'), [{ start: 1, end: 2, text: '猫' }]);
 });
 
+test('trackUrl takes the uploader track, then the automatic one, and never a machine translation into Japanese', async () => {
+  const { trackUrl } = await import('../src/youtube-captions.ts');
+  const base = 'https://www.youtube.com/api/timedtext?v=v1';
+  const track = (languageCode: string, kind: string | null) => ({ languageCode, kind, vssId: `${kind ? 'a' : ''}.${languageCode}`,
+    baseUrl: `${base}&lang=${languageCode}${kind ? `&kind=${kind}` : ''}` });
+  const urls = (captions: Parameters<typeof trackUrl>[0]) => ['ja', 'en'].map(lang => trackUrl(captions, lang)?.href.replace(base, '') ?? null);
+  assert.deepEqual(urls({ tracks: [track('ja', 'asr'), track('ja-JP', null), track('ja', null)], dubbed: [] }), ['&lang=ja', '&lang=ja&tlang=en']);
+  assert.deepEqual(urls({ tracks: [track('ja', 'asr')], dubbed: [] }), ['&lang=ja&kind=asr', '&lang=ja&kind=asr&tlang=en']);
+  assert.deepEqual(urls({ tracks: [track('en', 'asr'), track('en', null)], dubbed: [] }), [null, '&lang=en']);
+  assert.deepEqual(urls({ tracks: [track('en', 'asr'), track('ja', 'asr'), track('ko', 'asr')], dubbed: ['ja', 'ko'] }), [null, '&lang=en&kind=asr']);
+});
+
 test('addNote adds a missing SentenceAudio field to an old Minerr note type and sends the line audio', async () => {
   const { addDraft, BUILTIN, noteDraft, NOTE_TYPE, RECOGNITION } = await import('../src/anki.ts');
   const requests: { action: string; params: Record<string, unknown> }[] = [];

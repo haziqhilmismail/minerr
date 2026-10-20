@@ -18,7 +18,7 @@ useCjkFonts(work);
 
 const clip = join(work, 'clip.webm');
 execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=s=640x360:r=10:d=12',
-  '-c:v', 'libvpx', '-b:v', '200k', clip]);
+  '-f', 'lavfi', '-i', 'sine=frequency=300:duration=12', '-c:v', 'libvpx', '-b:v', '200k', '-c:a', 'libopus', clip]);
 
 const dictionary = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
   ['食べる', 'たべる', 'v1', 'v1', 100, ['to eat (fixture)'], 1, ''],
@@ -122,10 +122,52 @@ const WATCH = `<!doctype html><html dark><meta charset="utf-8"><title>Fake YouTu
   </span></div></div>
   <div class="ytp-chrome-bottom"></div>
 </div>
-</div><div id="secondary"><div id="related">Recommended videos</div></div></div></ytd-watch-flexy></ytd-app>`;
+</div><div id="secondary"><div id="related">Recommended videos</div></div></div></ytd-watch-flexy></ytd-app>
+<script>
+  // As the player of YouTube: the caption tracks of the video, and a caption request when the captions module shows a track.
+  // Its first request has no token yet, and it asks for a shown track again only after a reload of the module.
+  const TRACKS = { tabvideo: [['ja', 'asr'], ['ja', null]], englishvideo: [['en', 'asr']] };
+  const player = document.getElementById('movie_player');
+  const videoId = () => new URLSearchParams(location.search).get('v');
+  const tracks = () => (TRACKS[videoId()] || []).map(([languageCode, kind]) => ({ languageCode, kind, vssId: (kind ? 'a.' : '.') + languageCode,
+    baseUrl: 'https://www.youtube.com/api/timedtext?v=' + videoId() + '&lang=' + languageCode + (kind ? '&kind=' + kind : '') }));
+  window.asked = {};
+  let shown = null;
+  let requests = 0;
+  player.getPlayerResponse = () => {
+    window.asked[videoId()] = (window.asked[videoId()] || 0) + 1;
+    return { videoDetails: { videoId: videoId() }, captions: { playerCaptionsTracklistRenderer: { captionTracks: tracks() } } };
+  };
+  player.loadModule = () => undefined;
+  player.unloadModule = () => { shown = null; };
+  player.setOption = (module, option, value) => {
+    const track = tracks().find(t => t.vssId === value.vss_id);
+    if (!track || shown === track.vssId) return;
+    shown = track.vssId;
+    const request = new XMLHttpRequest();
+    request.open('GET', track.baseUrl + '&fmt=json3' + (requests++ ? '&pot=token-' + videoId() : ''));
+    request.send();
+  };
+</script>`;
 
 const { context, worker, extensionId } = await launch(join(work, 'profile'));
 await context.route('https://www.youtube.com/**', route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: WATCH }));
+// As YouTube: a caption track only for a request with the token of the player, else an empty reply.
+const json3 = (...lines: [number, number, string][]) => JSON.stringify({ events: lines.map(([tStartMs, dDurationMs, utf8]) => ({ tStartMs, dDurationMs, segs: [{ utf8 }] })) });
+const TAB_CAPTIONS: Record<string, string> = {
+  'tabvideo ja asr': json3([0, 3000, 'じどうのじまく']),
+  'tabvideo ja own': json3([0, 3000, '猫を見た'], [3000, 3000, '魚を食べた']),
+  'tabvideo ja own en': json3([0, 3000, 'I saw a cat.']),
+  'englishvideo en asr': json3([0, 3000, 'Hello']),
+};
+const timedtext: string[] = [];
+await context.route('https://www.youtube.com/api/timedtext?**', route => {
+  const query = new URL(route.request().url()).searchParams;
+  const track = [query.get('v'), query.get('lang'), query.get('kind') ?? 'own', query.get('tlang')].filter(Boolean).join(' ');
+  const pot = query.get('pot');
+  timedtext.push(`${track}${pot ? ` pot=${pot}` : ''}`);
+  return route.fulfill({ contentType: 'application/json', body: pot === `token-${query.get('v')}` ? TAB_CAPTIONS[track] ?? '' : '' });
+});
 const failures: string[] = [];
 context.on('weberror', error => failures.push(error.error().message));
 const shot = async (target: Page, name: string, options: PageScreenshotOptions = {}) => {
@@ -537,6 +579,47 @@ try {
   await action.locator('#server.error').waitFor({ timeout: 5000 });
   assert.equal(await action.textContent('#server'), 'Start the WhisperX server: uv run server/whisper_server.py');
   await shot(action, 'action-server-down-light.png', { fullPage: true });
+
+  const lineText = (text: string) => tab.waitForFunction(t => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === t, text, { timeout: 20000 });
+  const openVideo = (videoId: string) => tab.evaluate(id => {
+    history.pushState({}, '', `/watch?v=${id}`);
+    document.dispatchEvent(new Event('yt-navigate-finish'));
+  }, videoId);
+  await tab.evaluate(() => { const video = document.querySelector('video'); if (video) video.currentTime = 0.5; });
+  await openVideo('tabvideo');
+  await lineText('猫を見た');
+  await tab.locator('.minerr-subs-second', { hasText: 'I saw a cat.' }).waitFor();
+  assert.deepEqual(timedtext, ['tabvideo ja own', 'tabvideo ja own pot=token-tabvideo', 'tabvideo ja own pot=token-tabvideo', 'tabvideo ja own en pot=token-tabvideo'],
+    'the player asks for the uploader track again after its first request without a token; the tab reads the track and its English translation with the token');
+  console.log('server stopped: the overlay shows the YouTube captions with times that the tab read through the player, and the English translation');
+  await tab.keyboard.press('ArrowRight');
+  await lineText('魚を食べた');
+  assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 3);
+  await tab.keyboard.press('g');
+  await sidebar.locator('li .ml-word[data-ml-lemma="食べる"]').waitFor();
+  assert.deepEqual(await cards.evaluateAll(rows => rows.map(row => `${row.querySelector('time')?.textContent} ${row.querySelector('.text')?.textContent}`)),
+    ['0:00 猫を見た', '0:03 魚を食べた']);
+  await tab.keyboard.press('g');
+  await sidebar.waitFor({ state: 'hidden' });
+  await tab.hover('.minerr-subs-line .ml-word[data-ml-lemma="食べる"]');
+  await popup.getByRole('button', { name: 'Add to Anki A' }).click();
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor({ timeout: 15000 });
+  const tabNote = at(ankiRequests.filter(r => at(r, 'action') === 'addNote').at(-1), 'params', 'note', 'fields');
+  assert.equal(at(tabNote, 'Sentence'), '魚を<b>食べた</b>');
+  const recorded = /^\[sound:(minerr-\d+\.webm)\]$/.exec(String(at(tabNote, 'SentenceAudio')))?.[1];
+  assert.ok(recorded && ankiRequests.some(r => at(r, 'action') === 'storeMediaFile' && at(r, 'params', 'filename') === recorded),
+    `the tab recorded the line audio: ${String(at(tabNote, 'SentenceAudio'))}`);
+  await tab.keyboard.press('Escape');
+  await tab.mouse.move(0, 0);
+  console.log('server stopped: ArrowRight, the sidebar, and a card with the line audio that the tab recorded');
+
+  await openVideo('englishvideo');
+  await lineText('猫が魚を食べなかった今日は雨');
+  await tab.waitForFunction(() => Reflect.get(Reflect.get(window, 'asked'), 'englishvideo') >= 1);
+  await tab.waitForTimeout(1500);
+  assert.equal(await line.innerText(), '猫が魚を食べなかった今日は雨', 'an English video has no Japanese track, so the overlay copies the captions');
+  assert.ok(!timedtext.some(request => request.startsWith('englishvideo')), 'the tab asks for no translation into Japanese');
+  console.log('English video: no Japanese lines from a translation; the overlay copies the YouTube captions');
 
   await context.route('https://example.com/**', route => route.fulfill({ contentType: 'text/html', body: '<p>Not YouTube</p>' }));
   await (await context.newPage()).goto('https://example.com/');
