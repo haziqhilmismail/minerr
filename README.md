@@ -560,10 +560,10 @@ Node.js runs the `.ts` test files directly, without a build. To run the tests:
 4. Run `node test/unit.ts` and `node test/video-unit.ts`.
 5. Close Anki, because the next test uses port 8765.
 6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect.
-7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/media.ts` and `node test/sites.ts`, which use the same ports.
+7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/media.ts`, `node test/player.ts`, and `node test/sites.ts`, which use the same ports.
 8. Run `python3 -I -B -m unittest discover -s server` to test the WhisperX server. This test does not need WhisperX.
 
-`npm test` does steps 3 to 7 in one command, after a type check. `node test/sites.ts` tests the overlay on a fake video site.
+`npm test` does steps 3 to 7 in one command, after a type check.
 
 More scripts:
 

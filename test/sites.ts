@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { at } from '../src/parse.ts';
-import { launch, listen, makeDictionary, useCjkFonts } from './harness.ts';
+import { launch, listen, makeDictionary, mockAnki, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-sites-'));
 useCjkFonts(work);
@@ -21,19 +21,7 @@ const dictionary = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
   ['魚', 'さかな', 'n', '', 100, ['fish (fixture)'], 2, ''],
 ]);
 
-const ankiRequests: unknown[] = [];
-const anki = createServer((req, res) => {
-  let body = '';
-  req.on('data', chunk => { body += chunk; });
-  req.on('end', () => {
-    const request: unknown = JSON.parse(body);
-    ankiRequests.push(request);
-    const replies: Record<string, unknown> = { createDeck: 1, modelNames: ['Basic'], createModel: {}, addNote: 1, storeMediaFile: at(request, 'params', 'filename') };
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ result: replies[String(at(request, 'action'))] ?? null, error: null }));
-  });
-});
-await listen(anki, 8765);
+const anki = await mockAnki();
 
 const VTT = 'WEBVTT\n\n00:00.000 --> 00:03.000\n猫が魚を食べた\n\n00:03.000 --> 00:06.000\n今日は雨\n';
 const serverRequests: string[] = [];
@@ -111,7 +99,7 @@ try {
   await tab.keyboard.press('a');
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
   assert.ok(serverRequests.includes('POST /clip {"url":"https://videos.example/watch/1","start":2.5,"end":6.5}'));
-  const note = at(ankiRequests.find(r => at(r, 'action') === 'addNote'), 'params', 'note');
+  const note = at(anki.requests.find(r => at(r, 'action') === 'addNote'), 'params', 'note');
   assert.match(String(at(note, 'fields', 'SentenceAudio')), /^\[sound:minerr-\d+\.mp3\]$/);
   console.log('card on another site: the server cut the line audio from the page URL');
   await tab.keyboard.press('Escape');
@@ -145,6 +133,6 @@ try {
   console.log('SITES E2E PASS');
 } finally {
   await context.close();
-  anki.close();
+  anki.server.close();
   server.close();
 }
