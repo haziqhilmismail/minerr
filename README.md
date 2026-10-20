@@ -455,6 +455,7 @@ The subtitle sidebar shows all lines of the video as cards, beside the video. It
 2. Find a line. Each card shows the time and the line. The words have their status colors, and a word opens its popup on hover, as in the overlay.
 3. Do one of these steps on the card:
    - Click the card, or its time, to go to the line.
+   - Click **▶** to play the line one time. The video pauses at the end of the line.
    - Click **★** to bookmark the line.
 4. Press `G` again, or click **×**, to close the sidebar.
 

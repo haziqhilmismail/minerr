@@ -76,6 +76,8 @@ const minutes = (time: number) => `${Math.floor(time / 60)}:${String(Math.floor(
 // What the cards ask of the video, by the index of the line.
 export interface LineActions {
   seek: (index: number) => void;
+  // Plays the line once, then pauses at its end.
+  play: (index: number) => void;
   toast: (text: string) => void;
 }
 
@@ -166,10 +168,12 @@ export function createLineList(actions: LineActions): LineList {
 
   function card(segment: SubtitleSegment, index: number): HTMLLIElement {
     const row = document.createElement('li');
+    const play = button('play', '▶', 'Play the line');
     const mark = button('mark', '★', 'Bookmark the line (B)');
+    play.addEventListener('click', () => actions.play(index));
     mark.addEventListener('click', () => actions.toast(toggleBookmark(index)));
     const cardHead = Object.assign(document.createElement('div'), { className: 'card-head' });
-    cardHead.append(Object.assign(document.createElement('time'), { textContent: minutes(segment.start) }), mark);
+    cardHead.append(Object.assign(document.createElement('time'), { textContent: minutes(segment.start) }), play, mark);
     row.append(cardHead, Object.assign(document.createElement('p'), { className: 'text', textContent: segment.text }));
     row.addEventListener('click', event => {
       if (!(event.target instanceof Element && event.target.closest('.ml-word, button'))) actions.seek(index);

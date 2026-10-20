@@ -362,8 +362,12 @@ try {
   const currentCard = (time: string) => tab.waitForFunction(t => document.querySelector('.minerr-lines li[aria-current="true"] time')?.textContent === t, time);
   await tab.evaluate(() => { const video = document.querySelector('video'); if (video) video.currentTime = 10.5; });
   await currentCard('0:10');
-  await tab.evaluate(() => { const video = document.querySelector('video'); if (video) video.currentTime = 0.5; });
+  await cards.nth(0).getByRole('button', { name: 'Play the line' }).click();
   await currentCard('0:00');
+  await tab.waitForFunction(() => document.querySelector('video')?.paused === true, null, { timeout: 8000 });
+  const playedTo = await tab.evaluate(() => document.querySelector('video')?.currentTime ?? -1);
+  console.log('YouTube sidebar Play: the video played the first line and paused at', playedTo);
+  assert.ok(playedTo >= 2 && playedTo < 2.2, `Play pauses at the end of the line, ${playedTo}`);
 
   const shownCards = () => sidebar.locator('li:not([hidden]) time').allTextContents();
   await cards.nth(3).getByRole('button', { name: 'Bookmark the line (B)' }).click();
@@ -376,7 +380,7 @@ try {
   await sidebar.waitFor({ state: 'hidden' });
   assert.equal(await related.isVisible(), true, 'the recommended videos come back');
   await tab.setViewportSize({ width: 902, height: 528 });
-  console.log('YouTube sidebar: cards with times beside the video, the follow mark, filters, and bookmarks');
+  console.log('YouTube sidebar: cards with times beside the video, Play, the follow mark, filters, and bookmarks');
 
   const setStorage = (items: Record<string, unknown>) => worker.evaluate(value => chrome.storage.local.set(value), items);
   const lineStyle = () => line.evaluate(node => ({ filter: getComputedStyle(node).filter, color: getComputedStyle(node).color }));

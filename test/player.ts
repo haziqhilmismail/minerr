@@ -293,8 +293,14 @@ try {
   await currentCard('0:00');
   await seek(4);
   await currentCard('0:03');
-  await seek(1);
+  await cards.nth(0).getByRole('button', { name: 'Play the line' }).click();
+  await waitPaused(false);
   await currentCard('0:00');
+  await waitPaused(true);
+  const playedOnce = await playback();
+  assert.ok(playedOnce.time >= 3 && playedOnce.time < 3.15, `Play plays the line once and pauses at its end, ${playedOnce.time}`);
+  assert.equal(await line.innerText(), '猫が魚を食べた', 'the line that Play played stays on the screen');
+  console.log('sidebar Play: from 4 s, the video played 0 s to', playedOnce.time, 's and the mark followed');
 
   const sidebarDisplay = () => sidebar.evaluate(node => getComputedStyle(node).display);
   await setStorage({ enabled: false });

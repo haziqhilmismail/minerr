@@ -42,7 +42,7 @@ const TIMED_HINT = 'This key needs subtitles with times. Generate them with Whis
 const LIST_HINT = 'The subtitle sidebar needs subtitles with times. Generate them with WhisperX, or start the Minerr server for the YouTube subtitles.';
 
 const { layer, line, show, toast } = createOverlay();
-const list = createLineList({ seek: goTo, toast });
+const list = createLineList({ seek: goTo, play: playLine, toast });
 let target: Target = { video: () => null };
 // The lines from the page, and the lines that the overlay uses: the same, or without bracketed text.
 let given: Lines = { kind: 'none' };
@@ -69,6 +69,8 @@ let secondShown: SecondDisplay = 'show';
 let listed: SubtitleSegment[] | null = null;
 // The first of two lines that J joined, for one card with both; it ends when the video leaves the two lines.
 let combined: number | null = null;
+// The line that Play in the sidebar plays: the video pauses at its end. A seek away from it ends it.
+let playOnce: number | null = null;
 
 // The host page puts the sidebar in its place, beside the video.
 export const sidebar = list.panel;
@@ -125,7 +127,14 @@ function checkPause(playing: HTMLVideoElement): void {
   const found = timed();
   const now = lineTime();
   const index = found && !recording && !playing.paused ? autoPause(found.segments, mode, lastTime, now) : null;
+  const once = playOnce === null ? undefined : found?.segments[playOnce];
+  const onceEnded = once && !recording && !playing.paused && autoPause([once], 'after', lastTime, now) !== null;
   lastTime = now;
+  if (onceEnded) {
+    heldIndex = playOnce ?? -1;
+    playOnce = null;
+    return playing.pause();
+  }
   if (index === null || (PLAY_MODES[mode].only === 'iPlusOne' && !isIPlusOne(wordStatuses(line)))) return;
   if (PLAY_MODES[mode].pause === 'end') heldIndex = index;
   modePause(playing, line);
@@ -179,6 +188,14 @@ export function setLines(next: Lines): void {
 function goTo(index: number): void {
   const segment = timed()?.segments[index];
   if (segment) seek(segment.start + offset);
+}
+
+function playLine(index: number): void {
+  const playing = video();
+  if (!playing || !timed()?.segments[index]) return;
+  goTo(index);
+  playOnce = index;
+  play(playing);
 }
 
 function toggleList(): void {
@@ -362,6 +379,7 @@ for (const type of ['play', 'pause', 'seeked', 'timeupdate']) {
     if (event.target !== video()) return;
     if (type === 'play' && !recording) played();
     if (type === 'play' || type === 'seeked') heldIndex = -1;
+    if (type === 'seeked' && playOnce !== null && lastStarted(timed()?.segments ?? [], lineTime()) !== playOnce) playOnce = null;
     if (type !== 'timeupdate') lastTime = lineTime();
     follow();
   }, true);
