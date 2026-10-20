@@ -18,7 +18,7 @@ function showStatus(node, text, kind = '') {
 
 async function showDictionaries() {
   const dictionaries = await listDictionaries();
-  const items = dictionaries.map(({ title, count }) => {
+  const items = dictionaries.map(({ title, count, tags }) => {
     const remove = el('button', { type: 'button', className: 'delete', textContent: 'Delete' });
     remove.onclick = async () => {
       if (!confirm(`Delete the dictionary "${title}"?`)) return;
@@ -26,8 +26,10 @@ async function showDictionaries() {
       await deleteDictionary(title);
       await showDictionaries();
     };
-    const meta = count === null ? 'Import not finished. Import it again.' : `${count} terms`;
-    return el('li', { className: count === null ? 'unfinished' : '' },
+    // An import from before tags were stored has no tags flag.
+    const meta = count === null ? 'Import not finished. Import it again.'
+      : tags ? `${count} terms` : `${count} terms. Import again to show tags.`;
+    return el('li', { className: count === null || !tags ? 'warn' : '' },
       el('div', {}, el('span', { className: 'name', textContent: title }), el('span', { className: 'meta', textContent: meta })),
       remove);
   });

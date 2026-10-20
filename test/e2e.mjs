@@ -88,7 +88,7 @@ try {
   assert.equal(imported, 'Imported Fixture: 3 terms');
   assert.deepEqual(await options.$$eval('#dict-list li', items => items.map(li => li.innerText.split('\n'))), [
     ['Fixture', '3 terms', 'Delete'],
-    ['Old', '1 terms', 'Delete'],
+    ['Old', '1 terms. Import again to show tags.', 'Delete'],
   ]);
 
   const tab = await context.newPage();
