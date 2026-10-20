@@ -134,7 +134,8 @@ try {
   assert.ok(Math.abs(await fontSize() - before * 1.1) < 0.5, 'Alt+= makes the text 10% larger');
   const sizes = await context.newPage();
   await sizes.goto(`chrome-extension://${extensionId}/options.html`);
-  assert.deepEqual([await sizes.inputValue('#sub-scale'), await sizes.textContent('#sub-scale-value')], ['110', '110%'], 'the slider shows the size of the keys');
+  await sizes.locator('#sub-scale-value', { hasText: '110%' }).waitFor();
+  assert.equal(await sizes.inputValue('#sub-scale'), '110', 'the slider shows the size of the keys');
   await sizes.locator('#sub-scale').fill('200');
   await player.waitForFunction(size => Math.abs(parseFloat(getComputedStyle(document.querySelector('.minerr-subs-line') ?? document.body).fontSize) - size * 2) < 0.5, before);
   assert.equal(await sizes.textContent('#sub-scale-value'), '200%');
