@@ -3,11 +3,11 @@ import type { SubtitleSegment } from './captions.ts';
 import { modePause, played, setHold } from './autopause.ts';
 import type { CardLine } from './lineaudio.ts';
 import { play } from './dom.ts';
-import { createLineList } from './linelist.ts';
+import { createLineList, TIMES_SOURCE } from './linelist.ts';
 import { createOverlay, wordStatuses } from './overlay.ts';
 import { isEditable } from './chord.ts';
 import {
-  autoPause, cleanSegments, cleanText, GAP_LEAD, GAP_MODES, gapEnd, type GapMode, jumpTarget, lastStarted, PLAY_MODES, type PlayMode,
+  autoPause, cleanSegments, cleanText, GAP_LEAD, GAP_MODES, gapEnd, type GapMode, jumpTarget, lastStarted, onLine, PLAY_MODES, type PlayMode,
 } from './playback.ts';
 import { recordPart } from './record.ts';
 import { serve } from './rpc.ts';
@@ -38,8 +38,7 @@ const OFFSET_STEP = 0.1;
 const SCALE_STEP = 0.1;
 // Most video is 24 to 30 frames per second; one step of 1/30 s shows the next frame or the one after it.
 const FRAME = 1 / 30;
-const TIMED_HINT = 'This key needs subtitles with times. Generate them with WhisperX, or start the Minerr server for the YouTube subtitles.';
-const LIST_HINT = 'The subtitle sidebar needs subtitles with times. Generate them with WhisperX, or start the Minerr server for the YouTube subtitles.';
+const TIMED_HINT = `This key needs subtitles with times. ${TIMES_SOURCE}`;
 // A seek that never ends (a stalled network) does not keep a card from the sidebar waiting longer than this.
 const SEEK_WAIT_MS = 2000;
 
@@ -71,8 +70,8 @@ let secondShown: SecondDisplay = 'show';
 let listed: SubtitleSegment[] | null = null;
 // The first of two lines that J joined, for one card with both; it ends when the video leaves the two lines.
 let combined: number | null = null;
-// The line that Play in the sidebar plays: the video pauses at its end. A seek away from it ends it.
-let playOnce: number | null = null;
+// The line that Play in the sidebar plays: the video pauses at its end. A seek out of the line ends it.
+let playOnce: { index: number; segment: SubtitleSegment } | null = null;
 
 // The host page puts the sidebar in its place, beside the video.
 export const sidebar = list.panel;
@@ -128,15 +127,15 @@ function crossGap(playing: HTMLVideoElement): void {
 function checkPause(playing: HTMLVideoElement): void {
   const found = timed();
   const now = lineTime();
-  const index = found && !recording && !playing.paused ? autoPause(found.segments, mode, lastTime, now) : null;
-  const once = playOnce === null ? undefined : found?.segments[playOnce];
-  const onceEnded = once && !recording && !playing.paused && autoPause([once], 'after', lastTime, now) !== null;
+  const from = lastTime;
   lastTime = now;
-  if (onceEnded) {
-    heldIndex = playOnce ?? -1;
+  if (!found || recording || playing.paused) return;
+  if (playOnce && autoPause([playOnce.segment], 'after', from, now) !== null) {
+    heldIndex = playOnce.index;
     playOnce = null;
     return playing.pause();
   }
+  const index = autoPause(found.segments, mode, from, now);
   if (index === null || (PLAY_MODES[mode].only === 'iPlusOne' && !isIPlusOne(wordStatuses(line)))) return;
   if (PLAY_MODES[mode].pause === 'end') heldIndex = index;
   modePause(playing, line);
@@ -171,7 +170,7 @@ function useLines(next: Lines): void {
   setTrack(segments);
   if (segments !== listed) {
     listed = segments;
-    list.setLines(segments, lines.kind === 'timed' ? lines.id : null, LIST_HINT);
+    list.setLines(segments, lines.kind === 'timed' ? lines.id : null);
   }
   follow();
 }
@@ -194,9 +193,10 @@ function goTo(index: number): void {
 
 function playLine(index: number): void {
   const playing = video();
-  if (!playing || !timed()?.segments[index]) return;
+  const segment = timed()?.segments[index];
+  if (!playing || !segment) return;
   goTo(index);
-  playOnce = index;
+  playOnce = { index, segment };
   play(playing);
 }
 
@@ -285,7 +285,7 @@ const ACTIONS: Record<VideoAction, () => boolean | void> = {
   // render first: a seek just now changed the time, and the seeked event that renders comes later.
   bookmark: () => {
     render();
-    toast(list.toggleBookmark(shownIndex));
+    list.toggleBookmark(shownIndex);
   },
   second: () => {
     const next = secondShown === 'off' ? 'show' : 'off';
@@ -366,16 +366,17 @@ secondDisplay.watch(value => {
   follow();
 });
 
-// popup.ts marks the word of the open popup with data-ml-active.
+// popup.ts marks the word of the open popup with data-ml-active, in the overlay or in the sidebar.
+const wordRoots = [layer, list.panel];
 function syncHolds(): void {
   const playing = video();
   if (!playing || recording) return;
   setHold(playing, 'hover', line.matches(':hover'));
-  setHold(playing, 'popup', [layer, list.panel].some(root => root.querySelector('.ml-word[data-ml-active]') !== null));
+  setHold(playing, 'popup', wordRoots.some(root => root.querySelector('.ml-word[data-ml-active]') !== null));
 }
 line.addEventListener('mouseenter', syncHolds);
 line.addEventListener('mouseleave', syncHolds);
-for (const root of [layer, list.panel]) {
+for (const root of wordRoots) {
   new MutationObserver(syncHolds).observe(root, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-ml-active'] });
 }
 
@@ -390,7 +391,7 @@ for (const type of ['play', 'pause', 'seeked', 'timeupdate']) {
     if (event.target !== video()) return;
     if (type === 'play' && !recording) played();
     if (type === 'play' || type === 'seeked') heldIndex = -1;
-    if (type === 'seeked' && playOnce !== null && lastStarted(timed()?.segments ?? [], lineTime()) !== playOnce) playOnce = null;
+    if (type === 'seeked' && playOnce && !onLine(playOnce.segment, lineTime())) playOnce = null;
     if (type !== 'timeupdate') lastTime = lineTime();
     follow();
   }, true);

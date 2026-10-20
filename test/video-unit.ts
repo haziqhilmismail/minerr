@@ -1,10 +1,15 @@
 // Unit tests of the pure video rules: line jumps, keys, play modes, gaps, text clean-up, and card lines.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { autoPause, cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted } from '../src/playback.ts';
+import { autoPause, cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted, onLine } from '../src/playback.ts';
 import { keyLabel, keyName, videoKey } from '../src/videokeys.ts';
 
 const LINES = [{ start: 1, end: 3, text: '一' }, { start: 3, end: 5, text: '二' }, { start: 8, end: 10, text: '三' }];
+
+test('onLine is true from a little before the start of a line to its end', () => {
+  const line = { start: 3, end: 5, text: '二' };
+  assert.deepEqual([2.9, 2.97, 3, 4.99, 5, 8].map(time => onLine(line, time)), [false, true, true, true, false, false]);
+});
 
 test('lastStarted is the last line that started, also in a gap and a little before a start', () => {
   assert.deepEqual([0, 1, 2.9, 2.97, 6, 9, 12].map(time => lastStarted(LINES, time)), [-1, 0, 0, 1, 1, 2, 2]);

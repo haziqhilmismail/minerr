@@ -72,13 +72,16 @@ const FILTER_NAMES = Object.keys(LINE_FILTERS).filter((name): name is LineFilter
 const HOLD_MS = 3000;
 const ADD_LABEL = 'Add a card for the unknown word of the line';
 const ADD_OFF = 'A card from + needs a line with exactly one unknown word. Move the mouse over a word and press A to add any word.';
+// Where subtitles with times come from. src/video.ts shows it in its hint for the keys that need times.
+export const TIMES_SOURCE = 'Generate them with WhisperX, or start the Minerr server for the YouTube subtitles.';
+const NO_TIMES = `The subtitle sidebar needs subtitles with times. ${TIMES_SOURCE}`;
 
 // Minerr keeps the start times of the bookmarked lines of each video.
 const bookmarkKey = (id: string) => `bm:${id}`;
 
 const minutes = (time: number) => `${Math.floor(time / 60)}:${String(Math.floor(time % 60)).padStart(2, '0')}`;
 
-// What the cards ask of the video, by the index of the line.
+// What the cards ask of the video, by the index of the line. The card of + goes through popup.ts, as a card from the popup does.
 export interface LineActions {
   seek: (index: number) => void;
   // Plays the line once, then pauses at its end.
@@ -90,24 +93,30 @@ export interface LineActions {
 
 export interface LineList {
   panel: HTMLElement;
-  // id names the video, for its bookmarks. No segments: the list shows note instead.
-  setLines: (segments: SubtitleSegment[], id: string | null, note: string) => void;
-  // Bookmarks the line, or removes its bookmark. Returns the text of the toast.
-  toggleBookmark: (index: number) => string;
+  // id names the video, for its bookmarks. Without segments, the list shows that it needs subtitles with times.
+  setLines: (segments: SubtitleSegment[], id: string | null) => void;
+  // Bookmarks the line, or removes its bookmark.
+  toggleBookmark: (index: number) => void;
   toggle: () => void;
   setCurrent: (index: number) => void;
   // The index of the line of a row that holds node, or null.
   rowIndex: (node: Node) => number | null;
 }
 
+// The card of a line and the parts that change with the statuses of its words and its bookmark.
+interface Card {
+  index: number;
+  row: HTMLLIElement;
+  text: HTMLParagraphElement;
+  add: HTMLButtonElement;
+  mark: HTMLButtonElement;
+}
+
 const button = (className: string, text: string, label: string) =>
   Object.assign(document.createElement('button'), { type: 'button', className, textContent: text, title: label, ariaLabel: label });
 
-const textOf = (row: Element) => row.querySelector('.text') ?? row;
-
 // The unknown word of an i+1 line, or null.
-function unknownWord(row: Element): HTMLElement | null {
-  const text = textOf(row);
+function unknownWord({ text }: Card): HTMLElement | null {
   return isIPlusOne(wordStatuses(text)) ? text.querySelector<HTMLElement>('.ml-word.ml-unknown:not([data-ml-cont])') : null;
 }
 
@@ -122,11 +131,13 @@ export function createLineList(actions: LineActions): LineList {
   const empty = Object.assign(document.createElement('p'), { className: 'minerr-lines-empty', hidden: true });
   let filter: LineFilter = 'all';
   let current = -1;
-  let rows: HTMLLIElement[] = [];
+  let cards: Card[] = [];
+  const cardOf = new WeakMap<Element, Card>();
   let marks = new Set<number>();
+  // The bookmarks of the video load from storage; a bookmark change waits for them, so it keeps the stored ones.
+  let loaded: Promise<void> = Promise.resolve();
   let video: string | null = null;
   let segments: SubtitleSegment[] = [];
-  let note = '';
   let scrolledAt = -Infinity;
 
   const filterButtons = FILTER_NAMES.map(name => {
@@ -141,79 +152,81 @@ export function createLineList(actions: LineActions): LineList {
   bar.append(...filterButtons.map(([, filterButton]) => filterButton));
   panel.append(head, bar, list, empty);
 
-  function update(row: HTMLLIElement, index: number): void {
-    const statuses = wordStatuses(textOf(row));
-    const marked = marks.has(segments[index]?.start ?? -1);
-    row.hidden = !LINE_FILTERS[filter].keeps({ statuses, marked });
-    row.toggleAttribute('data-bookmark', marked);
-    row.querySelector('.mark')?.setAttribute('aria-pressed', String(marked));
-    const add = row.querySelector('.add');
+  function update(card: Card): void {
+    const statuses = wordStatuses(card.text);
+    const marked = marks.has(segments[card.index]?.start ?? -1);
     const on = isIPlusOne(statuses);
-    add?.setAttribute('aria-disabled', String(!on));
-    add?.setAttribute('title', on ? ADD_LABEL : ADD_OFF);
+    card.row.hidden = !LINE_FILTERS[filter].keeps({ statuses, marked });
+    card.row.toggleAttribute('data-bookmark', marked);
+    card.mark.setAttribute('aria-pressed', String(marked));
+    card.add.setAttribute('aria-disabled', String(!on));
+    card.add.title = on ? ADD_LABEL : ADD_OFF;
   }
 
   function showEmpty(): void {
-    empty.hidden = rows.some(row => !row.hidden);
-    empty.textContent = segments.length ? 'No line matches the filter.' : note;
+    empty.hidden = cards.some(card => !card.row.hidden);
+    empty.textContent = segments.length ? 'No line matches the filter.' : NO_TIMES;
   }
 
   function apply(): void {
     for (const [name, filterButton] of filterButtons) filterButton.setAttribute('aria-pressed', String(name === filter));
-    rows.forEach(update);
+    cards.forEach(update);
     showEmpty();
   }
 
-  // A status change or the parse of page.ts changes the classes of the words: the filters and the + of those rows.
-  const changed = new Set<HTMLLIElement>();
+  // A status change or the parse of page.ts changes the classes of the words: the filters and the + of those cards.
+  const changed = new Set<Card>();
   let pending = 0;
   new MutationObserver(records => {
     for (const record of records) {
       const row = (record.target instanceof Element ? record.target : record.target.parentElement)?.closest('li');
-      if (row) changed.add(row);
+      const card = row && cardOf.get(row);
+      if (card) changed.add(card);
     }
     pending ||= requestAnimationFrame(() => {
       pending = 0;
-      for (const row of changed) {
-        const index = rows.indexOf(row);
-        if (index >= 0) update(row, index);
-      }
+      changed.forEach(update);
       changed.clear();
       showEmpty();
     });
   }).observe(list, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
 
-  async function add(row: HTMLLIElement, index: number): Promise<void> {
-    if (!unknownWord(row)) return;
-    await actions.still(index);
+  async function addCard(card: Card): Promise<void> {
+    if (!unknownWord(card)) return;
+    await actions.still(card.index);
     // The seek can come after a status change; the line must still have its one unknown word.
-    const word = unknownWord(row);
+    const word = unknownWord(card);
     if (word) await addWordCard(word);
   }
 
-  function card(segment: SubtitleSegment, index: number): HTMLLIElement {
-    const row = document.createElement('li');
+  function makeCard(segment: SubtitleSegment, index: number): Card {
+    const card: Card = {
+      index,
+      row: document.createElement('li'),
+      text: Object.assign(document.createElement('p'), { className: 'text', textContent: segment.text }),
+      add: button('add', '+', ADD_LABEL),
+      mark: button('mark', '★', 'Bookmark the line (B)'),
+    };
     const play = button('play', '▶', 'Play the line');
-    const plus = button('add', '+', ADD_LABEL);
-    const mark = button('mark', '★', 'Bookmark the line (B)');
     play.addEventListener('click', () => actions.play(index));
-    plus.addEventListener('click', () => add(row, index));
-    mark.addEventListener('click', () => actions.toast(toggleBookmark(index)));
+    card.add.addEventListener('click', () => addCard(card));
+    card.mark.addEventListener('click', () => toggleBookmark(index));
     const cardHead = Object.assign(document.createElement('div'), { className: 'card-head' });
-    cardHead.append(Object.assign(document.createElement('time'), { textContent: minutes(segment.start) }), play, plus, mark);
-    row.append(cardHead, Object.assign(document.createElement('p'), { className: 'text', textContent: segment.text }));
-    row.addEventListener('click', event => {
+    cardHead.append(Object.assign(document.createElement('time'), { textContent: minutes(segment.start) }), play, card.add, card.mark);
+    card.row.append(cardHead, card.text);
+    card.row.addEventListener('click', event => {
       if (!(event.target instanceof Element && event.target.closest('.ml-word, button'))) actions.seek(index);
     });
-    return row;
+    cardOf.set(card.row, card);
+    return card;
   }
 
-  // The rows exist only while the panel is open: page.ts parses them, and the i+1 highlight would count hidden rows.
+  // The cards exist only while the panel is open: page.ts parses them, and the i+1 highlight would count hidden cards.
   function build(): void {
     count.textContent = segments.length ? `${segments.length} lines` : '';
     bar.hidden = !segments.length;
-    rows = panel.hidden ? [] : segments.map(card);
-    list.replaceChildren(...rows);
+    cards = panel.hidden ? [] : segments.map(makeCard);
+    list.replaceChildren(...cards.map(card => card.row));
     current = -1;
     scrolledAt = -Infinity;
     apply();
@@ -228,7 +241,7 @@ export function createLineList(actions: LineActions): LineList {
     video = id;
     marks = new Set();
     if (!id) return;
-    chrome.storage.local.get(bookmarkKey(id)).then(stored => {
+    loaded = chrome.storage.local.get(bookmarkKey(id)).then(stored => {
       const starts: unknown = stored[bookmarkKey(id)];
       if (video !== id || !Array.isArray(starts)) return;
       marks = new Set(starts.filter(start => typeof start === 'number'));
@@ -236,13 +249,17 @@ export function createLineList(actions: LineActions): LineList {
     });
   }
 
-  function toggleBookmark(index: number): string {
+  function toggleBookmark(index: number): void {
+    const id = video;
     const segment = segments[index];
-    if (!video || !segment) return 'Go to a line first, then bookmark it.';
-    if (!marks.delete(segment.start)) marks.add(segment.start);
-    chrome.storage.local.set({ [bookmarkKey(video)]: [...marks] });
-    apply();
-    return marks.has(segment.start) ? 'Bookmarked the line.' : 'Removed the bookmark.';
+    if (!id || !segment) return actions.toast('Go to a line first, then bookmark it.');
+    loaded = loaded.then(() => {
+      if (video !== id) return;
+      if (!marks.delete(segment.start)) marks.add(segment.start);
+      chrome.storage.local.set({ [bookmarkKey(id)]: [...marks] });
+      apply();
+      actions.toast(marks.has(segment.start) ? 'Bookmarked the line.' : 'Removed the bookmark.');
+    });
   }
 
   function toggle(): void {
@@ -253,9 +270,9 @@ export function createLineList(actions: LineActions): LineList {
 
   function setCurrent(index: number): void {
     if (index === current) return;
-    rows[current]?.removeAttribute('aria-current');
+    cards[current]?.row.removeAttribute('aria-current');
     current = index;
-    const row = rows[index];
+    const row = cards[index]?.row;
     row?.setAttribute('aria-current', 'true');
     // scrollTop, not scrollIntoView, which also scrolls the page around the list.
     if (row && !row.hidden && performance.now() - scrolledAt > HOLD_MS) list.scrollTop = row.offsetTop - (list.clientHeight - row.offsetHeight) / 2;
@@ -263,9 +280,8 @@ export function createLineList(actions: LineActions): LineList {
 
   return {
     panel,
-    setLines: (next, id, text) => {
+    setLines: (next, id) => {
       segments = next;
-      note = text;
       if (id !== video) loadBookmarks(id);
       build();
     },
@@ -274,8 +290,7 @@ export function createLineList(actions: LineActions): LineList {
     setCurrent,
     rowIndex: node => {
       const row = node instanceof Element ? node.closest('li') : null;
-      const index = row ? rows.indexOf(row) : -1;
-      return index < 0 ? null : index;
+      return (row && cardOf.get(row)?.index) ?? null;
     },
   };
 }
