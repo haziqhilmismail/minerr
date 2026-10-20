@@ -350,7 +350,9 @@ On a Ryzen 5 7600X (6 cores), the server needs about 24 seconds for 100 seconds 
 
 ### Cache and privacy
 
-The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.<model>.json`. When you open a video again, Minerr shows these subtitles at once. To make the subtitles again, delete the file.
+Each subtitle line is at most about 8 seconds of speech, so a line is 1 or 2 lines of text. WhisperX cuts the audio into parts at pauses, and each part becomes one line.
+
+The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.<model>.8s.json`. When you open a video again, Minerr shows these subtitles at once. To make the subtitles again, delete the file. Subtitles from an earlier version of the server have long lines. To get short lines, click **Generate with WhisperX** again.
 
 The server also keeps the audio of each video in `~/.cache/minerr/audio/`, for the sentence audio of the cards. A 20-minute video needs about 20 MB. To free the disk space, delete the files in this folder.
 
@@ -383,7 +385,7 @@ If you have no subtitle file, the WhisperX server can make the subtitles. Start 
 
 The player sends the video file to the server on your computer. The file does not go to the internet. The server takes out the audio with ffmpeg and transcribes it. The server deletes its copy of the file when the job ends.
 
-Keep the player tab open while the server works. If you close the tab, open the video again and click **Generate with WhisperX** again. The server keeps the subtitles in `~/.cache/minerr/subs/<SHA-256 of the file>.<model>.json`. Thus it does not transcribe the same file two times.
+Keep the player tab open while the server works. If you close the tab, open the video again and click **Generate with WhisperX** again. The server keeps the subtitles in `~/.cache/minerr/subs/<SHA-256 of the file>.<model>.8s.json`. Thus it does not transcribe the same file two times.
 
 ### Save the subtitles
 
@@ -411,6 +413,8 @@ Limits:
 - Minerr does not copy the captions of Netflix or other sites. On YouTube only, it copies the captions of the player.
 
 ## Sentence audio
+
+A card for a word in a subtitle line gets the whole line as its sentence, as in asbplayer and Migaku. Minerr does not cut the line at `。`, `！`, or `？`. On a web page, the card sentence ends at `。`, `！`, `？`, and line breaks.
 
 When you add a card for a word in the subtitle overlay, the card also gets the audio of the subtitle line. The audio starts 0.5 seconds before the line and stops 0.5 seconds after it. To change this time, open the options page and change **Sentence audio padding** in **Video**.
 
