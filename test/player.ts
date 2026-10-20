@@ -225,7 +225,8 @@ try {
   await setStorage({ playMode: 'normal', autoResume: 'off', autoLookup: false });
 
   await playFrom(0.5);
-  await line.hover({ position: { x: 4, y: 4 } });
+  // The left padding of the pill: no word is there, and the round corners of the line take no mouse events.
+  await line.hover({ position: { x: 6, y: ((await line.boundingBox())?.height ?? 0) / 2 } });
   await waitPaused(true);
   await player.mouse.move(0, 0);
   await waitPaused(false);
