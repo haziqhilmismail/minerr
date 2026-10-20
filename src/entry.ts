@@ -141,25 +141,49 @@ function merge(first: kuromoji.Token, parts: kuromoji.Token[]): kuromoji.Token {
   };
 }
 
-// Joins runs of noun tokens by the longest headword at each start: 食肉|目|ネコ|科|ネコ|属 -> 食肉目|ネコ科|ネコ属.
-export function joinCompounds(tokens: kuromoji.Token[], headwords: Set<string>): kuromoji.Token[] {
+// Joins the tokens from each start: size gives the number of tokens of the word there, 1 for no join.
+function joinBy(tokens: kuromoji.Token[], size: (start: number) => number): kuromoji.Token[] {
   const joined: kuromoji.Token[] = [];
   for (let i = 0; i < tokens.length;) {
-    let size = 1;
-    compounds(runAt(tokens, i)).forEach((text, k) => { if (headwords.has(text)) size = k + 2; });
-    const parts = tokens.slice(i, i + size);
+    const parts = tokens.slice(i, i + size(i));
     const [first] = parts;
     if (!first) break;
-    joined.push(size > 1 ? merge(first, parts) : first);
-    i += size;
+    joined.push(parts.length > 1 ? merge(first, parts) : first);
+    i += parts.length;
   }
   return joined;
 }
 
-// The segments of tokens, with compound nouns joined and the dictionary entry of each word.
+// Joins runs of noun tokens by the longest headword at each start: 食肉|目|ネコ|科|ネコ|属 -> 食肉目|ネコ科|ネコ属.
+export function joinCompounds(tokens: kuromoji.Token[], headwords: Set<string>): kuromoji.Token[] {
+  return joinBy(tokens, start => {
+    let size = 1;
+    compounds(runAt(tokens, start)).forEach((text, k) => { if (headwords.has(text)) size = k + 2; });
+    return size;
+  });
+}
+
+// Joins the tokens of the words that the user made one word (Alt+J, src/keys.ts) by the longest word at each start:
+// は|ずい -> はずい. A join never cuts a token, so the text of the tokens must be the word exactly.
+export function joinWords(tokens: kuromoji.Token[], words: string[]): kuromoji.Token[] {
+  if (!words.length) return tokens;
+  return joinBy(tokens, start => {
+    let size = 1;
+    let text = '';
+    for (const [k, token] of tokens.slice(start).entries()) {
+      text += token.surface_form;
+      if (words.includes(text)) size = k + 1;
+      else if (!words.some(word => word.startsWith(text))) break;
+    }
+    return size;
+  });
+}
+
+// The segments of tokens, with the words of joins and compound nouns joined, and the dictionary entry of each word.
 // A word spelled as its headword gets the reading of the entry: kuromoji reads the joined 食肉目 しょくにくめ.
 // If a dictionary read fails, the text gets the kuromoji grouping without entries, as with no dictionary.
-export async function entrySegments(tokens: kuromoji.Token[], words: Words): Promise<Segment[]> {
+export async function entrySegments(source: kuromoji.Token[], words: Words, joins: string[] = []): Promise<Segment[]> {
+  const tokens = joinWords(source, joins);
   try {
     const texts = tokens.flatMap((_, i) => compounds(runAt(tokens, i)));
     const segments = groupTokens(joinCompounds(tokens, await words.headwords(texts)));
