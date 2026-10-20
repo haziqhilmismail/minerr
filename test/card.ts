@@ -1,5 +1,6 @@
-// The Lapis note type, with a mock AnkiConnect on port 8765.
+// The Lapis note type and the word audio, with a mock AnkiConnect on port 8765 and a mock JapanesePod101.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
@@ -28,7 +29,15 @@ const site = createServer((_req, res) => {
 });
 const pageUrl = `http://127.0.0.1:${await listen(site, 0)}/cats`;
 
+const WORD_AUDIO = Buffer.from('ID3 word audio of the mock');
+const wordFile = `minerr-word-${createHash('sha256').update(WORD_AUDIO).digest('hex').slice(0, 16)}.mp3`;
 const { context, worker, extensionId } = await launch(join(work, 'profile'), null);
+const jpod: string[] = [];
+let jpodHasAudio = true;
+await context.route('https://assets.languagepod101.com/**', route => {
+  jpod.push(route.request().url());
+  return jpodHasAudio ? route.fulfill({ contentType: 'audio/mpeg', body: WORD_AUDIO }) : route.fulfill({ status: 404, body: '' });
+});
 const failures: string[] = [];
 context.on('weberror', error => failures.push(error.error().message));
 
@@ -83,12 +92,15 @@ try {
 
   await tab.bringToFront();
   await open('食べる');
+  jpod.length = 0;
   from = anki.requests.length;
   await tab.keyboard.press('a');
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
-  assert.deepEqual(actions(from), ['createDeck', 'modelNames', 'storeMediaFile', 'addNote']);
-  const [picture] = params(from, 'storeMediaFile');
+  assert.deepEqual(actions(from), ['createDeck', 'modelNames', 'storeMediaFile', 'storeMediaFile', 'addNote']);
+  const [picture, audio] = params(from, 'storeMediaFile');
   assert.match(String(at(picture, 'filename')), /^minerr-\d+\.jpg$/);
+  assert.deepEqual(audio, { filename: wordFile, data: WORD_AUDIO.toString('base64') });
+  assert.deepEqual(jpod, ['https://assets.languagepod101.com/dictionary/japanese/audiomp3.php?kanji=%E9%A3%9F%E3%81%B9%E3%82%8B&kana=%E3%81%9F%E3%81%B9%E3%82%8B']);
   const note = at(params(from, 'addNote')[0], 'note');
   assert.equal(at(note, 'modelName'), 'Lapis');
   assert.equal(at(note, 'deckName'), 'Minerr');
@@ -96,15 +108,24 @@ try {
   assert.deepEqual(Object.keys(fields ?? {}), [...LAPIS_FIELDS]);
   const definition = '<ol><li><span class="tag tag-partOfSpeech" title="Ichidan verb">v1</span> to eat (fixture)<span class="dict">Fixture</span></li></ol>';
   assert.deepEqual(fields, {
-    Expression: '食べる', ExpressionFurigana: '食[た]べる', ExpressionReading: 'たべる', ExpressionAudio: '', SelectionText: '',
+    Expression: '食べる', ExpressionFurigana: '食[た]べる', ExpressionReading: 'たべる', ExpressionAudio: `[sound:${wordFile}]`, SelectionText: '',
     MainDefinition: definition, DefinitionPicture: '', Sentence: '猫が魚を<b>食べなかった</b>。', SentenceFurigana: '', SentenceAudio: '',
     Picture: `<img src="${String(at(picture, 'filename'))}">`, Glossary: definition, Hint: '', IsWordAndSentenceCard: '', IsClickCard: '',
     IsSentenceCard: '', IsAudioCard: '', PitchPosition: '[2]', PitchCategories: 'kifuku',
     Frequency: '<ul style="text-align: left;"><li>Fixture: 1200</li></ul>', FreqSort: '1200',
     MiscInfo: `猫 &amp; 魚<br><a href="${pageUrl}">${pageUrl}</a>`,
   });
-  console.log('Lapis card: addNote with the Lapis fields, and no note type change');
+  console.log('Lapis card: addNote with the Lapis fields, the word audio, and no note type change');
 
+  jpodHasAudio = false;
+  await open('魚');
+  from = anki.requests.length;
+  await tab.keyboard.press('a');
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+  assert.deepEqual(actions(from), ['createDeck', 'modelNames', 'storeMediaFile', 'addNote']);
+  assert.equal(at(params(from, 'addNote')[0], 'note', 'fields', 'ExpressionAudio'), '');
+  console.log('no word audio from JapanesePod101: ExpressionAudio is empty, and the card is added');
+  jpodHasAudio = true;
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('CARD E2E PASS');

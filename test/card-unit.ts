@@ -62,12 +62,12 @@ test('pitchCategories names each pattern one time, with kifuku for a verb or an 
 test('lapisFields fills every field of the Lapis note type in order', async () => {
   const { lapisFields } = await import('../src/anki.ts');
   const fields = lapisFields({ ...CARD, selection: '食べなかった' }, { url: 'https://example.com/?a=1&b=2', title: 'Cats & fish' },
-    { image: '<img src="minerr-1.jpg">', audio: '[sound:minerr-1.mp3]' });
+    { image: '<img src="minerr-1.jpg">', audio: '[sound:minerr-1.mp3]', wordaudio: '[sound:minerr-word-ab.mp3]' });
   assert.deepEqual(Object.entries(fields), Object.entries({
     Expression: '食べる',
     ExpressionFurigana: '食[た]べる',
     ExpressionReading: 'たべる',
-    ExpressionAudio: '',
+    ExpressionAudio: '[sound:minerr-word-ab.mp3]',
     SelectionText: '食べなかった',
     MainDefinition: '<div class="tags"><span class="tag tag-popular" title="high priority term">⭐</span></div><ol>'
       + '<li><span class="tag tag-partOfSpeech" title="Ichidan verb">v1</span> to eat</li><li>to live on<span class="dict">JMdict</span></li></ol>',
@@ -88,7 +88,7 @@ test('lapisFields fills every field of the Lapis note type in order', async () =
     FreqSort: '1714',
     MiscInfo: 'Cats &amp; fish<br><a href="https://example.com/?a=1&amp;b=2">https://example.com/?a=1&amp;b=2</a>',
   }));
-  const bare = lapisFields({ ...CARD, word: 'ネコ', reading: 'ネコ', definition: '', entry: null }, { url: '', title: '' }, { image: '', audio: '' });
+  const bare = lapisFields({ ...CARD, word: 'ネコ', reading: 'ネコ', definition: '', entry: null }, { url: '', title: '' }, { image: '', audio: '', wordaudio: '' });
   assert.deepEqual([bare.Expression, bare.ExpressionFurigana, bare.ExpressionReading, bare.MainDefinition, bare.PitchPosition, bare.Frequency, bare.FreqSort],
     ['ネコ', 'ネコ', 'ねこ', '', '', '', '9999999']);
 });
@@ -98,6 +98,21 @@ test('parseNoteType: no stored choice is Lapis; a stored choice stays', async ()
   assert.deepEqual([undefined, null, 'custom', { kind: 'lapis' }].map(parseNoteType), [{ kind: 'lapis' }, { kind: 'lapis' }, { kind: 'lapis' }, { kind: 'lapis' }]);
   assert.deepEqual(parseNoteType({ kind: 'builtin' }), { kind: 'builtin' });
   assert.equal(wordField({ kind: 'lapis' }), 'Expression');
+});
+
+test('wordAudioUrl asks for the kanji and the kana, and only the kana for a kana word, as Yomitan', async () => {
+  const { wordAudioUrl } = await import('../src/wordaudio.ts');
+  const base = 'https://assets.languagepod101.com/dictionary/japanese/audiomp3.php?';
+  assert.deepEqual([wordAudioUrl('猫', 'ねこ'), wordAudioUrl('ねこ', 'ねこ'), wordAudioUrl('ネコ', 'ねこ')], [
+    `${base}kanji=%E7%8C%AB&kana=%E3%81%AD%E3%81%93`, `${base}kana=%E3%81%AD%E3%81%93`, `${base}kanji=%E3%83%8D%E3%82%B3&kana=%E3%81%AD%E3%81%93`,
+  ]);
+});
+
+test('wordAudioFile names a clip by its SHA-256 and rejects the placeholder clip of JapanesePod101', async () => {
+  const { isPlaceholder, wordAudioFile } = await import('../src/wordaudio.ts');
+  assert.deepEqual(await wordAudioFile(new TextEncoder().encode('abc').buffer), { filename: 'minerr-word-ba7816bf8f01cfea.mp3', data: 'YWJj' });
+  assert.deepEqual([isPlaceholder('ae6398b5a27bc8c0a771df6c907ade794be15518174773c58c7c7ddd17098906'),
+    isPlaceholder('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')], [true, false]);
 });
 
 test('installLapis keeps a "Lapis" deck that has notes of the user, and does nothing if Anki has Lapis', async () => {

@@ -35,7 +35,7 @@ The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedi
 - It has a word browser to find, sort, and change word statuses, and to add a list of known words.
 - It has a reader for `.epub`, `.txt`, `.srt`, and `.vtt` files, with vertical text, and a page for pasted text.
 
-All data stays on your computer. The extension sends requests only to AnkiConnect at `http://127.0.0.1:8765` and to the optional WhisperX server at `http://127.0.0.1:8766`. When you click **Install Lapis**, Anki downloads the Lapis package from GitHub.
+All data stays on your computer, with two exceptions. The extension sends requests to AnkiConnect at `http://127.0.0.1:8765` and to the optional WhisperX server at `http://127.0.0.1:8766`. When you add a card with word audio, it sends the word and its reading to JapanesePod101 (`assets.languagepod101.com`). See [Word audio](#word-audio). When you click **Install Lapis**, Anki downloads the Lapis package from GitHub.
 
 ## Install
 
@@ -523,7 +523,7 @@ Minerr fills the fields as the Yomitan setup of the [Lapis README](https://githu
 | `Expression` | The dictionary form of the word, for example 食べる. |
 | `ExpressionFurigana` | The word with the reading over each kanji, in the furigana syntax of Anki, for example `食[た]べる`. |
 | `ExpressionReading` | The reading in hiragana, for example たべる. |
-| `ExpressionAudio` | Empty. |
+| `ExpressionAudio` | The audio of the word. See [Word audio](#word-audio). |
 | `SelectionText` | The selected text, if you opened the popup with `Alt+S`. Else empty. |
 | `MainDefinition` | The definitions of the first dictionary that has the word. |
 | `DefinitionPicture` | Empty. |
@@ -540,6 +540,14 @@ Minerr fills the fields as the Yomitan setup of the [Lapis README](https://githu
 | `MiscInfo` | The title and the address of the page. |
 
 The **Word field** in **Known words** is `Expression` for Lapis.
+
+## Word audio
+
+When you add a card to Lapis, Minerr gets the audio of the word from JapanesePod101, the default audio source of Yomitan. The `ExpressionAudio` field gets the audio as `[sound:minerr-word-....mp3]`. The file name comes from the SHA-256 of the audio, so the same audio is one file in Anki.
+
+If JapanesePod101 has no audio of the word, it sends a clip that says that the audio is not available. Minerr finds this clip by its SHA-256, as Yomitan does, and leaves the field empty. If the request fails, the field is also empty. In both cases, Minerr adds the card.
+
+For your own note type, use the `{wordaudio}` marker. The classic note type has no field for the word audio.
 
 ## The note type
 
@@ -596,6 +604,7 @@ Minerr replaces each marker when it adds a card:
 | `{definition}` | The tags and the definitions, as in the `Definition` field of the classic note type. |
 | `{image}` | The screenshot of the tab, as `<img src="...">`. Minerr stores the file in the media folder of Anki. |
 | `{audio}` | The audio of the subtitle line, as `[sound:...]`. It is empty for a word that is not in video subtitles. |
+| `{wordaudio}` | The audio of the word from JapanesePod101, as `[sound:...]`. It is empty if JapanesePod101 has no audio of the word. See [Word audio](#word-audio). |
 | `{url}` | The address of the page. |
 | `{title}` | The title of the page. |
 
@@ -806,6 +815,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/tags.ts` | The colors of the dictionary tags, for the popup and the card. |
 | `src/anki.ts` | The AnkiConnect client, the note types, and the note draft of a card. |
 | `src/lapis.ts` | The pure parts of the Lapis fields: the furigana, the frequency rank, and the pitch accent. |
+| `src/wordaudio.ts` | The word audio from JapanesePod101, and the check for its placeholder clip. |
 | `src/whisper.ts` | The client for the WhisperX server. |
 | `src/lineaudio.ts`, `src/record.ts` | The sentence audio of a card: the server cuts it, or the tab records the line. |
 | `src/db.ts` | The dictionary storage in IndexedDB. |
@@ -839,7 +849,7 @@ Node.js runs the `.ts` test files directly, without a build. To run the tests:
 3. Run `npm run build`. The browser tests load the extension from `dist`.
 4. Run `node test/unit.ts`, `node test/card-unit.ts`, and `node test/video-unit.ts`.
 5. Close Anki, because the next test uses port 8765.
-6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect. Then run `node test/card.ts`. It tests the Lapis note type with a mock AnkiConnect.
+6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect. Then run `node test/card.ts`. It tests the Lapis note type and the word audio, with a mock AnkiConnect and a mock JapanesePod101.
 7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/media.ts`, `node test/player.ts`, and `node test/sites.ts`, which use the same ports.
 8. Run `python3 -I -B -m unittest discover -s server` to test the WhisperX server. This test does not need WhisperX.
 

@@ -142,7 +142,7 @@ const SAMPLE = markerValues({
   }),
   entry: null,
   selection: '',
-}, { url: 'https://www.youtube.com/watch?v=sample', title: 'Sample video' }, { image: `<img src="${SAMPLE_IMAGE}" alt="">`, audio: '' });
+}, { url: 'https://www.youtube.com/watch?v=sample', title: 'Sample video' }, { image: `<img src="${SAMPLE_IMAGE}" alt="">`, audio: '', wordaudio: '' });
 
 const noteTypeSelect = byId('note-type', HTMLSelectElement);
 const noteTypeStatus = byId('note-type-status', HTMLElement);

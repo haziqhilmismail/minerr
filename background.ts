@@ -1,11 +1,12 @@
 import {
-  addDraft, type CardFields, fieldValues, getDeck, getNoteType, installLapis, modelFieldNames, modelNames, type NoteDraft, noteDraft, version,
+  addDraft, type CardFields, fieldValues, getDeck, getNoteType, installLapis, modelFieldNames, modelNames, type NoteDraft, noteDraft, usesWordAudio, version,
 } from './src/anki.ts';
 import { cardMedia, widenSentence } from './src/lineaudio.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
 import { getStatuses, setStatus, setStatuses } from './src/status.ts';
 import { minerrEnabled } from './src/settings.ts';
 import { cachedSegments, getJob, health, siteCaptions, startJob } from './src/whisper.ts';
+import { wordAudio } from './src/wordaudio.ts';
 
 let creating: Promise<void> | null = null;
 
@@ -39,15 +40,18 @@ async function capture(windowId: number): Promise<string> {
   return chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 80 });
 }
 
-// The note of a card with its media: the screenshot of the tab and the audio of the subtitle line.
+// The note of a card with its media: the screenshot of the tab, the audio of the subtitle line, and the audio of the word.
 async function cardDraft(card: CardFields, sender: chrome.runtime.MessageSender): Promise<NoteDraft> {
   if (!sender.tab) throw new Error('Add cards from a tab.');
   const image = await capture(sender.tab.windowId);
+  const noteType = await getNoteType();
   // After the screenshot, because the tab may play the line again to record it.
-  const { line, audio } = await cardMedia(sender.tab.id);
+  const [{ line, audio }, word] = await Promise.all([
+    cardMedia(sender.tab.id), usesWordAudio(noteType) ? wordAudio(card.word, card.reading) : null,
+  ]);
   const sentence = line?.combined ? widenSentence(line.text, card.sentence) : card.sentence;
   const { url = '', title = '' } = sender.tab;
-  return noteDraft(await getNoteType(), { ...card, sentence, ...(audio ? { audio } : {}) }, { url, title }, image);
+  return noteDraft(noteType, { ...card, sentence, ...(audio ? { audio } : {}), ...(word ? { wordAudio: word } : {}) }, { url, title }, image);
 }
 
 async function addCard({ card }: Message<'addCard'>, sender: chrome.runtime.MessageSender): Promise<number> {

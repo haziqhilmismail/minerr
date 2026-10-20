@@ -18,7 +18,7 @@ export const DEFAULT_KNOWN_FIELD = 'Word';
 
 // The word of a new note and its HTML: sentence has the word in <b>, definition is from definitionHtml.
 // entry is the first dictionary entry of the word, null if no dictionary has it. selection is the selected text of Alt+S, else ''.
-// The service worker adds audio, the audio of the subtitle line for a word in video subtitles.
+// The service worker adds audio, the audio of the subtitle line for a word in video subtitles, and wordAudio, the audio of the word.
 export interface CardFields {
   word: string;
   reading: string;
@@ -27,6 +27,7 @@ export interface CardFields {
   entry: Entry | null;
   selection: string;
   audio?: MediaFile;
+  wordAudio?: MediaFile;
 }
 
 export async function getDeck(): Promise<string> {
@@ -60,7 +61,7 @@ export function parseNoteType(value: unknown): NoteType {
 export const getNoteType = async (): Promise<NoteType> => parseNoteType((await chrome.storage.local.get('noteType')).noteType);
 export const setNoteType = (noteType: NoteType): Promise<void> => chrome.storage.local.set({ noteType });
 
-export const MARKERS = ['word', 'reading', 'furigana', 'sentence', 'definition', 'image', 'audio', 'url', 'title'] as const;
+export const MARKERS = ['word', 'reading', 'furigana', 'sentence', 'definition', 'image', 'audio', 'wordaudio', 'url', 'title'] as const;
 export type Marker = (typeof MARKERS)[number];
 // The HTML that replaces each marker.
 export type MarkerValues = Record<Marker, string>;
@@ -76,8 +77,8 @@ export const unknownMarkers = (template: string): string[] =>
 export const renderField = (template: string, values: MarkerValues): string =>
   template.replace(MARKER, (text, name: string) => (isMarker(name) ? values[name] : text));
 
-// The HTML of the media of a note: the <img> of the screenshot, and the [sound:...] tag of the line audio. '' for none.
-export type MediaHtml = Record<'image' | 'audio', string>;
+// The HTML of the media of a note: the <img> of the screenshot, and the [sound:...] tags of the line audio and the word audio. '' for none.
+export type MediaHtml = Record<'image' | 'audio' | 'wordaudio', string>;
 
 export function markerValues(card: CardFields, page: PageInfo, media: MediaHtml): MarkerValues {
   const word = escapeHtml(card.word);
@@ -112,7 +113,7 @@ export function lapisFields(card: CardFields, page: PageInfo, media: MediaHtml):
     Expression: values.word,
     ExpressionFurigana: escapeHtml(furiganaPlain(card.word, card.reading)),
     ExpressionReading: escapeHtml(toHiragana(card.reading)),
-    ExpressionAudio: '',
+    ExpressionAudio: values.wordaudio,
     SelectionText: escapeHtml(card.selection),
     MainDefinition: mainDefinition(entry),
     DefinitionPicture: '',
@@ -143,6 +144,7 @@ const FIELD_NAMES: Record<Marker, string[]> = {
   definition: ['meaning', 'definition', 'definitions', 'glossary', 'wordmeaning', 'maindefinition', 'vocabmeaning', 'back'],
   image: ['picture', 'image', 'screenshot', 'photo'],
   audio: ['sentenceaudio', 'audio', 'sound'],
+  wordaudio: ['wordaudio', 'expressionaudio', 'vocabaudio', 'termaudio'],
   url: ['url', 'source', 'link'],
   title: ['title'],
 };
@@ -313,8 +315,8 @@ const soundTag = (file: MediaFile | undefined) => (file ? `[sound:${file.filenam
 // The note of a card for the note type. jpegDataUrl is the screenshot, from captureVisibleTab.
 export function noteDraft(noteType: NoteType, card: CardFields, page: PageInfo, jpegDataUrl: string): NoteDraft {
   const picture = { data: jpegDataUrl.split(',')[1] ?? '', filename: `minerr-${Date.now()}.jpg` };
-  const media = [picture, ...(card.audio ? [card.audio] : [])];
-  const html: MediaHtml = { image: `<img src="${escapeHtml(picture.filename)}">`, audio: soundTag(card.audio) };
+  const media = [picture, ...(card.audio ? [card.audio] : []), ...(card.wordAudio ? [card.wordAudio] : [])];
+  const html: MediaHtml = { image: `<img src="${escapeHtml(picture.filename)}">`, audio: soundTag(card.audio), wordaudio: soundTag(card.wordAudio) };
   switch (noteType.kind) {
     case 'lapis':
       return { modelName: LAPIS_MODEL, fields: lapisFields(card, page, html), media };
@@ -329,6 +331,10 @@ export function noteDraft(noteType: NoteType, card: CardFields, page: PageInfo, 
     }
   }
 }
+
+// True if the note type has a field for the word audio, so the service worker fetches it.
+export const usesWordAudio = (noteType: NoteType): boolean =>
+  noteType.kind === 'lapis' || (noteType.kind === 'custom' && Object.values(noteType.fields).some(template => template.includes('{wordaudio}')));
 
 export const LAPIS_MISSING = 'Anki has no Lapis note type. Install Lapis in Options, or select another note type.';
 

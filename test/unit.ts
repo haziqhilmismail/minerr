@@ -286,7 +286,7 @@ test('hoverDelay opens on Shift at once, waits for the mouse to stop on plain ho
 test('renderField fills each marker in one pass and escapes the plain text values one time', async () => {
   const { markerValues, renderField } = await import('../src/anki.ts');
   const card = { word: '食べる', reading: 'たべる', sentence: '猫が魚を<b>食べなかった</b>。', definition: '<ol><li>to eat</li></ol>', entry: null, selection: '' };
-  const media = { image: '<img src="minerr-1.jpg">', audio: '' };
+  const media = { image: '<img src="minerr-1.jpg">', audio: '', wordaudio: '' };
   const values = markerValues(card, { url: 'https://example.com/?a=1&b=2', title: 'Tom & Jerry <3 {word}' }, media);
   assert.equal(renderField('<div>{word}</div> {furigana} [{reading}]', values), '<div>食べる</div> 食べる[たべる] [たべる]');
   assert.equal(renderField('{sentence}{definition}{image}', values), '猫が魚を<b>食べなかった</b>。<ol><li>to eat</li></ol><img src="minerr-1.jpg">');
