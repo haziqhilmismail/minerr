@@ -1,7 +1,8 @@
 import { addNote, fieldValues, getDeck, getNoteType, modelFieldNames, modelNames, version } from './src/anki.ts';
+import { listDictionaries } from './src/db.ts';
 import { cardMedia, widenSentence } from './src/lineaudio.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
-import { getStatuses, setStatus, setStatuses, statusIn } from './src/status.ts';
+import { getStatuses, moveStatusKeys, setStatus, setStatuses } from './src/status.ts';
 import { minerrEnabled } from './src/settings.ts';
 import { cachedSegments, getJob, health, siteCaptions, startJob } from './src/whisper.ts';
 
@@ -21,8 +22,15 @@ async function ensureOffscreen(): Promise<void> {
   await creating;
 }
 
+// A dictionary import moves the statuses to their keys (options.ts). The first offscreen call after a service worker start
+// finishes a move that stopped. It starts there, not at the top of this file, so a worker that only runs a command does not open IndexedDB.
+let moved: Promise<void> | undefined;
+
 async function toOffscreen<K extends 'parse' | 'lookup' | 'pitch' | 'lookupText' | 'wordKeys'>(message: Message<K>): Promise<Reply<K>> {
   await ensureOffscreen();
+  moved ??= listDictionaries()
+    .then(dictionaries => moveStatusKeys(dictionaries, words => call({ type: 'wordKeys', words, target: 'offscreen' })))
+    .catch(error => console.warn('minerr could not move the statuses to their keys', error));
   return call({ ...message, target: 'offscreen' });
 }
 
@@ -45,7 +53,7 @@ async function addCard({ card, word }: Message<'addCard'>, sender: chrome.runtim
   const sentence = line?.combined ? widenSentence(line.text, card.sentence) : card.sentence;
   const { url = '', title = '' } = sender.tab;
   const noteId = await addNote({ deck: await getDeck(), noteType: await getNoteType(), card: { ...card, sentence, ...(audio ? { audio } : {}) }, page: { url, title }, jpegDataUrl: image });
-  if (statusIn(await getStatuses([word]), word) === 'unknown') await setStatus(word, 'learning');
+  if (((await getStatuses([word])).get(word.key) ?? 'unknown') === 'unknown') await setStatus(word, 'learning');
   return noteId;
 }
 

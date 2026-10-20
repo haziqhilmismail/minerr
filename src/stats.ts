@@ -4,7 +4,7 @@ import { iPlusOneRanges, statusOf } from './iplusone.ts';
 import { serve } from './rpc.ts';
 import { comprehension, type Comprehension, iPlusOneTexts, type Word } from './score.ts';
 import type { Piece } from './sentence.ts';
-import { getStatuses, statusIn, type WordId } from './status.ts';
+import { getStatuses, type WordId } from './status.ts';
 import { wordOf } from './words.ts';
 
 // sentences are the i+1 sentences, each one time, in text order. pageStatsShow scrolls to a page sentence;
@@ -64,8 +64,9 @@ async function videoStats(): Promise<PageStats> {
   recordLine();
   const tokens = [...lines.values()];
   const statuses = await getStatuses(tokens.flat().flatMap(token => (token.word ? [token.word] : [])));
-  const pieces = tokens.map(line => line.map(({ text, word }): Piece => ({ text, status: word ? statusIn(statuses, word) : null })));
-  const words = tokens.flat().flatMap(({ word }) => (word ? [{ key: word.key, status: statusIn(statuses, word) }] : []));
+  const statusOfWord = ({ key }: WordId) => statuses.get(key) ?? 'unknown';
+  const pieces = tokens.map(line => line.map(({ text, word }): Piece => ({ text, status: word ? statusOfWord(word) : null })));
+  const words = tokens.flat().flatMap(({ word }) => (word ? [{ key: word.key, status: statusOfWord(word) }] : []));
   shownRanges = [];
   return { source: 'video', lines: lines.size, score: comprehension(words), sentences: [...new Set(pieces.flatMap(iPlusOneTexts))] };
 }

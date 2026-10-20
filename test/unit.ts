@@ -378,6 +378,15 @@ test('mergeStatuses lets the imported status win and counts added, changed, and 
   assert.deepEqual(mergeStatuses({ 猫: 'known' }, {}), { changes: {}, counts: { added: 0, changed: 0, unchanged: 0 } });
 });
 
+test('statusesByKey gives each key the highest status of its words: known, then ignored, then learning', async () => {
+  const { statusesByKey, statusMoves } = await import('../src/status.ts');
+  assert.deepEqual(statusesByKey([['ねこ', 'learning'], ['猫', 'known'], ['ネコ', 'ignored'], ['いぬ', 'learning'], ['犬', 'ignored']], ['猫', '猫', '猫', '犬', '犬']),
+    new Map([['猫', 'known'], ['犬', 'ignored']]));
+  assert.deepEqual(statusMoves({ ねこ: 'known', ネコ: 'learning', 猫: 'learning', 犬: 'ignored', いぬ: 'learning', 紙: 'known' }, ['猫', '猫', '猫', '犬', '犬', '紙']),
+    { set: { 猫: 'known' }, remove: ['ねこ', 'ネコ', 'いぬ'] });
+  assert.deepEqual(statusMoves({ 猫: 'known' }, ['猫']), { set: {}, remove: [] });
+});
+
 test('parseSubtitles reads SRT with a BOM, CRLF, multi-line cues, tags, and position codes', async () => {
   const { parseSubtitles } = await import('../src/captions.ts');
   const srt = '﻿1\r\n00:00:01,500 --> 00:00:03,000\r\n<i>猫が</i>魚を\r\n食べた\r\n\r\n'

@@ -12,7 +12,7 @@ import { sentenceHighlight } from './src/sentence-hover.ts';
 import type { Setting } from './src/settings.ts';
 import { call, messageOf } from './src/rpc.ts';
 import {
-  getAllStatuses, importStatuses, onStatusChange, parseStatusFile, STATUS_NAMES, STATUSES, statusFile, WORD_CSS,
+  getAllStatuses, importStatuses, moveStatusKeys, onStatusChange, parseStatusFile, STATUS_NAMES, STATUSES, statusFile, WORD_CSS,
 } from './src/status.ts';
 import { TAG_CSS } from './src/tags.ts';
 import { applyTheme, theme } from './src/theme.ts';
@@ -79,6 +79,9 @@ async function importFile(file: File): Promise<void> {
       progress.value = bank;
       showStatus(status, `Importing ${file.name}: bank ${bank} of ${banks}, ${count} terms`);
     });
+    // If this fails, the next service worker start moves them (background.ts).
+    await moveStatusKeys(await listDictionaries(), words => call({ type: 'wordKeys', words }))
+      .catch(error => console.warn('minerr could not move the statuses to their keys', error));
     showStatus(status, `Imported ${title}: ${count} terms${metaText(meta)}`, 'ok');
   } catch (error) {
     showStatus(status, `Import failed: ${messageOf(error)}`, 'error');

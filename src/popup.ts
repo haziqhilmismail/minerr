@@ -12,7 +12,7 @@ import { sentenceAround } from './sentence.ts';
 import { sentenceText, wordRange } from './sentence-text.ts';
 import { setPopupWord } from './sentence-hover.ts';
 import { watchActive } from './site.ts';
-import { getStatuses, onStatusChange, setStatus, type Status, STATUSES, statusIn } from './status.ts';
+import { getStatuses, onStatusChange, setStatus, type Status, STATUSES } from './status.ts';
 import { parseWords, recolor, sameWord, wordFragment, wordOf, wordParts } from './words.ts';
 
 // A word in a popup opens a popup over it with Shift + hover, up to this many popups.
@@ -91,7 +91,7 @@ async function open(anchor: Anchor, { lemma, word, headword }: Pick<View, 'lemma
   const view: View = { anchor, lemma, word, headword, status: 'unknown', groups: [], count: countOf(word.key) };
   opening = view;
   try {
-    [view.groups, view.status] = await Promise.all([lookup, getStatuses([word]).then(statuses => statusIn(statuses, word))]);
+    [view.groups, view.status] = await Promise.all([lookup, getStatuses([word]).then(statuses => statuses.get(word.key) ?? 'unknown')]);
   } catch (error) {
     console.warn('minerr lookup failed', error);
   }

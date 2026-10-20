@@ -140,7 +140,9 @@ The status key is the text that Minerr stores for the word. The key is the headw
 
 The popup shows the headword and the reading of the entry. If the spelling on the page is different, the popup also shows it, for example `On the page: ネコ`.
 
-Earlier versions of Minerr stored the status under the spelling of the dictionary form, for example ねこ. Minerr still reads such a status if the new key has no status. When you change the status of the word, Minerr writes the new key and removes the old one.
+Earlier versions of Minerr stored the status under the spelling of the dictionary form, for example ねこ. When a dictionary import is complete, Minerr moves each status to the key of its word, for example from ねこ to 猫. Minerr does this one time for each set of dictionaries.
+
+If two spellings of one word have different statuses, the word gets the higher status. Known is the highest status, then ignored, then learning. Thus a move never makes a known word unknown or learning. An import of a status file uses the same rule.
 
 ### Mark words in bulk
 

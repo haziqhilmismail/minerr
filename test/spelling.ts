@@ -45,11 +45,16 @@ const failures: string[] = [];
 context.on('weberror', error => failures.push(error.error().message));
 
 try {
-  await worker.evaluate(() => chrome.storage.local.set({ 'w:ねこ': 'learning' }));
+  const storedWords = () => worker.evaluate(async () => Object.fromEntries(Object.entries(await chrome.storage.local.get(null))
+    .filter(([key]) => key.startsWith('w:')).map(([key, value]) => [key.slice(2), value])));
+  await worker.evaluate(() => chrome.storage.local.set({ 'w:ねこ': 'known', 'w:ネコ': 'learning', 'w:かみ': 'ignored' }));
   const options = await context.newPage();
   await options.goto(`chrome-extension://${extensionId}/options.html`);
   await options.setInputFiles('#dict-file', fixture);
   await options.locator('#dict-status', { hasText: 'Imported JMdict' }).waitFor();
+  assert.deepEqual(await storedWords(), { 猫: 'known', かみ: 'ignored' });
+  console.log('the JMdict import moves w:ねこ=known and w:ネコ=learning to w:猫=known; かみ has more than one entry and stays');
+  await worker.evaluate(() => chrome.storage.local.remove('w:かみ'));
   await options.setInputFiles('#dict-file', flat);
   await options.locator('#dict-status', { hasText: 'Imported Flat' }).waitFor();
 
@@ -59,17 +64,25 @@ try {
   await tab.waitForSelector('#cats .ml-word');
   const lemmas = (selector: string) => tab.$$eval(`${selector} .ml-word`, spans => spans.map(span => `${span.textContent}=${span.dataset.mlLemma}`));
   const statuses = () => tab.$$eval('#cats .ml-word', spans => spans.map(span => `${span.textContent} ${span.className.replace('ml-word ml-', '')}`));
-  const storedWords = () => worker.evaluate(async () => Object.fromEntries(Object.entries(await chrome.storage.local.get(null))
-    .filter(([key]) => key.startsWith('w:')).map(([key, value]) => [key.slice(2), value])));
 
   assert.deepEqual({ taxon: await lemmas('#taxon'), cats: await statuses() }, {
     taxon: ['食肉目=食肉目', 'ネコ科=ネコ科', 'ネコ属=ネコ属'],
-    cats: ['猫 unknown', 'ねこ learning', 'ネコ unknown', 'かみ unknown', '紙 unknown'],
+    cats: ['猫 known', 'ねこ known', 'ネコ known', 'かみ unknown', '紙 unknown'],
   });
-  console.log('食肉目ネコ科ネコ属 is three words; ねこ shows its status from the old key w:ねこ');
+  console.log('食肉目ネコ科ネコ属 is three words; 猫, ねこ, and ネコ show the status of w:猫');
 
   const popup = tab.locator('minerr-popup .popup');
   const word = (text: string) => tab.locator('#cats .ml-word', { hasText: text });
+  await word('猫').hover();
+  await popup.locator('.lemma', { hasText: '猫' }).waitFor();
+  await tab.keyboard.press('1');
+  await tab.locator('#cats .ml-word.ml-unknown', { hasText: 'ネコ' }).waitFor();
+  await tab.reload();
+  await tab.waitForSelector('#cats .ml-word');
+  assert.deepEqual(await statuses(), ['猫 unknown', 'ねこ unknown', 'ネコ unknown', 'かみ unknown', '紙 unknown']);
+  assert.deepEqual(await storedWords(), {});
+  console.log('key 1 on 猫, then a reload: ねこ and ネコ stay unknown');
+
   await word('猫').hover();
   await popup.locator('.lemma', { hasText: '猫' }).waitFor();
   await tab.keyboard.press('3');
@@ -92,7 +105,7 @@ try {
   await tab.keyboard.press('2');
   await tab.locator('#cats .ml-word.ml-learning', { hasText: 'ネコ' }).waitFor();
   assert.deepEqual(await storedWords(), { 猫: 'learning' });
-  console.log('key 2 on ねこ: the status goes to w:猫, and the old key w:ねこ goes away');
+  console.log('key 2 on ねこ: the status goes to w:猫');
 
   await tab.keyboard.press('Escape');
   await options.bringToFront();
@@ -103,14 +116,14 @@ try {
   console.log('import known words from Anki: 猫科 is stored as ネコ科');
 
   const file = join(work, 'statuses.json');
-  writeFileSync(file, JSON.stringify({ format: 'minerr-statuses', version: 1, exported: '2026-10-20T00:00:00.000Z', words: { ねこ: 'ignored' } }));
+  writeFileSync(file, JSON.stringify({ format: 'minerr-statuses', version: 1, exported: '2026-10-20T00:00:00.000Z', words: { 猫: 'known', ねこ: 'learning' } }));
   await options.setInputFiles('#status-file', file);
   await options.locator('#status-message', { hasText: 'Imported 1 words: 0 added, 1 changed, 0 unchanged.' }).waitFor();
-  assert.deepEqual(await storedWords(), { 猫: 'ignored', ネコ科: 'known' });
-  console.log('import of a status file: ねこ is stored as 猫');
+  assert.deepEqual(await storedWords(), { 猫: 'known', ネコ科: 'known' });
+  console.log('import of a status file with 猫: known and ねこ: learning: one word, 猫 known');
 
   await tab.bringToFront();
-  await tab.locator('#cats .ml-word.ml-ignored', { hasText: 'ネコ' }).waitFor();
+  await tab.locator('#cats .ml-word.ml-known', { hasText: 'ネコ' }).waitFor();
   await tab.evaluate(() => getSelection()?.selectAllChildren(document.querySelector('#cats') ?? document.body));
   await tab.keyboard.press('1');
   await tab.locator('minerr-popup .toast', { hasText: 'Marked 3 words as unknown.' }).waitFor();
@@ -119,6 +132,26 @@ try {
   console.log('bulk status on 猫 ねこ ネコ かみ 紙: 3 words (猫, かむ, 紙)');
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
+
+  await options.evaluate(async () => {
+    await chrome.storage.local.set({ 'w:ネコ': 'learning', 'w:ねこ': 'known' });
+    await chrome.storage.local.remove('statusKeysOf');
+  });
+  const cdp = await context.newCDPSession(options);
+  await cdp.send('ServiceWorker.enable');
+  await cdp.send('ServiceWorker.stopAllWorkers');
+  await options.evaluate(() => chrome.runtime.sendMessage({ type: 'wordKeys', words: [] }));
+  await options.evaluate(() => new Promise<void>((resolve, reject) => {
+    const check = async (tries: number) => {
+      if ((await chrome.storage.local.get('statusKeysOf')).statusKeysOf) resolve();
+      else if (tries) setTimeout(() => check(tries - 1), 100);
+      else reject(new Error('the service worker start did not move the statuses'));
+    };
+    check(100);
+  }));
+  assert.deepEqual(await options.evaluate(async () => Object.fromEntries(Object.entries(await chrome.storage.local.get(null))
+    .filter(([key]) => key.startsWith('w:')))), { 'w:猫': 'known', 'w:ネコ科': 'known' });
+  console.log('a service worker start with no marker moves w:ネコ and w:ねこ to w:猫');
   console.log('SPELLING PASS');
 } finally {
   await context.close();

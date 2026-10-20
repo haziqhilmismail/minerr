@@ -23,7 +23,6 @@ export interface EntryIndex {
 
 // The dictionary entry of a word. key is its status key: the headword of the entry, with the reading of the entry when
 // a more common entry has the same headword (上手【うわて】). headword and reading are for the popup header.
-// oldKey is the lemma, which was the status key before spellings shared a status, when it belongs to this entry only.
 export interface WordEntry extends WordId {
   headword: string;
   reading: string;
@@ -43,36 +42,28 @@ export const MAX_ENTRY_ROWS = 200;
 // The first row with the highest score.
 const best = (rows: EntryRow[]) => rows.reduce<EntryRow | undefined>((top, row) => (top && top.score >= row.score ? top : row), undefined);
 
-// The one entry of rows: the sequence of the first dictionary title, if the rows of that dictionary have one sequence.
-function entryOf(rows: EntryRow[]): { dict: string; sequence: number } | null {
-  const dict = rows.map(row => row.dict).sort()[0];
-  const [sequence, ...others] = new Set(rows.flatMap(row => (row.dict === dict ? [row.sequence] : [])));
-  return dict === undefined || sequence === undefined || others.length ? null : { dict, sequence };
-}
-
 // The entry of one spelling. With a reading, only the rows of that reading fit, unless no row has it.
-// The entry is alone when the spelling without its reading has this entry only; then the lemma was its status key.
-async function resolve(index: EntryIndex, lemma: string, reading: string | null): Promise<(Omit<WordEntry, 'oldKey'> & { alone: boolean }) | null> {
+async function resolve(index: EntryIndex, lemma: string, reading: string | null): Promise<WordEntry | null> {
   const kana = KANA.test(lemma);
   const found = (await Promise.all([
     index.byExpression(lemma),
     ...(kana ? [index.byReading(toHiragana(lemma)), index.byReading(toKatakana(lemma))] : []),
   ])).flat();
   const fits = found.filter(row => toHiragana(row.reading) === reading);
-  const one = entryOf(fits.length ? fits : found);
-  if (!one) return null;
-  const { dict, sequence } = one;
+  const rows = fits.length ? fits : found;
+  // With more than one dictionary, the first title decides.
+  const dict = rows.map(row => row.dict).sort()[0];
+  const [sequence, ...others] = new Set(rows.flatMap(row => (row.dict === dict ? [row.sequence] : [])));
+  if (dict === undefined || sequence === undefined || others.length) return null;
   const entry = await index.bySequence(dict, sequence);
   const head = best(entry);
   if (!head || entry.length > MAX_ENTRY_ROWS) return null;
   const spelled = await index.byExpression(head.expression);
   const main = best(spelled.filter(row => row.dict === dict));
-  const alone = entryOf(found);
   return {
     key: main?.sequence === sequence ? head.expression : `${head.expression}【${head.reading}】`,
     headword: head.expression,
     reading: entry.find(row => row.expression === head.expression && toHiragana(row.reading) === reading)?.reading ?? head.reading,
-    alone: alone?.dict === dict && alone.sequence === sequence,
   };
 }
 
@@ -102,13 +93,7 @@ export function dictionaryWords(source: EntryIndex): Words {
   };
   const known = new Map<string, boolean>();
   return {
-    entry: remember(async (lemma: string, reading: string | null): Promise<WordEntry | null> => {
-      const found = await resolve(index, lemma, reading);
-      if (!found) return null;
-      const { alone, ...entry } = found;
-      // The old key of a spelling with more than one entry (上手) is the status of all of them; it stays.
-      return alone && entry.key !== lemma ? { ...entry, oldKey: lemma } : entry;
-    }),
+    entry: remember((lemma: string, reading: string | null) => resolve(index, lemma, reading)),
     headwords: async texts => {
       const missing = [...new Set(texts.filter(text => !known.has(text)))];
       const found = missing.length ? await index.headwords(missing) : new Set<string>();

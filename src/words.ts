@@ -1,10 +1,10 @@
 // The word spans of parsed text. A word that crosses text nodes (<b>食</b>べた) is one span per part; the parts share
 // data-ml-word, and each part after the first has data-ml-cont, so counts take the word one time.
 // data-ml-lemma is the dictionary form for lookups. data-ml-key is the status key (src/entry.ts) when it is not the lemma,
-// data-ml-old-key is set as WordId says, and data-ml-headword and data-ml-headword-reading name the dictionary entry.
+// and data-ml-headword and data-ml-headword-reading name the dictionary entry.
 import type { NodeSegment, Segment } from './group.ts';
 import { call } from './rpc.ts';
-import { getStatuses, type Status, STATUSES, statusIn, type WordId } from './status.ts';
+import { getStatuses, type Status, STATUSES, type WordId } from './status.ts';
 
 const STATUS_CLASSES = Object.values(STATUSES).map(s => s.className);
 
@@ -20,7 +20,7 @@ export function setSpanStatus(span: HTMLElement, status: Status): void {
 const segmentWord = ({ lemma = '', entry }: Segment): WordId => entry ?? { key: lemma };
 
 // The word of a span, as wordFragment wrote it.
-export const wordOf = (span: HTMLElement): WordId => ({ key: span.dataset.mlKey ?? span.dataset.mlLemma ?? '', oldKey: span.dataset.mlOldKey });
+export const wordOf = (span: HTMLElement): WordId => ({ key: span.dataset.mlKey ?? span.dataset.mlLemma ?? '' });
 
 // Parses texts, and reads the statuses of their words.
 export async function parseWords(texts: string[]): Promise<{ parsed: Segment[][]; statuses: Map<string, Status> }> {
@@ -70,14 +70,13 @@ export function wordFragment(segments: NodeSegment[], statuses: Map<string, Stat
     span.dataset.mlLemma = lemma;
     const word = segmentWord(segment);
     if (word.key !== lemma) span.dataset.mlKey = word.key;
-    if (word.oldKey) span.dataset.mlOldKey = word.oldKey;
     if (entry) Object.assign(span.dataset, { mlHeadword: entry.headword, mlHeadwordReading: entry.reading });
     if (reading && !inRuby) span.dataset.mlReading = reading;
     if (part === 'first') words++;
     if (part) span.dataset.mlWord = String(words);
     if (part === 'rest') span.dataset.mlCont = '';
     span.textContent = text;
-    setSpanStatus(span, statusIn(statuses, word));
+    setSpanStatus(span, statuses.get(word.key) ?? 'unknown');
     fragment.append(span);
   }
   return fragment;

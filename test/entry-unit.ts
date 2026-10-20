@@ -66,14 +66,14 @@ const CAT = { key: '猫', headword: '猫', reading: 'ねこ' };
 
 test('猫, ねこ and ネコ are one JMdict entry, so they share the key 猫', async () => {
   assert.deepEqual(await words.entry('猫', 'ねこ'), CAT);
-  assert.deepEqual(await words.entry('ねこ', 'ねこ'), { ...CAT, oldKey: 'ねこ' });
-  assert.deepEqual(await words.entry('ネコ', 'ねこ'), { ...CAT, oldKey: 'ネコ' });
+  assert.deepEqual(await words.entry('ねこ', 'ねこ'), CAT);
+  assert.deepEqual(await words.entry('ネコ', 'ねこ'), CAT);
   assert.deepEqual(await parse('猫とねことネコ'), [
     { text: '猫', lemma: '猫', reading: 'ねこ', entry: CAT },
     { text: 'と' },
-    { text: 'ねこ', lemma: 'ねこ', entry: { ...CAT, oldKey: 'ねこ' } },
+    { text: 'ねこ', lemma: 'ねこ', entry: CAT },
     { text: 'と' },
-    { text: 'ネコ', lemma: 'ネコ', entry: { ...CAT, oldKey: 'ネコ' } },
+    { text: 'ネコ', lemma: 'ネコ', entry: CAT },
   ]);
 });
 
@@ -94,7 +94,7 @@ test('a kanji spelling with two readings of two entries gets two keys', async ()
   assert.equal(await words.entry('上手', null), null);
   assert.deepEqual(await words.entry('生物', 'せいぶつ'), { key: '生物', headword: '生物', reading: 'せいぶつ' });
   assert.deepEqual(await words.entry('生物', 'なまもの'), { key: '生物【なまもの】', headword: '生物', reading: 'なまもの' });
-  assert.deepEqual(await words.entry('生もの', 'なまもの'), { key: '生物【なまもの】', headword: '生物', reading: 'なまもの', oldKey: '生もの' });
+  assert.deepEqual(await words.entry('生もの', 'なまもの'), { key: '生物【なまもの】', headword: '生物', reading: 'なまもの' });
 });
 
 test('an inflected verb is matched by the reading of its dictionary form', async () => {
@@ -105,7 +105,7 @@ test('an inflected verb is matched by the reading of its dictionary form', async
 
 test('runs of nouns join by the longest dictionary headword', async () => {
   assert.deepEqual(await keys('食肉目ネコ科ネコ属'), ['食肉目=食肉目=食肉目', 'ネコ科=ネコ科=ネコ科', 'ネコ属=ネコ属=ネコ属']);
-  assert.deepEqual(await words.entry('猫科', 'ねこか'), { key: 'ネコ科', headword: 'ネコ科', reading: 'ネコか', oldKey: '猫科' });
+  assert.deepEqual(await words.entry('猫科', 'ねこか'), { key: 'ネコ科', headword: 'ネコ科', reading: 'ネコか' });
   const noCompound = dictionaryWords(memoryIndex(rows.filter(row => row.expression !== '食肉目')));
   assert.deepEqual(await keys('食肉目', noCompound), ['食肉=食肉=食肉', '目=目=目']);
 });
@@ -153,6 +153,6 @@ test('real JMdict: 猫/ねこ/ネコ share 猫, and 食肉目ネコ科ネコ属 
   assert.equal(await real.entry('かみ', 'かみ'), null);
   assert.deepEqual(await real.entry('上手', 'うわて'), { key: '上手【うわて】', headword: '上手', reading: 'うわて' });
   const rise = { key: '起き上がる', headword: '起き上がる', reading: 'おきあがる' };
-  assert.deepEqual(await real.entry('起き上る', 'おきあがる'), { ...rise, oldKey: '起き上る' });
-  assert.deepEqual(await real.entry('起上がる', null), { ...rise, oldKey: '起上がる' });
+  assert.deepEqual(await real.entry('起き上る', 'おきあがる'), rise);
+  assert.deepEqual(await real.entry('起上がる', null), rise);
 });

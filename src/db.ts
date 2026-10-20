@@ -4,10 +4,10 @@ import { at, isList, isStringList } from './parse.ts';
 import { type DictTag, type DictTerm, groupTerms, readYomitan } from './yomitan.ts';
 import type { Bytes } from './zip.ts';
 
-// Stores: dicts {title, revision, count, tags, meta} (count is null while an import is unfinished; tags is true
-// for an import that stored tags; meta counts the meta rows), terms {dict, id, expression, reading, definitionTags, termTags,
-// glossary, score, sequence} keyed by [dict, id], tags {dict, name, category, notes} keyed by [dict, name], and meta (a TermMeta
-// with its dict) keyed by [dict, id].
+// Stores: dicts {title, revision, count, tags, meta, entries} (count is null while an import is unfinished; tags is true
+// for an import that stored tags; meta counts the meta rows; entries counts the terms with a sequence), terms {dict, id,
+// expression, reading, definitionTags, termTags, glossary, score, sequence} keyed by [dict, id], tags {dict, name, category,
+// notes} keyed by [dict, name], and meta (a TermMeta with its dict) keyed by [dict, id].
 // The [dict, ...] keys let one key range delete a dictionary.
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -48,6 +48,8 @@ export interface Dictionary {
   count: number | null;
   tags?: boolean;
   meta?: number;
+  // An import from before Minerr kept the sequences of JMdict redirects has no entries count.
+  entries?: number;
 }
 
 // Earlier versions of Minerr wrote some of the rows, so the rows are checked as they are read.
@@ -57,7 +59,8 @@ const hasTagNames = (row: unknown, key: string) => at(row, key) === undefined ||
 const isDictionary = (row: unknown): row is Dictionary => hasString(row, 'title')
   && (at(row, 'count') === null || typeof at(row, 'count') === 'number')
   && (at(row, 'tags') === undefined || typeof at(row, 'tags') === 'boolean')
-  && (at(row, 'meta') === undefined || typeof at(row, 'meta') === 'number');
+  && (at(row, 'meta') === undefined || typeof at(row, 'meta') === 'number')
+  && (at(row, 'entries') === undefined || typeof at(row, 'entries') === 'number');
 
 const isDictTerm = (row: unknown): row is DictTerm => ['dict', 'expression', 'reading'].every(key => hasString(row, key))
   && typeof at(row, 'score') === 'number' && isStringList(at(row, 'glossary'))
@@ -108,11 +111,15 @@ export async function importDictionary(bytes: Bytes, onProgress: (progress: Impo
   for (const tag of tags) tagTx.objectStore('tags').put({ ...tag, dict: title });
   await finished(tagTx);
   let count = 0;
+  let entries = 0;
   for (const [index, load] of banks.entries()) {
     const terms = await load();
     const tx = (await db()).transaction('terms', 'readwrite');
     const store = tx.objectStore('terms');
-    for (const term of terms) store.put({ ...term, dict: title, id: count++ });
+    for (const term of terms) {
+      store.put({ ...term, dict: title, id: count++ });
+      if (term.sequence !== undefined) entries++;
+    }
     await finished(tx);
     onProgress({ bank: index + 1, banks: banks.length + metaBanks.length, count });
   }
@@ -125,7 +132,7 @@ export async function importDictionary(bytes: Bytes, onProgress: (progress: Impo
     await finished(tx);
     onProgress({ bank: banks.length + index + 1, banks: banks.length + metaBanks.length, count });
   }
-  await putDictionary({ title, revision, count, tags: true, meta });
+  await putDictionary({ title, revision, count, tags: true, meta, entries });
   return { title, count, meta };
 }
 
