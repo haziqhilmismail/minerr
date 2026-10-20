@@ -231,3 +231,10 @@ test('segmentAt finds the segment that covers a time, with the end exclusive', a
   const segments = [{ start: 0, end: 2, text: 'あ' }, { start: 2, end: 4, text: 'い' }, { start: 6, end: 8, text: 'う' }];
   assert.deepEqual([0, 1.99, 2, 5, 7, 8].map(t => segmentAt(segments, t)?.text ?? null), ['あ', 'あ', 'い', null, 'う', null]);
 });
+
+test('resolveTheme follows the system only for the system theme', async () => {
+  const { resolveTheme, THEMES } = await import('../src/theme.ts');
+  assert.deepEqual(THEMES.flatMap(theme => [false, true].map(systemDark => `${theme}+${systemDark ? 'dark' : 'light'}=${resolveTheme(theme, systemDark)}`)), [
+    'system+light=light', 'system+dark=dark', 'light+light=light', 'light+dark=light', 'dark+light=dark', 'dark+dark=dark',
+  ]);
+});

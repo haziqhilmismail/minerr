@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Locator } from 'playwright';
+import type { Locator, Page } from 'playwright';
 import { at } from '../src/parse.ts';
 import { messageOf } from '../src/rpc.ts';
 import { extension, launch, listen, makeDictionary } from './harness.ts';
@@ -223,6 +223,38 @@ try {
   assert.equal(await options.textContent('#anki-status'), 'Connected (AnkiConnect version 6)');
   assert.equal(at(ankiRequests.at(-1), 'action'), 'version');
   console.log('check connection:', await options.textContent('#anki-status'));
+
+  const background = (page: Page, selector: string) => page.$eval(selector, node => getComputedStyle(node).backgroundColor);
+  const [LIGHT_PAGE, DARK_PAGE, DARK_POPUP] = ['rgb(244, 245, 248)', 'rgb(21, 22, 27)', 'rgb(31, 32, 39)'];
+  const action = await context.newPage();
+  for (const page of [options, action, tab]) await page.emulateMedia({ colorScheme: 'light' });
+  await action.goto(`chrome-extension://${extensionId}/action.html`);
+  assert.equal(await options.isChecked('input[name="theme"][value="system"]'), true);
+  assert.deepEqual([await background(options, 'body'), await background(action, 'body')], [LIGHT_PAGE, LIGHT_PAGE]);
+  await options.click('label:has(input[name="theme"][value="dark"])');
+  assert.deepEqual(await options.evaluate(() => chrome.storage.local.get('theme')), { theme: 'dark' });
+  await action.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+  assert.deepEqual([await background(options, 'body'), await background(action, 'body')], [DARK_PAGE, DARK_PAGE]);
+  await tab.bringToFront();
+  await tab.mouse.move(0, 0);
+  await tab.hover('#line .ml-word[data-ml-lemma="猫"]');
+  await popup.locator('.lemma', { hasText: '猫' }).waitFor();
+  assert.equal(await background(tab, 'minerr-popup >> .popup'), DARK_POPUP);
+  console.log('theme Dark on a light system: options, toolbar menu and word popup are dark');
+  await options.click('label:has(input[name="theme"][value="system"])');
+  await tab.waitForFunction(() => document.querySelector('minerr-popup')?.shadowRoot?.querySelector<HTMLElement>('.popup')?.dataset.theme === 'light');
+  assert.notEqual(await background(tab, 'minerr-popup >> .popup'), DARK_POPUP);
+  assert.equal(await background(options, 'body'), LIGHT_PAGE);
+  for (const page of [options, action, tab]) await page.emulateMedia({ colorScheme: 'dark' });
+  await options.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+  await action.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+  await tab.waitForFunction(() => document.querySelector('minerr-popup')?.shadowRoot?.querySelector<HTMLElement>('.popup')?.dataset.theme === 'dark');
+  assert.deepEqual([await background(options, 'body'), await background(action, 'body'), await background(tab, 'minerr-popup >> .popup')],
+    [DARK_PAGE, DARK_PAGE, DARK_POPUP]);
+  for (const page of [options, action, tab]) await page.emulateMedia({ colorScheme: null });
+  await action.close();
+  await tab.keyboard.press('Escape');
+  console.log('theme System: follows the system color scheme live');
 
   const created = at(ankiRequests[2], 'params');
   const Front = at(created, 'cardTemplates', 0, 'Front');

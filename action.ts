@@ -1,7 +1,10 @@
 import { byId } from './src/dom.ts';
 import { call, type Message, messageOf } from './src/rpc.ts';
 import type { Snapshot, Source } from './src/subtitles.ts';
+import { applyTheme } from './src/theme.ts';
 import type { JobStatus } from './src/whisper.ts';
+
+applyTheme();
 
 const POLL_MS = 2000;
 const HINT: Record<Source, string> = {

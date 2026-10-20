@@ -3,6 +3,9 @@ import { deleteDictionary, importDictionary, listDictionaries } from './src/db.t
 import { byId } from './src/dom.ts';
 import { call, messageOf } from './src/rpc.ts';
 import { STATUSES, WORD_CSS } from './src/status.ts';
+import { applyTheme, getTheme, isTheme, setTheme } from './src/theme.ts';
+
+applyTheme();
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, ...children: (Node | string)[]
@@ -134,5 +137,14 @@ byId('legend', HTMLElement).prepend(...Object.values(STATUSES).map(({ hotkey, la
     el('td', {}, swatch, `Mark as ${label.toLowerCase()}`),
     el('td', { className: 'sample' }, el('span', { className: `ml-word ${className}`, textContent: '単語' })));
 }));
+
+const theme = await getTheme();
+for (const input of document.querySelectorAll('input[name="theme"]')) {
+  if (!(input instanceof HTMLInputElement)) continue;
+  input.checked = input.value === theme;
+  input.onchange = () => {
+    if (isTheme(input.value)) setTheme(input.value);
+  };
+}
 
 await showDictionaries();

@@ -229,6 +229,17 @@ The card has a light theme and a night mode theme. It also fits phone screens. I
 
 Minerr keeps the note type up to date. Each time its background service worker starts, the first card that you add sets the templates and the CSS to the current version. If you change the templates or the CSS in Anki, Minerr replaces your changes. Minerr does not change the fields. If you want your own design, make a copy of the note type in Anki and edit the copy.
 
+## Theme
+
+The options page, the toolbar menu, and the word popup have a light theme and a dark theme.
+
+1. Open the options page.
+2. In **Theme**, click **System**, **Light**, or **Dark**.
+
+The change applies at once in all open pages and tabs. **System** is the default. It follows the color setting of your computer, and it changes when that setting changes.
+
+The theme does not change the Anki card. The card follows the night mode of Anki.
+
 ## Development
 
 The code is TypeScript with no framework and no bundler. `npm run build` copies `manifest.json`, the HTML pages, and `vendor` to `dist`. Then `tsc` compiles each `.ts` file to a `.js` file in `dist`. `npm run typecheck` checks the types of the extension, the tests, and the scripts.

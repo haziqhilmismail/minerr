@@ -4,28 +4,25 @@ import { sentenceAround } from './sentence.ts';
 import { getStatuses, onStatusChange, setStatus, type Status, STATUS_NAMES, STATUSES } from './status.ts';
 import { isEnabled, onEnabledChange, setEnabled } from './switch.ts';
 import { TAG_CSS, tagClass } from './tags.ts';
+import { applyTheme } from './theme.ts';
 import type { Group, Sense, Tag } from './yomitan.ts';
 
 const POWER_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>';
 
 const STYLE = `
   .popup {
-    --bg: #ffffff; --raised: #f1f2f6; --text: #1c1d24; --muted: #646775; --line: #e1e2ea;
-    --accent: #2c4bb8; --on-accent: #ffffff; --ok: #1d7a36; --error: #c22a2a;
+    --bg: light-dark(#ffffff, #1f2027); --raised: light-dark(#f1f2f6, #2b2c35); --text: light-dark(#1c1d24, #ecedf2);
+    --muted: light-dark(#646775, #a3a5b3); --line: light-dark(#e1e2ea, #393a46); --accent: light-dark(#2c4bb8, #7c93f2);
+    --on-accent: light-dark(#ffffff, #10173a); --ok: light-dark(#1d7a36, #74d68f); --error: light-dark(#c22a2a, #ff8f8f);
     position: fixed; z-index: 2147483647; display: flex; flex-direction: column; box-sizing: border-box;
     width: 380px; max-width: calc(100vw - 8px); max-height: min(60vh, 480px); overflow: hidden;
     border: 1px solid var(--line); border-top: 3px solid var(--status, var(--line)); border-radius: 10px;
-    background: var(--bg); color: var(--text); color-scheme: light; text-align: left;
+    background: var(--bg); color: var(--text); color-scheme: light dark; text-align: left;
     font: 14px/1.5 "Hiragino Sans", "Yu Gothic UI", "Meiryo", "Noto Sans JP", system-ui, sans-serif;
-    box-shadow: 0 14px 36px rgba(20, 24, 50, .2), 0 2px 6px rgba(20, 24, 50, .08);
+    box-shadow: 0 14px 36px light-dark(rgba(20, 24, 50, .2), rgba(0, 0, 0, .55)), 0 2px 6px light-dark(rgba(20, 24, 50, .08), transparent);
   }
-  @media (prefers-color-scheme: dark) {
-    .popup {
-      --bg: #1f2027; --raised: #2b2c35; --text: #ecedf2; --muted: #a3a5b3; --line: #393a46;
-      --accent: #7c93f2; --on-accent: #10173a; --ok: #74d68f; --error: #ff8f8f;
-      color-scheme: dark; box-shadow: 0 14px 36px rgba(0, 0, 0, .55);
-    }
-  }
+  .popup[data-theme="light"] { color-scheme: light; }
+  .popup[data-theme="dark"] { color-scheme: dark; }
   .popup[hidden] { display: none; }
   header { padding: 12px 16px; border-bottom: 1px solid var(--line); }
   .title { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; }
@@ -107,6 +104,7 @@ host.style.cssText = 'all: initial; position: fixed; top: 0; left: 0; z-index: 2
 const shadow = host.attachShadow({ mode: 'open' });
 const box = el('div', { className: 'popup', hidden: true });
 shadow.append(el('style', { textContent: STYLE }), box);
+applyTheme(box);
 
 // The word that the popup shows. groups is empty until the lookup is done.
 interface View {
