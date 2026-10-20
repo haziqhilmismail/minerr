@@ -183,6 +183,8 @@ To turn the page text on for a site:
 - Press `Alt+Shift+D` on a page of the site. A short message at the bottom of the page confirms the change, for example `Minerr page text on for ja.wikipedia.org.`
 - Or click the Minerr button in the Chrome toolbar, then click the **Page text on this site** switch at the top of the menu. The switch fills with color and shows **On**.
 
+A site includes its subdomains, and Minerr ignores `www.`. For example, if you turn the page text on at `www.youtube.com`, it is on for all of `youtube.com`, also `m.youtube.com`.
+
 Minerr keeps the choice for all pages of that site, also after a restart of Chrome. The other sites do not change. To turn the page text off again, press `Alt+Shift+D` again or click the switch again. Minerr then removes its underlines from the page text at once.
 
 Earlier versions of Minerr were on for each site, and kept a list of the sites that were off. Minerr does not read that list now. Thus each site starts with the page text off.

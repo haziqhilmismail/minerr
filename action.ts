@@ -5,7 +5,7 @@ import { STATUS_NAMES, STATUSES } from './src/status.ts';
 import type { Snapshot, Source } from './src/subtitles.ts';
 import { applyTheme } from './src/theme.ts';
 import { iPlusOne, minerrEnabled } from './src/settings.ts';
-import { enabledSites, toggleSiteOf } from './src/site.ts';
+import { enabledSites, siteIsOn, siteOf, toggleSiteOf } from './src/site.ts';
 import type { JobStatus } from './src/whisper.ts';
 
 applyTheme();
@@ -107,7 +107,7 @@ function sentenceItem(text: string, index: number, tabId: number | null): HTMLLI
 
 // The switch for the site of the tab. Only web pages get one: Minerr does not run on browser pages.
 const siteHost = /^https?:/.test(tab?.url ?? '') ? new URL(tab?.url ?? '').hostname : '';
-let pageTextOn = siteHost === '' || (await enabledSites.get()).includes(siteHost);
+let pageTextOn = siteHost === '' || siteIsOn(await enabledSites.get(), siteHost);
 
 function sourceText(stats: PageStats) {
   switch (stats.source) {
@@ -188,7 +188,7 @@ if (siteHost) {
     siteSwitch.checked = pageTextOn;
     byId('site-state', HTMLElement).textContent = pageTextOn ? 'On' : 'Off';
   };
-  byId('site-name', HTMLElement).textContent = `Alt+Shift+D on ${siteHost}. Video subtitles work without it.`;
+  byId('site-name', HTMLElement).textContent = `Alt+Shift+D on ${siteOf(siteHost)}. Video subtitles work without it.`;
   show();
   siteSwitch.addEventListener('change', async () => {
     pageTextOn = await toggleSiteOf(siteHost);

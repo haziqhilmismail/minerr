@@ -95,6 +95,15 @@ test('chord names a key with Alt from the physical key, and Shift only with Alt'
     key('Escape', 'Escape'), key('Shift', 'ShiftLeft', true, true)], ['alt+shift+d', 'alt+s', 'n', '1', 'Escape', 'alt+shift+Shift']);
 });
 
+test('a site covers its subdomains, and www. drops out, so all of youtube.com is one site', () => {
+  assert.deepEqual(toggleSite([], 'www.youtube.com'), ['youtube.com']);
+  const web = (hostname: string) => ({ protocol: 'https:', hostname });
+  assert.deepEqual(['www.youtube.com', 'm.youtube.com', 'youtube.com', 'notyoutube.com'].map(host => activeOf(true, ['youtube.com'], web(host))),
+    ['on', 'on', 'on', 'video']);
+  assert.deepEqual(toggleSite(['youtube.com', 'b.org'], 'm.youtube.com'), ['b.org'], 'a subdomain turns its site off');
+  assert.deepEqual(toggleSite(['www.youtube.com'], 'www.youtube.com'), [], 'a site saved with www. before this change turns off');
+});
+
 test('toggleSite adds a site that is off and removes a site that is on', () => {
   assert.deepEqual(toggleSite(['a.com'], 'b.org'), ['a.com', 'b.org']);
   assert.deepEqual(toggleSite(['a.com', 'b.org'], 'a.com'), ['b.org']);

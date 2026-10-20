@@ -3,7 +3,7 @@ import { chord, isEditable, statusTarget } from './chord.ts';
 import { toast } from './popup-view.ts';
 import { messageOf } from './rpc.ts';
 import { sentenceHighlight } from './sentence-hover.ts';
-import { isMinerrPage, toggleSiteOf, watchActive } from './site.ts';
+import { isMinerrPage, siteOf, toggleSiteOf, watchActive } from './site.ts';
 import { setStatus, setStatuses, type Status, STATUS_NAMES, STATUSES, type WordId } from './status.ts';
 import { sameWord, wordOf } from './words.ts';
 
@@ -62,12 +62,13 @@ async function toggleSentenceHighlight(): Promise<void> {
 
 async function toggleSite(): Promise<void> {
   const host = location.hostname;
+  const site = siteOf(host);
   if (isMinerrPage(location)) {
     toast('Minerr page text is always on in the pages of Minerr.');
     return;
   }
   const on = await toggleSiteOf(host);
-  toast(on ? `Minerr page text on for ${host}.` : `Minerr page text off for ${host}. Video subtitles stay on. Press Alt+Shift+D to turn the page text on.`);
+  toast(on ? `Minerr page text on for ${site}.` : `Minerr page text off for ${site}. Video subtitles stay on. Press Alt+Shift+D to turn the page text on.`);
 }
 
 // A key starts work that ends later; an error of it shows as a toast.
