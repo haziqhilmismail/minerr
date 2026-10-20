@@ -1,6 +1,7 @@
 // Saves UI screenshots to OUT_DIR (default /tmp/minerr-ui) for a visual check.
-// Needs test/fixtures/JMdict_english.zip. If the system has no Japanese font, set CJK_FONT_DIR to a folder of fonts.
-import { mkdirSync, mkdtempSync } from 'node:fs';
+// Needs test/fixtures/JMdict_english.zip and ffmpeg. If the system has no Japanese font, set CJK_FONT_DIR to a folder of fonts.
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -79,7 +80,7 @@ try {
   await options.click('label:has(input[name="theme"][value="dark"])');
   await shot(ankiSection, 'options-note-type-dark.png');
   await shot(options, 'options-forced-dark.png', true);
-  await options.selectOption('#note-type', '');
+  await options.selectOption('#note-type', 'builtin');
   await options.click('label:has(input[name="theme"][value="system"])');
   anki.close();
   anki.closeAllConnections();
@@ -123,6 +124,38 @@ try {
   await tab.hover('#light .ml-word[data-ml-lemma="食べる"]');
   await popup.locator('li').first().waitFor();
   await shot(tab, 'popup-forced-dark-on-light.png');
+  await tab.keyboard.press('Escape');
+  await worker.evaluate(() => chrome.storage.local.set({ theme: 'system' }));
+
+  const tabId = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, tab.url());
+  const menu = await context.newPage();
+  await menu.setViewportSize({ width: 340, height: 600 });
+  await menu.goto(`chrome-extension://${extensionId}/action.html?tab=${tabId}`);
+  await menu.locator('#sentences li').first().waitFor();
+  for (const scheme of ['light', 'dark'] as const) {
+    await menu.emulateMedia({ colorScheme: scheme });
+    await shot(menu, `menu-${scheme}.png`, true);
+  }
+
+  const clip = join(work, 'clip.webm');
+  execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=s=640x360:r=10:d=6', '-c:v', 'libvpx', '-b:v', '200k', clip]);
+  const srt = join(work, 'clip.srt');
+  writeFileSync(srt, `1\n00:00:00,000 --> 00:00:06,000\n${TEXT.split('。')[0]}。\n`);
+  const player = await context.newPage();
+  await player.setViewportSize({ width: 1000, height: 720 });
+  await player.goto(`chrome-extension://${extensionId}/player.html`);
+  await player.setInputFiles('#video-file', clip);
+  await player.setInputFiles('#subs-file', srt);
+  await player.evaluate(() => new Promise(resolve => {
+    const video = document.querySelector('video');
+    video?.addEventListener('seeked', resolve, { once: true });
+    if (video) video.currentTime = 2;
+  }));
+  await player.locator('.minerr-subs-line .ml-word[data-ml-lemma="食べる"]').waitFor({ timeout: 20000 });
+  for (const scheme of ['light', 'dark'] as const) {
+    await player.emulateMedia({ colorScheme: scheme });
+    await shot(player, `player-${scheme}.png`);
+  }
 } finally {
   await context.close();
   site.close();
