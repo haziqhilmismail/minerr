@@ -452,6 +452,8 @@ The audio comes from one of these sources:
 1. The Minerr server cuts the line from its copy of the audio, as an MP3 file. This works for a YouTube video, and for a file that you sent to the server with **Generate with WhisperX**. The first card of a video starts the download of its audio. The later cards of the video get the MP3 file.
 2. If the server is off or has no audio of the video, Minerr records the line in the tab. The video goes back to the start of the line and plays it again. Then the video goes back to where it was. The recording is a WebM file.
 
+Minerr gives all sentence audio one loudness, so a card is not too loud or too quiet. The server sets each MP3 file to -16 LUFS (EBU R128). The tab recording only evens out the level: the start of a recording can be a little louder or quieter. A change of the volume of the video does not change the recording.
+
 The sentence audio needs subtitles with times. A card from the YouTube captions that Minerr copies from the player has no sentence audio.
 
 The `SentenceAudio` field is new. If your note type is from an earlier version, Anki asks for a full sync one time after the update. Sync all your devices before you update Minerr. See [The note type](#the-note-type).
