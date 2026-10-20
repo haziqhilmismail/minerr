@@ -16,6 +16,8 @@ export interface PopupKeys {
   // The word span of the first popup, if it is open.
   word: () => HTMLElement | null;
   openWord: (span: HTMLElement) => Promise<void>;
+  // Looks up the selected text. False if no text is selected.
+  lookupSelection: () => boolean;
 }
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
@@ -95,6 +97,7 @@ export function installKeys(popup: PopupKeys): void {
     ...Object.fromEntries(STATUS_NAMES.map(status => [STATUSES[status].hotkey, statusKey(status)])),
     a: whenOpen(popup.addCard),
     n: nextUnknown,
+    'alt+s': popup.lookupSelection,
     Escape: whenOpen(popup.close),
     'alt+shift+s': () => {
       toggleSentenceHighlight();

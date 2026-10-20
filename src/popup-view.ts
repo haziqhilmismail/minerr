@@ -1,4 +1,4 @@
-import { setStatus, type Status, STATUS_NAMES, STATUSES } from './status.ts';
+import { setStatus, type Status, STATUS_NAMES, STATUSES, WORD_CSS } from './status.ts';
 import { minerrEnabled } from './settings.ts';
 import { TAG_CSS, tagClass } from './tags.ts';
 import { applyTheme } from './theme.ts';
@@ -22,7 +22,6 @@ const STYLE = `
   }
   .popup[data-theme="light"] { color-scheme: light; }
   .popup[data-theme="dark"] { color-scheme: dark; }
-  .popup[hidden] { display: none; }
   header { padding: 12px 16px; border-bottom: 1px solid var(--line); }
   .title { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; }
   .title .tags { font-size: 15px; }
@@ -58,6 +57,7 @@ const STYLE = `
   .dict { width: fit-content; margin-top: 4px; padding: 0 7px; border-radius: 4px; background: var(--raised);
     color: var(--muted); font-size: 11px; line-height: 18px; }
   ${TAG_CSS}
+  ${WORD_CSS}
   .empty { margin: 0 0 8px; color: var(--muted); }
   .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin-top: 4px; font-size: 12px; color: var(--muted); }
   .group .meta { margin: 2px 0 0; }
@@ -99,15 +99,18 @@ shadow.append(el('style', { textContent: STYLE }));
 
 export const isPopup = (target: EventTarget | null) => target === host;
 
-// A new popup box in the shadow root. The popup goes into the full screen element when there is one,
-// so it shows over a full screen video.
+// A new popup box. showBox puts it on top of the other boxes; hideBox takes it out of the shadow root,
+// so the shadow root holds only the boxes that show.
 export function createBox(): HTMLDivElement {
-  const box = el('div', { className: 'popup', hidden: true });
-  shadow.append(box);
+  const box = el('div', { className: 'popup' });
   applyTheme(box);
   return box;
 }
 
+export const showBox = (box: HTMLDivElement) => shadow.append(box);
+export const hideBox = (box: HTMLDivElement) => box.remove();
+
+// The popup goes into the full screen element when there is one, so it shows over a full screen video.
 export const mount = () => (document.fullscreenElement ?? document.documentElement).append(host);
 
 const toastBox = el('div', { className: 'toast', role: 'status', hidden: true });
@@ -126,9 +129,15 @@ export function toast(text: string): void {
 // Hides the popup during the screenshot of a new card.
 export const setPopupVisible = (visible: boolean) => { host.style.visibility = visible ? '' : 'hidden'; };
 
-// The word that a popup shows. groups is empty until the lookup is done.
+// What a popup belongs to: a word span (on the page or in a popup), or the text at the start of a selection (Alt+S).
+export type Anchor = { kind: 'word'; span: HTMLElement } | { kind: 'text'; range: Range; text: string };
+
+export const anchorText = (anchor: Anchor): string => (anchor.kind === 'word' ? wordText(anchor.span) : anchor.text);
+export const anchorRect = (anchor: Anchor): DOMRect => (anchor.kind === 'word' ? anchor.span : anchor.range).getBoundingClientRect();
+
+// The word that a popup shows.
 export interface View {
-  span: HTMLElement;
+  anchor: Anchor;
   lemma: string;
   status: Status;
   groups: Entry[];
@@ -157,8 +166,7 @@ export function markStatus({ box, statusButtons }: Layer, status: Status): void 
 
 export const addLabel = () => ['Add to Anki ', el('kbd', { textContent: 'A' })];
 
-export function position(box: HTMLElement, span: HTMLElement): void {
-  const rect = span.getBoundingClientRect();
+export function position(box: HTMLElement, rect: DOMRect): void {
   // Fit the popup on the roomier side of the word so it never covers the word; the definitions scroll instead.
   box.style.maxHeight = `min(60vh, 480px, ${Math.max(rect.top, innerHeight - rect.bottom) - 12}px)`;
   const below = rect.bottom + 6;
@@ -209,7 +217,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, close }: Acti
   const { lemma, groups } = view;
   const [first, ...others] = groups;
   const reading = first?.reading ?? '';
-  const surface = wordText(view.span);
+  const surface = anchorText(view.anchor);
   const notes = [
     ...(surface !== lemma ? [`On the page: ${surface}`] : []),
     ...(view.count ? [`Appears ${view.count} ${view.count === 1 ? 'time' : 'times'} on this page`] : []),

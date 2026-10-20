@@ -1,5 +1,5 @@
 import { lookup, pitchPatterns } from './src/db.ts';
-import { groupTokens } from './src/group.ts';
+import { groupTokens, lookupCandidates } from './src/group.ts';
 import { serve } from './src/rpc.ts';
 
 const tokenizer = new Promise<kuromoji.Tokenizer>((resolve, reject) => {
@@ -15,6 +15,14 @@ serve(
     },
     lookup: ({ lemma }) => lookup(lemma),
     pitch: ({ words }) => pitchPatterns(words),
+    lookupText: async ({ text }) => {
+      const parser = await tokenizer;
+      for (const { lemma, length } of lookupCandidates(text, start => groupTokens(parser.tokenize(start)))) {
+        const entries = await lookup(lemma);
+        if (entries.length) return { lemma, length, entries };
+      }
+      return null;
+    },
   },
   target => target === 'offscreen',
 );

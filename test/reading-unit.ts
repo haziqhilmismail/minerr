@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import kuromoji from 'kuromoji';
 import { chord, statusTarget } from '../src/chord.ts';
-import { groupTokens, splitSegments, toHiragana } from '../src/group.ts';
+import { groupTokens, lookupCandidates, splitSegments, toHiragana } from '../src/group.ts';
 import { entryStars, highs, morae, pitchPattern, stars, toMeta, withMeta } from '../src/meta.ts';
 import { at, isStringList } from '../src/parse.ts';
 import { sentenceBounds } from '../src/sentence.ts';
@@ -100,7 +100,7 @@ test('toggleSite adds a site that is on and removes a site that is off', () => {
   assert.deepEqual(toggleSite(['a.com', 'b.org'], 'a.com'), ['b.org']);
 });
 
-test('a word with kanji gets its reading in hiragana; kana words and words that kuromoji does not know get none', async () => {
+test('a word with kanji gets its reading in hiragana; kana words and unknown words get none; Alt+S tries the longest start first', async () => {
   const tokenizer = await new Promise<kuromoji.Tokenizer>((resolve, reject) =>
     kuromoji.builder({ dicPath: join(here, '..', 'node_modules', 'kuromoji', 'dict') }).build((err, t) => (err ? reject(err) : resolve(t))));
   assert.deepEqual(groupTokens(tokenizer.tokenize('テレビ局でゲームをプレイした')), [
@@ -112,6 +112,11 @@ test('a word with kanji gets its reading in hiragana; kana words and words that 
     { text: 'した', lemma: 'する' },
   ]);
   assert.equal(toHiragana('キョウ、ヴァーチャル'), 'きょう、ゔぁーちゃる');
+  const parse = (text: string) => groupTokens(tokenizer.tokenize(text));
+  assert.deepEqual(lookupCandidates('食べなかった', parse).slice(0, 3),
+    [{ lemma: '食べなかった', length: 6 }, { lemma: '食べる', length: 6 }, { lemma: '食べなかっ', length: 5 }]);
+  assert.deepEqual(lookupCandidates('猫が', parse), [{ lemma: '猫が', length: 2 }, { lemma: '猫', length: 1 }]);
+  assert.equal(lookupCandidates('あ'.repeat(30), parse)[0]?.length, 20);
 });
 
 test('sentenceBounds finds the sentence around an offset, with its closing quote and without edge white space', () => {

@@ -393,6 +393,20 @@ You can choose when the word popup opens.
 
 In all modes, `Shift` opens the popup at once. You can press `Shift` before or after you move the mouse onto the word. If a popup is open, the popup of the next word opens after 0.05 seconds. A quick pass of the mouse over a word does not open a popup. The change applies at once in all tabs.
 
+### Look up selected text
+
+Select text on the page, then press `Alt+S`. Minerr looks up the longest dictionary word at the start of the selection, also in its dictionary form. For example, if you select 食べなかった, the popup shows 食べる. Use this for a word that Minerr cuts in a different way, or for a word in text that Minerr does not underline. If no dictionary has a word at the start of the selection, a short message tells you.
+
+`A` in this popup adds a card with the sentence around the selected word.
+
+### Popups in a popup
+
+Japanese text in the definitions of a popup is also cut into words. Hold `Shift` and move the mouse onto such a word: a new popup opens over the first one. You can open up to 4 popups in this way. A plain hover in a popup opens nothing, so you can move the mouse over the definitions.
+
+- `Esc` closes the top popup only.
+- A click in a popup closes the popups over it.
+- The status keys and `A` act on the word of the top popup.
+
 ### Sentence highlight
 
 When you move the mouse onto a word, Minerr gives the sentence of the word a light blue background. While the popup is open, the sentence of its word keeps the background. Minerr cuts the sentence with the same rule as the card sentence.

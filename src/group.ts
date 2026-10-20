@@ -85,3 +85,19 @@ export function splitSegments(segments: Segment[], lengths: number[]): NodeSegme
   }
   return nodes;
 }
+
+// The longest selection that Alt+S looks up, in characters.
+const MAX_LOOKUP = 20;
+
+// The words to look up for a selected text, longest first: each start of the text as it is, and, when that start is one word,
+// its dictionary form (食べなかった -> 食べる). length is the number of characters of the text that the word covers.
+export function lookupCandidates(text: string, parse: (text: string) => Segment[]): { lemma: string; length: number }[] {
+  const candidates: { lemma: string; length: number }[] = [];
+  for (let length = Math.min(text.length, MAX_LOOKUP); length > 0; length--) {
+    const start = text.slice(0, length);
+    candidates.push({ lemma: start, length });
+    const [word, ...rest] = parse(start);
+    if (word?.lemma && word.lemma !== start && !rest.length) candidates.push({ lemma: word.lemma, length });
+  }
+  return candidates;
+}

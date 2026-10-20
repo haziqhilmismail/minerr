@@ -3,6 +3,7 @@ import { mkdtempSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { at } from '../src/parse.ts';
 import { launch, listen, makeDictionary, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-reading-'));
@@ -10,7 +11,8 @@ useCjkFonts(work);
 
 const terms = makeDictionary(join(work, 'terms.zip'), 'Fixture', [
   ['食べる', 'たべる', 'v1', 'v1', 100, ['to eat (fixture)'], 1, ''],
-  ['猫', 'ねこ', 'n', '', 100, ['cat (fixture)'], 2, ''],
+  ['猫', 'ねこ', 'n', '', 100, ['cat (fixture)', '同義: 子猫'], 2, ''],
+  ['子猫', 'こねこ', 'n', '', 100, ['小さい猫'], 4, ''],
   ['魚', 'さかな', 'n', '', 100, ['fish (fixture)'], 3, ''],
 ]);
 const ranks = makeDictionary(join(work, 'ranks.zip'), 'Ranks', [], [], [
@@ -30,6 +32,25 @@ const site = createServer((req, res) => {
     + '<p id="wrap" style="width: 6em; font-size: 20px; line-height: 1.2">猫が魚を食べた。猫が魚を食べた。猫が魚を食べた。</p></body>');
 });
 const pageUrl = `http://127.0.0.1:${await listen(site, 0)}/page`;
+
+const ankiNotes: unknown[] = [];
+const ankiReplies: Record<string, (params: unknown) => unknown> = {
+  createDeck: () => 1,
+  modelNames: () => [],
+  createModel: () => ({}),
+  addNote: params => ankiNotes.push(at(params, 'note')),
+};
+const anki = createServer((req, res) => {
+  let body = '';
+  req.on('data', chunk => { body += chunk; });
+  req.on('end', () => {
+    const request: unknown = JSON.parse(body);
+    const reply = ankiReplies[String(at(request, 'action'))];
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(reply ? { result: reply(at(request, 'params')), error: null } : { result: null, error: 'unknown action' }));
+  });
+});
+await listen(anki, 8765);
 
 const { context, worker, extensionId } = await launch(join(work, 'profile'));
 const failures: string[] = [];
@@ -60,13 +81,13 @@ try {
 
   const options = await context.newPage();
   await options.goto(`chrome-extension://${extensionId}/options.html`);
-  for (const [file, message] of [[terms, 'Imported Fixture: 3 terms'], [ranks, 'Imported Ranks: 0 terms, 3 frequency and pitch entries'],
+  for (const [file, message] of [[terms, 'Imported Fixture: 4 terms'], [ranks, 'Imported Ranks: 0 terms, 3 frequency and pitch entries'],
     [pitches, 'Imported Pitches: 0 terms, 3 frequency and pitch entries']]) {
     await options.setInputFiles('#dict-file', file ?? '');
     await options.locator('#dict-status', { hasText: message ?? '' }).waitFor();
   }
   assert.deepEqual(await options.$$eval('#dict-list li', (items: HTMLElement[]) => items.map(li => li.innerText.split('\n')[1])), [
-    '3 terms', '1 terms', '0 terms, 3 frequency and pitch entries', '0 terms, 3 frequency and pitch entries',
+    '4 terms', '1 terms', '0 terms, 3 frequency and pitch entries', '0 terms, 3 frequency and pitch entries',
   ]);
   console.log('import: version 2 dictionary kept, frequency and pitch dictionaries counted');
 
@@ -267,9 +288,89 @@ try {
   await options.evaluate(() => chrome.storage.local.remove(['w:猫', 'w:魚', 'w:食べる']));
   console.log('subtitle line with one unknown word: a status key sets it with no popup');
 
+  const popups = tab.locator('minerr-popup .popup');
+  const lemmas = () => popups.locator('.lemma').allTextContents();
+  const shiftHover = async (popupIndex: number, word: string) => {
+    const span = popups.nth(popupIndex).locator(`.definitions .ml-word[data-ml-lemma="${word}"]`);
+    await span.waitFor();
+    await tab.keyboard.down('Shift');
+    await span.hover();
+    await tab.keyboard.up('Shift');
+  };
+  await tab.mouse.move(0, 0);
+  await tab.hover('#line .ml-word[data-ml-lemma="猫"]');
+  await popups.locator('.lemma', { hasText: '猫' }).waitFor();
+  await popups.locator('.definitions .ml-word[data-ml-lemma="子猫"]').hover();
+  await tab.waitForTimeout(500);
+  assert.deepEqual(await lemmas(), ['猫'], 'plain hover on a word in a popup opens no popup');
+  await shiftHover(0, '子猫');
+  await popups.nth(1).locator('.lemma', { hasText: '子猫' }).waitFor();
+  await shiftHover(1, '猫');
+  await popups.nth(2).locator('.lemma', { hasText: '猫' }).waitFor();
+  await shiftHover(2, '子猫');
+  await popups.nth(3).locator('.lemma', { hasText: '子猫' }).waitFor();
+  assert.deepEqual(await lemmas(), ['猫', '子猫', '猫', '子猫']);
+  assert.equal(await popups.nth(3).locator('.ml-word').count(), 0, 'the fourth popup has no words to open a fifth');
+  await tab.screenshot({ path: join(work, 'nested.png') });
+  await tab.keyboard.press('Escape');
+  assert.deepEqual(await lemmas(), ['猫', '子猫', '猫']);
+  await tab.keyboard.press('2');
+  await popups.nth(2).locator('button[aria-pressed="true"]', { hasText: 'Learning' }).waitFor();
+  assert.equal(await popups.nth(1).locator('.definitions .ml-word[data-ml-lemma="猫"]').getAttribute('class'), 'ml-word ml-learning',
+    'a status key sets the word of the top popup, and the words in the popups follow');
+  await options.evaluate(() => chrome.storage.local.remove('w:猫'));
+  await popups.nth(0).locator('.definitions').click();
+  assert.deepEqual(await lemmas(), ['猫'], 'a click in a popup closes the popups over it');
+  await tab.keyboard.press('Escape');
+  assert.deepEqual(await lemmas(), []);
+  console.log('nested popups: Shift + hover on a word in a popup opens a popup over it, up to 4; Esc closes the top one; saved', join(work, 'nested.png'));
+
+  const lookUp = async (from: string, offset: number, length: number) => {
+    await tab.evaluate(([selector, start, count]) => {
+      const text = document.querySelector(String(selector))?.firstChild;
+      const range = new Range();
+      if (!text) throw new Error(`no text in ${selector}`);
+      range.setStart(text, Number(start));
+      range.setEnd(text, Number(start) + Number(count));
+      getSelection()?.removeAllRanges();
+      getSelection()?.addRange(range);
+    }, [from, offset, length]);
+    await tab.keyboard.press('Alt+S');
+  };
+  await lookUp('#line .ml-word[data-ml-lemma="食べる"]', 0, 6);
+  await popups.locator('.lemma', { hasText: '食べる' }).waitFor();
+  assert.equal(await popups.locator('.surface').innerText(), 'On the page: 食べなかった · Appears 5 times on this page');
+  await tab.keyboard.press('Escape');
+  await lookUp('#line .ml-word[data-ml-lemma="食べる"]', 0, 4);
+  await popups.locator('.surface', { hasText: 'On the page: 食べ ·' }).waitFor();
+  assert.deepEqual(await lemmas(), ['食べる'], 'the longest dictionary word at the start of 食べなか is 食べ, the verb 食べる');
+  await tab.keyboard.press('Escape');
+  await lookUp('#line .ml-word[data-ml-lemma="魚"]', 0, 1);
+  await popups.locator('.lemma', { hasText: '魚' }).waitFor();
+  await tab.keyboard.press('a');
+  await popups.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+  assert.equal(at(ankiNotes.at(-1), 'fields', 'Sentence'), '猫が<b>魚</b>を食べなかった。');
+  await tab.keyboard.press('Escape');
+  await tab.evaluate(() => document.body.append(Object.assign(document.createElement('p'), { id: 'plain', textContent: 'xyz 猫が好き' })));
+  await tab.waitForSelector('#plain .ml-word');
+  await tab.evaluate(() => {
+    const range = new Range();
+    const text = document.querySelector('#plain')?.firstChild;
+    if (!text) throw new Error('no text');
+    range.setStart(text, 0);
+    range.setEnd(text, 3);
+    getSelection()?.removeAllRanges();
+    getSelection()?.addRange(range);
+  });
+  await tab.keyboard.press('Alt+S');
+  await toast.filter({ hasText: 'No dictionary entry for xyz.' }).waitFor();
+  await tab.evaluate(() => getSelection()?.removeAllRanges());
+  console.log('Alt+S: the longest dictionary word at the start of the selection, with the card sentence around it');
+
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('READING E2E PASS');
 } finally {
   await context.close();
   site.close();
+  anki.close();
 }
