@@ -1,8 +1,8 @@
 // End-to-end test of the sentence audio of a YouTube card, with a long WhisperX line that has no punctuation.
 // The line and the YouTube caption rows are from a real video (s0OAUwiHheE). Uses port 8765 (mock AnkiConnect) and 8766 (mock WhisperX server).
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,9 +12,23 @@ import { launch, listen, makeDictionary, mockAnki, useCjkFonts } from './harness
 const work = mkdtempSync(join(tmpdir(), 'ml-lineaudio-'));
 useCjkFonts(work);
 
-const clip = join(work, 'clip.webm');
-execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=gray:s=64x36:r=1:d=230',
-  '-f', 'lavfi', '-i', 'sine=frequency=440:duration=230', '-c:v', 'libvpx', '-b:v', '20k', '-c:a', 'libopus', '-b:a', '16k', clip]);
+// A loud and a quiet video, 29 LU apart: a 300 Hz tone with a syllable rhythm of 4 Hz and a pause in each 2 seconds, like speech.
+const speech = (volume: number) => {
+  const path = join(work, `speech-${volume}.webm`);
+  execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=gray:s=64x36:r=1:d=230', '-f', 'lavfi', '-i',
+    `aevalsrc=${volume}*sin(2*PI*300*t)*(0.5+0.5*sin(2*PI*4*t))*lt(mod(t\\,2)\\,1.3):s=48000:d=230`,
+    '-c:v', 'libvpx', '-b:v', '20k', '-c:a', 'libopus', '-b:a', '16k', path]);
+  return `data:video/webm;base64,${readFileSync(path).toString('base64')}`;
+};
+const loud = speech(0.9);
+const quiet = speech(0.03);
+// The integrated loudness (EBU R128) of an audio file in base64, in LUFS.
+const loudness = (base64: unknown) => {
+  const path = join(work, 'measure.webm');
+  writeFileSync(path, Buffer.from(String(base64), 'base64'));
+  const report = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', path, '-af', 'ebur128', '-f', 'null', '-'], { encoding: 'utf8' }).stderr;
+  return Number([...report.matchAll(/I:\s+(-?[\d.]+) LUFS/g)].at(-1)?.[1]);
+};
 
 const dictionary = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
   ['登山口', 'とざんぐち', 'n', '', 100, ['trailhead (fixture)'], 1, ''],
@@ -50,7 +64,7 @@ const WATCH = `<!doctype html><meta charset="utf-8"><title>Fake YouTube</title>
   video { width: 100%; height: 100%; }
 </style>
 <div id="movie_player">
-  <video src="data:video/webm;base64,${readFileSync(clip).toString('base64')}"></video>
+  <video src="${loud}"></video>
   <div class="ytp-caption-window-container"><span class="captions-text">
     <span class="caption-visual-line">だけ登山口</span><br><span class="caption-visual-line">こっちだ。さあ、気をつけよう。おはよう</span>
   </span></div>
@@ -72,7 +86,7 @@ const lastNote = () => at(anki.requests.filter(r => at(r, 'action') === 'addNote
 const notes = () => anki.requests.filter(r => at(r, 'action') === 'addNote').length;
 const storedAudio = (field: unknown) => {
   const name = /^\[sound:(.+)\]$/.exec(String(at(field, 'SentenceAudio')))?.[1];
-  return anki.requests.filter(r => at(r, 'action') === 'storeMediaFile' && at(r, 'params', 'filename') === name).map(r => at(r, 'params', 'filename'));
+  return anki.requests.filter(r => at(r, 'action') === 'storeMediaFile' && at(r, 'params', 'filename') === name).map(r => at(r, 'params'));
 };
 
 try {
@@ -133,6 +147,21 @@ try {
   assert.match(String(at(recorded, 'SentenceAudio')), /^\[sound:minerr-\d+\.webm\]$/, 'the tab records the line when the server stopped');
   assert.equal(storedAudio(recorded).length, 1);
   console.log('server stopped: the tab records the line', at(recorded, 'SentenceAudio'));
+
+  await tab.evaluate(async src => {
+    const video = document.querySelector('video');
+    if (!video) return;
+    video.src = src;
+    await new Promise(resolve => video.addEventListener('loadedmetadata', resolve, { once: true }));
+    video.playbackRate = 4;
+    video.currentTime = 206;
+  }, quiet);
+  await word(0).waitFor();
+  const recordedQuiet = await add(0, 'a');
+  const loudLevel = loudness(at(storedAudio(recorded)[0], 'data'));
+  const quietLevel = loudness(at(storedAudio(recordedQuiet)[0], 'data'));
+  console.log('tab recordings of the loud and the quiet video (29 LU apart):', loudLevel, quietLevel, 'LUFS');
+  assert.ok(Math.abs(loudLevel - quietLevel) <= 3, `the tab recordings are within 3 LU of each other: ${loudLevel}, ${quietLevel} LUFS`);
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('LINE AUDIO E2E PASS');
