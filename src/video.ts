@@ -59,6 +59,8 @@ let lastTime = 0;
 // The line that the play mode paused at its end: it stays on the screen until the video plays or seeks.
 let heldIndex = -1;
 let secondShown: SecondDisplay = 'show';
+// The first of two lines that J joined, for one card with both; it ends when the video leaves the two lines.
+let combined: number | null = null;
 
 export { layer };
 
@@ -73,14 +75,22 @@ const currentIndex = (): number => {
   return timed()?.segments.findIndex(s => s.start <= time && time < s.end) ?? -1;
 };
 
+// The lines in the overlay: the line at the time, or the two joined lines.
+function shownLines(): SubtitleSegment[] {
+  if (shownIndex < 0) return [];
+  const from = combined ?? shownIndex;
+  return (timed()?.segments ?? []).slice(from, from + (combined === null ? 1 : 2));
+}
+
 function render(): void {
   const found = timed();
   const held = heldIndex >= 0 && video()?.paused;
   shownIndex = found && !target.blocked?.() ? (held ? heldIndex : currentIndex()) : -1;
+  if (combined !== null && shownIndex !== combined && shownIndex !== combined + 1) combined = null;
   if (lines.kind === 'mirror') return show(lines.text, '');
   const time = lineTime();
   const second = found && !target.blocked?.() && secondShown !== 'off' ? found.second?.find(s => s.start <= time && time < s.end)?.text : '';
-  show(found?.segments[shownIndex]?.text ?? '', second ?? '');
+  show(shownLines().map(segment => segment.text).join('\n'), second ?? '');
 }
 
 function crossGap(playing: HTMLVideoElement): void {
@@ -208,6 +218,7 @@ const ACTIONS: Record<VideoAction, () => boolean | void> = {
   bigger: () => resize(SCALE_STEP),
   smaller: () => resize(-SCALE_STEP),
   obscure: toggleObscured,
+  combine,
   second: () => {
     const next = secondShown === 'off' ? 'show' : 'off';
     secondDisplay.set(next);
@@ -235,9 +246,20 @@ window.addEventListener('keydown', event => {
 function cardLine(): CardLine | null {
   const found = timed();
   const word = document.querySelector('.ml-word[data-ml-active]');
-  const segment = found?.segments[shownIndex];
-  if (!found || !segment || !word || !line.contains(word)) return null;
-  return { start: segment.start + offset, end: segment.end + offset, text: segment.text, audio: found.audio };
+  const shown = shownLines();
+  const [first] = shown;
+  const last = shown.at(-1);
+  if (!found || !first || !last || !word || !line.contains(word)) return null;
+  const text = shown.map(segment => segment.text).join('\n');
+  return { start: first.start + offset, end: last.end + offset, text, combined: shown.length > 1, audio: found.audio };
+}
+
+function combine(): void {
+  const segments = timed()?.segments ?? [];
+  if (combined === null && (shownIndex < 0 || !segments[shownIndex + 1])) return toast('There is no next line to join.');
+  combined = combined === null ? shownIndex : null;
+  toast(combined === null ? 'The line is alone again.' : 'Joined the next line: a card gets both lines and their audio.');
+  follow();
 }
 
 async function record({ start, end }: { start: number; end: number }) {

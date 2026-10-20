@@ -325,6 +325,7 @@ These keys work on a video with the Minerr subtitle overlay: on YouTube, in the 
 | `Alt+A` | Go back 5 seconds. | |
 | `Alt+D` | Go forward 5 seconds. | |
 | `C` | Copy the current line. | |
+| `J` | Join the next line to the current line. A card then gets both lines as the sentence, and the audio of both. Press `J` again to stop. | Needs subtitles with times. |
 | `.` | Go one frame forward. The video pauses. | Needs subtitles with times. |
 | `,` | Go one frame back. The video pauses. | Needs subtitles with times. |
 | `Alt+O` | Show the subtitles 0.1 seconds later. | Needs subtitles with times. |
@@ -336,7 +337,7 @@ These keys work on a video with the Minerr subtitle overlay: on YouTube, in the 
 
 Subtitles with times come from WhisperX, from a subtitle file, or from the YouTube subtitles that the Minerr server downloads. The YouTube captions that Minerr copies from the player have no times. With these captions, a key that needs times shows a hint, and YouTube gets the key.
 
-YouTube also uses some of these keys, for example `C`, `.`, `,`, and the arrow keys. While the overlay shows subtitles, the Minerr action replaces the YouTube action. `C` copies a line only when the overlay shows one. Otherwise YouTube gets `C` and turns the captions on or off.
+YouTube also uses some of these keys, for example `C`, `J`, `.`, `,`, and the arrow keys. While the overlay shows subtitles, the Minerr action replaces the YouTube action. `C` copies a line only when the overlay shows one. Otherwise YouTube gets `C` and turns the captions on or off.
 
 `A` is not a video key, because `A` adds a card in the word popup.
 

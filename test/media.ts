@@ -443,6 +443,21 @@ try {
   console.log('player card audio from the server:', clips);
   await player.keyboard.press('Escape');
   await player.mouse.move(0, 0);
+  await seek(1);
+  await player.keyboard.press('j');
+  await player.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べた。\n今日は雨が降っている。');
+  await line.locator('.ml-word[data-ml-lemma="雨"]').hover();
+  await popup.locator('.add').waitFor();
+  await player.keyboard.press('a');
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+  const joined = at(ankiRequests.filter(r => at(r, 'action') === 'addNote').at(-1), 'params', 'note');
+  assert.equal(at(joined, 'fields', 'Sentence'), '猫が魚を食べた。 今日は<b>雨</b>が降っている。');
+  assert.deepEqual(clips.at(-1), { sha256: uploads[0]?.sha256, start: 0, end: 7 }, 'the audio spans both lines');
+  console.log('J joined two lines: the card has both lines and their audio');
+  await player.keyboard.press('Escape');
+  await player.mouse.move(0, 0);
+  await player.keyboard.press('j');
+  await player.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べた。');
 
   const [download] = await Promise.all([player.waitForEvent('download'), player.click('#save')]);
   const saved = readFileSync(await download.path(), 'utf8');

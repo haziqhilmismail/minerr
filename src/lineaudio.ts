@@ -6,11 +6,13 @@ import { audioPadding } from './videosettings.ts';
 import { type AudioSource, clipAudio } from './whisper.ts';
 
 // The subtitle line of the word of a new card, as the tab reports it: times in seconds of the video.
+// combined: the user joined two lines (J), so the card sentence is the text of both.
 // audio is the audio that the server can have of the video, or null for a local file that the server never got.
 export interface CardLine {
   start: number;
   end: number;
   text: string;
+  combined: boolean;
   audio: AudioSource | null;
 }
 
@@ -22,10 +24,11 @@ function toBase64(buffer: ArrayBuffer): string {
   return btoa(text);
 }
 
-// Null when the word is not in a subtitle line, or when neither the server nor the tab could give the audio.
-export async function lineAudio(tabId: number): Promise<MediaFile | null> {
-  const line = await call({ type: 'videoLine' }, tabId).catch(() => null);
-  if (!line) return null;
+// The subtitle line of the word in the tab, or null for a word that is not in a subtitle line.
+export const cardLine = (tabId: number): Promise<CardLine | null> => call({ type: 'videoLine' }, tabId).catch(() => null);
+
+// Null when neither the server nor the tab could give the audio.
+export async function lineAudio(line: CardLine, tabId: number): Promise<MediaFile | null> {
   const padding = (await audioPadding.get()) / 1000;
   const start = Math.max(0, line.start - padding);
   const end = line.end + padding;

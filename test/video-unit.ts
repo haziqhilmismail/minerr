@@ -106,3 +106,10 @@ test('autoPause finds the line edge that a frame step passed, as the play mode s
     autoPause(LINES, 'after', 3.5, 2.5),
   ], [0, null, 2, 2, null, null, null]);
 });
+
+test('widenSentence puts the popup sentence back into the text of the joined lines', async () => {
+  const { widenSentence } = await import('../src/playback.ts');
+  assert.equal(widenSentence('猫が魚を食べた。\n今日は<雨>だ', '<b>猫</b>が魚を食べた。'), '<b>猫</b>が魚を食べた。 今日は&lt;雨&gt;だ');
+  assert.equal(widenSentence('猫が魚を食べた。\n今日は<雨>だ', '今日は&lt;<b>雨</b>&gt;だ'), '猫が魚を食べた。 今日は&lt;<b>雨</b>&gt;だ');
+  assert.equal(widenSentence('別の行', '<b>猫</b>だ'), '<b>猫</b>だ', 'a sentence that is not in the lines stays');
+});

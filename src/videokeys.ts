@@ -8,6 +8,7 @@ export const VIDEO_KEYS = [
   { action: 'back5', keys: ['alt+a'], label: 'Go back 5 seconds', timed: false },
   { action: 'forward5', keys: ['alt+d'], label: 'Go forward 5 seconds', timed: false },
   { action: 'copy', keys: ['c'], label: 'Copy the current line', timed: false },
+  { action: 'combine', keys: ['j'], label: 'Join the next line to the current line, for one card with both', timed: true },
   { action: 'frameForward', keys: ['.'], label: 'Go one frame forward (pauses the video)', timed: true },
   { action: 'frameBack', keys: [','], label: 'Go one frame back (pauses the video)', timed: true },
   { action: 'offsetUp', keys: ['alt+o'], label: 'Show the subtitles 0.1 seconds later', timed: true },
