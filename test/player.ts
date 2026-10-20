@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { at } from '../src/parse.ts';
 import { launch, makeDictionary, mockAnki, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-player-'));
@@ -208,6 +209,41 @@ try {
   await waitPaused(false);
   await player.evaluate(() => document.querySelector('video')?.pause());
   console.log('pause while the popup is open: the video played again when it closed');
+
+  const addAndWait = async () => {
+    const before = anki.requests.length;
+    await popup.getByRole('button', { name: 'Add to Anki A' }).click();
+    const added = () => anki.requests.slice(before).find(r => at(r, 'action') === 'addNote');
+    for (const deadline = Date.now() + 15000; !added() && Date.now() < deadline;) await player.waitForTimeout(100);
+    return at(added(), 'params', 'note', 'fields', 'SentenceAudio');
+  };
+  await playFrom(0.5);
+  await line.locator('.ml-word[data-ml-lemma="魚"]').hover();
+  await waitPaused(true);
+  await popup.locator('li', { hasText: 'fish (fixture)' }).waitFor();
+  await popup.hover();
+  assert.match(String(await addAndWait()), /^\[sound:minerr-\d+\.webm\]$/, 'the tab records the line while the popup holds the video');
+  assert.equal((await playback()).paused, true, 'the video stays paused after the recording while the popup is open');
+  await player.keyboard.press('Escape');
+  await player.mouse.move(0, 0);
+  await waitPaused(false);
+  await player.evaluate(() => document.querySelector('video')?.pause());
+  console.log('recording under a popup hold: the video played again when the popup closed');
+
+  await player.evaluate(() => {
+    const video = document.querySelector('video');
+    if (video) Object.defineProperty(video, 'currentTime', { configurable: true, get: () => 1, set: () => undefined });
+  });
+  await line.locator('.ml-word[data-ml-lemma="魚"]').hover();
+  await popup.locator('li', { hasText: 'fish (fixture)' }).waitFor();
+  await popup.hover();
+  const stalledAt = Date.now();
+  assert.equal(await addAndWait(), '', 'a seek that never ends gives a card without sentence audio');
+  console.log('stalled seek: the recording gave up after', (Date.now() - stalledAt) / 1000, 's');
+  assert.equal((await playback()).paused, true, 'the video stays paused after a recording that gave up');
+  await player.evaluate(() => { const video = document.querySelector('video'); if (video) Reflect.deleteProperty(video, 'currentTime'); });
+  await player.keyboard.press('Escape');
+  await player.mouse.move(0, 0);
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('PLAYER E2E PASS');
