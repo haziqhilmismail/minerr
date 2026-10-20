@@ -6,49 +6,46 @@ import { wordStatuses } from './overlay.ts';
 import { addWordCard } from './popup.ts';
 import { isIPlusOne } from './sentence.ts';
 import type { Status } from './status.ts';
+import { TOKENS } from './tokens.ts';
 
-// The colors come from the light-dark() pairs of theme.css, so they follow the color scheme of the host page.
-// A host can set the --minerr-side-* properties to match its own palette.
+// The tokens are light-dark() pairs (src/tokens.ts), so the sidebar follows the color-scheme that the host sets:
+// the theme on the player page, light or dark YouTube.
 const STYLE = `
   .minerr-lines {
-    --minerr-side-bg: light-dark(#ffffff, #1f2027); --minerr-side-card: light-dark(#f4f5f8, #2b2c35);
-    --minerr-side-text: light-dark(#1c1d24, #ecedf2); --minerr-side-muted: light-dark(#5f6270, #a3a5b3);
-    --minerr-side-line: light-dark(#dcdee6, #353642); --minerr-side-accent: light-dark(#2c4bb8, #7c93f2);
-    --minerr-side-on-accent: light-dark(#ffffff, #10173a);
+    ${TOKENS}
     box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; overflow: hidden;
-    border: 1px solid var(--minerr-side-line); border-radius: 12px; background: var(--minerr-side-bg); color: var(--minerr-side-text);
-    font: 15px/1.5 "Hiragino Sans", "Yu Gothic UI", "Meiryo", "Noto Sans JP", system-ui, sans-serif; text-align: left;
+    border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--card); color: var(--text);
+    font: 15px/1.5 var(--font-ui); text-align: left; box-shadow: var(--shadow-1);
   }
   .minerr-lines[hidden], :root[data-minerr-off] .minerr-lines { display: none; }
-  body > .minerr-lines { position: fixed; top: 8px; right: 8px; bottom: 8px; z-index: 2147483646; width: min(360px, 40vw); }
-  .minerr-lines button { box-sizing: border-box; border: 1px solid var(--minerr-side-line); border-radius: 6px; background: transparent;
-    color: inherit; font: 600 12px/1.6 system-ui, sans-serif; cursor: pointer; }
-  .minerr-lines button:hover { border-color: var(--minerr-side-muted); }
-  .minerr-lines button:focus-visible { outline: 2px solid var(--minerr-side-accent); outline-offset: 1px; }
-  .minerr-lines-head { display: flex; align-items: center; gap: 8px; padding: 10px 10px 0 14px; }
-  .minerr-lines-head strong { font: 700 14px/1.4 system-ui, sans-serif; }
-  .minerr-lines-head span { margin-right: auto; color: var(--minerr-side-muted); font: 12px/1.4 system-ui, sans-serif; }
-  .minerr-lines-head button { width: 28px; height: 28px; border-color: transparent; font-size: 16px; line-height: 1; }
-  .minerr-lines-bar { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 10px 10px; border-bottom: 1px solid var(--minerr-side-line); }
-  .minerr-lines-bar button { padding: 2px 9px; }
-  .minerr-lines-bar button[aria-pressed="true"] { border-color: transparent; background: var(--minerr-side-accent); color: var(--minerr-side-on-accent); }
-  .minerr-lines ol { position: relative; flex: 1; min-height: 0; margin: 0; padding: 8px; overflow: auto; overscroll-behavior: contain; list-style: none; }
-  .minerr-lines li { margin: 0 0 6px; padding: 4px 8px 8px 10px; border-left: 3px solid transparent; border-radius: 8px;
-    background: var(--minerr-side-card); cursor: pointer; }
+  body > .minerr-lines { position: fixed; top: 8px; right: 8px; bottom: 8px; z-index: 2147483646; width: min(360px, 40vw); box-shadow: var(--shadow-3); }
+  .minerr-lines button { box-sizing: border-box; border: 1px solid var(--line); border-radius: var(--radius-pill); background: transparent;
+    color: inherit; font: 600 12px/1.6 var(--font-ui); cursor: pointer; }
+  .minerr-lines button:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .minerr-lines button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .minerr-lines-head { display: flex; align-items: center; gap: 8px; padding: 12px 10px 0 16px; }
+  .minerr-lines-head strong { font: 800 15px/1.4 var(--font-ui); }
+  .minerr-lines-head span { margin-right: auto; color: var(--muted); font: 12px/1.4 var(--font-ui); }
+  .minerr-lines-head button { width: 32px; height: 32px; border-color: transparent; border-radius: 50%; font-size: 16px; line-height: 1; }
+  .minerr-lines-bar { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 12px 12px; border-bottom: 1px solid var(--line); }
+  .minerr-lines-bar button { min-height: 28px; padding: 2px 12px; }
+  .minerr-lines-bar button[aria-pressed="true"] { border-color: transparent; background: var(--accent-fill); color: var(--on-accent); }
+  .minerr-lines ol { position: relative; flex: 1; min-height: 0; margin: 0; padding: 10px; overflow: auto; overscroll-behavior: contain; list-style: none; }
+  .minerr-lines li { margin: 0 0 8px; padding: 4px 10px 10px 12px; border-left: 3px solid transparent; border-radius: var(--radius-s);
+    background: var(--raised); cursor: pointer; }
   .minerr-lines li[hidden] { display: none; }
-  .minerr-lines li:hover { box-shadow: inset 0 0 0 1px var(--minerr-side-line); }
-  .minerr-lines li[aria-current="true"] { border-left-color: var(--minerr-side-accent);
-    background: color-mix(in srgb, var(--minerr-side-accent) 16%, var(--minerr-side-card)); }
+  .minerr-lines li:hover { box-shadow: inset 0 0 0 1px var(--line); }
+  .minerr-lines li[aria-current="true"] { border-left-color: var(--accent-fill); background: var(--accent-soft); }
   .minerr-lines .card-head { display: flex; align-items: center; gap: 2px; }
-  .minerr-lines time { margin-right: auto; color: var(--minerr-side-muted); font: 12px/1.5 ui-monospace, monospace; }
-  .minerr-lines li[aria-current="true"] time { color: var(--minerr-side-accent); font-weight: 700; }
-  .minerr-lines .card-head button { width: 28px; height: 26px; padding: 0; border-color: transparent; color: var(--minerr-side-muted); font-size: 14px; line-height: 1; }
-  .minerr-lines .card-head button:hover { border-color: var(--minerr-side-line); color: var(--minerr-side-text); }
+  .minerr-lines time { margin-right: auto; color: var(--muted); font: 12px/1.5 ui-monospace, monospace; }
+  .minerr-lines li[aria-current="true"] time { color: var(--accent); font-weight: 700; }
+  .minerr-lines .card-head button { width: 28px; height: 28px; padding: 0; border-color: transparent; border-radius: 50%; color: var(--muted); font-size: 14px; line-height: 1; }
+  .minerr-lines .card-head button:hover { color: var(--text); }
   .minerr-lines .card-head .add { font-size: 18px; }
   .minerr-lines .card-head .add[aria-disabled="true"] { opacity: 0.35; cursor: not-allowed; }
   .minerr-lines li[data-bookmark] .mark { color: #e0a800; }
-  .minerr-lines .text { margin: 0; font-size: 16px; white-space: pre-line; overflow-wrap: anywhere; }
-  .minerr-lines-empty { margin: 0; padding: 14px; color: var(--minerr-side-muted); }
+  .minerr-lines .text { margin: 0; font: 16px/1.5 var(--font-jp); white-space: pre-line; overflow-wrap: anywhere; }
+  .minerr-lines-empty { margin: 0; padding: 14px; color: var(--muted); }
 `;
 
 // What a filter reads of a line: the statuses of its words, and whether the user bookmarked it.
