@@ -259,3 +259,33 @@ test('segmentAt finds the segment that covers a time, with the end exclusive', a
   const segments = [{ start: 0, end: 2, text: 'あ' }, { start: 2, end: 4, text: 'い' }, { start: 6, end: 8, text: 'う' }];
   assert.deepEqual([0, 1.99, 2, 5, 7, 8].map(t => segmentAt(segments, t)?.text ?? null), ['あ', 'あ', 'い', null, 'う', null]);
 });
+
+test('parseSubtitles reads SRT with a BOM, CRLF, multi-line cues, tags, and position codes', async () => {
+  const { parseSubtitles } = await import('../src/captions.ts');
+  const srt = '﻿1\r\n00:00:01,500 --> 00:00:03,000\r\n<i>猫が</i>魚を\r\n食べた\r\n\r\n'
+    + '2\r\n00:01:02,000 --> 01:00:00,250\r\n{\\an8}今日は雨\r\n\r\n3\r\n00:00:05,000 --> 00:00:04,000\r\n逆の時間\r\n\r\n'
+    + '4\r\n00:00:06,000 --> 00:00:07,000\r\n\r\n';
+  assert.deepEqual(parseSubtitles(srt), [
+    { start: 1.5, end: 3, text: '猫が魚を\n食べた' },
+    { start: 62, end: 3600.25, text: '今日は雨' },
+  ]);
+});
+
+test('parseSubtitles reads WebVTT with a header, notes, styles, cue ids, cue settings, short times, ruby, and entities', async () => {
+  const { parseSubtitles } = await import('../src/captions.ts');
+  const vtt = 'WEBVTT - 日本語\nKind: captions\n\nNOTE a comment\nwith two lines\n\nSTYLE\n::cue { color: yellow }\n\n'
+    + 'intro\n00:02.000 --> 00:04.500 align:start position:10%\n<v 先生><ruby>漢字<rt>かんじ</rt></ruby>を&lt;読む&gt;\n<c.yellow>二行目</c> &amp; 三&nbsp;四\n\n'
+    + '00:00:00.250 --> 00:00:01.000\n最初\n';
+  assert.deepEqual(parseSubtitles(vtt), [
+    { start: 0.25, end: 1, text: '最初' },
+    { start: 2, end: 4.5, text: '漢字を<読む>\n二行目 & 三 四' },
+  ]);
+});
+
+test('toSrt numbers the cues and writes SRT times that parseSubtitles reads back', async () => {
+  const { parseSubtitles, toSrt } = await import('../src/captions.ts');
+  const segments = [{ start: 0, end: 2.5, text: '猫が魚を食べた。' }, { start: 3661.0005, end: 3662.9996, text: '一行目\n二行目' }];
+  const srt = toSrt(segments);
+  assert.equal(srt, '1\n00:00:00,000 --> 00:00:02,500\n猫が魚を食べた。\n\n2\n01:01:01,001 --> 01:01:03,000\n一行目\n二行目\n');
+  assert.deepEqual(parseSubtitles(srt), [{ start: 0, end: 2.5, text: '猫が魚を食べた。' }, { start: 3661.001, end: 3663, text: '一行目\n二行目' }]);
+});
