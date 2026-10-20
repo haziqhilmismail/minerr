@@ -1,8 +1,9 @@
 import type { WordEntry } from './entry.ts';
 
 const CONTENT_POS = new Set(['名詞', '動詞', '形容詞', '副詞', '連体詞', '感動詞', '接続詞']);
-const INFLECTING_POS = new Set(['動詞', '形容詞']);
+export const INFLECTING_POS = new Set(['動詞', '形容詞']);
 const CONJUNCTIVE = new Set(['て', 'で', 'ば']);
+const TE = /^[てで]$/;
 export const JAPANESE = /[぀-ヿ一-鿿]/;
 const KANJI = /[一-鿿々]/;
 
@@ -20,44 +21,52 @@ export const toHiragana = (text: string) => text.replace(/[ァ-ヶ]/g, kana => S
 // The reading of a token, or null if kuromoji does not know it ('*' or none).
 const readingOf = (token: kuromoji.Token) => (token.reading && token.reading !== '*' ? token.reading : null);
 
-function attachesToPrevious(token: kuromoji.Token): boolean {
+// する after a verb is the short causative passive: 読まされる is 読ま|さ|れる.
+export const isShortCausative = (token: kuromoji.Token) => token.basic_form === 'する' && token.conjugated_form === '未然レル接続';
+
+// True if token is part of the word before it, whose last token is previous.
+function attachesToPrevious(token: kuromoji.Token, previous: kuromoji.Token): boolean {
   switch (token.pos) {
     case '助動詞': return true;
-    case '動詞': return token.pos_detail_1 === '非自立' || token.pos_detail_1 === '接尾';
+    // ある after て is a form of the verb (書いてある).
+    case '動詞': return token.pos_detail_1 === '非自立' || token.pos_detail_1 === '接尾'
+      || (token.basic_form === 'ある' && previous.pos === '助詞' && TE.test(previous.surface_form))
+      || isShortCausative(token);
     case '形容詞': return token.pos_detail_1 === '非自立';
+    // 降りそう, 高そう: looks like. The そう of hearsay (降るそうだ) is 名詞 特殊, a word of its own.
+    case '名詞': return token.pos_detail_1 === '接尾' && token.basic_form === 'そう';
     case '助詞': return token.pos_detail_1 === '接続助詞' && CONJUNCTIVE.has(token.surface_form);
     default: return false;
   }
 }
 
+const isWord = (token: kuromoji.Token) => CONTENT_POS.has(token.pos) && JAPANESE.test(token.surface_form);
+
+// The tokens of one word: its head, and for a verb or adjective, the auxiliaries after it (食べ|なかっ|た).
+export type WordTokens = [kuromoji.Token, ...kuromoji.Token[]];
+
+export function wordGroups(tokens: kuromoji.Token[]): WordTokens[] {
+  const words: WordTokens[] = [];
+  for (const token of tokens) {
+    const word = words.at(-1);
+    if (word && isWord(word[0]) && INFLECTING_POS.has(word[0].pos) && attachesToPrevious(token, word.at(-1) ?? word[0])) word.push(token);
+    else words.push([token]);
+  }
+  return words;
+}
+
 // Turns kuromoji (ipadic) tokens into segments whose texts concatenate to the input.
 // Content words carry a lemma; a verb or adjective absorbs its auxiliaries (食べなかった -> 食べる).
 export function groupTokens(tokens: kuromoji.Token[]): Segment[] {
-  const segments: Segment[] = [];
-  // The katakana reading of each segment, null when a token of it has no reading.
-  const readings: (string | null)[] = [];
-  let head: kuromoji.Token | null = null;
-  for (const token of tokens) {
-    const text = token.surface_form;
-    const last = segments.at(-1);
-    if (head && last && INFLECTING_POS.has(head.pos) && attachesToPrevious(token)) {
-      last.text += text;
-      const [reading, more] = [readings.at(-1), readingOf(token)];
-      readings[readings.length - 1] = reading && more ? reading + more : null;
-      continue;
-    }
-    if (CONTENT_POS.has(token.pos) && JAPANESE.test(text)) {
-      head = token;
-      segments.push({ text, lemma: token.basic_form === '*' ? text : token.basic_form });
-    } else {
-      head = null;
-      segments.push({ text });
-    }
-    readings.push(readingOf(token));
-  }
-  return segments.map((segment, i) => {
-    const reading = readings[i];
-    return segment.lemma && reading && KANJI.test(segment.text) ? { ...segment, reading: toHiragana(reading) } : segment;
+  return wordGroups(tokens).map(word => {
+    const [head] = word;
+    const text = word.map(token => token.surface_form).join('');
+    if (!isWord(head)) return { text };
+    const lemma = head.basic_form === '*' ? head.surface_form : head.basic_form;
+    // The katakana reading, null when a token of the word has no reading.
+    const readings = word.map(readingOf);
+    const reading = readings.every(Boolean) ? readings.join('') : null;
+    return reading && KANJI.test(text) ? { text, lemma, reading: toHiragana(reading) } : { text, lemma };
   });
 }
 

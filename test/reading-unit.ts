@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import kuromoji from 'kuromoji';
 import { chord, statusTarget } from '../src/chord.ts';
 import { groupTokens, lookupCandidates, splitSegments, toHiragana } from '../src/group.ts';
+import { inflection, stepsText } from '../src/inflection.ts';
 import { entryStars, highs, morae, pitchPattern, stars, toMeta, withMeta } from '../src/meta.ts';
 import { at, isStringList } from '../src/parse.ts';
 import { sentenceBounds } from '../src/sentence.ts';
@@ -169,4 +170,41 @@ test('splitSegments cuts the segments of a run at its text nodes and marks the p
     [{ text: 'かくて', lemma: '暖かい', part: 'rest' }, { text: '湿った', lemma: '湿る', reading: 'しめった' }],
   ]);
   assert.deepEqual(splitSegments([{ text: 'あいう' }], [1, 1, 1]), [[{ text: 'あ' }], [{ text: 'い' }], [{ text: 'う' }]]);
+});
+
+test('inflection: the steps from the dictionary form to an inflected verb or adjective, and none for a dictionary form', async () => {
+  const tokenizer = await new Promise<kuromoji.Tokenizer>((resolve, reject) =>
+    kuromoji.builder({ dicPath: join(here, '..', 'node_modules', 'kuromoji', 'dict') }).build((err, t) => (err ? reject(err) : resolve(t))));
+  const line = (text: string) => stepsText(inflection(tokenizer.tokenize(text)));
+  assert.deepEqual(inflection(tokenizer.tokenize('すいてきた')), [
+    { text: 'すい', label: '' }, { text: 'て', label: 'て-form' }, { text: 'き', label: '〜てくる: start to / come to' }, { text: 'た', label: 'past' },
+  ]);
+  assert.deepEqual(Object.fromEntries(['食べなかった', '行きます', '見られる', '読ませる', '書いている', '食べてしまった', '寒くなかった', 'した', '行けば'].map(text => [text, line(text)])), {
+    食べなかった: '食べ + なかっ (negative) + た (past)',
+    行きます: '行き + ます (polite)',
+    見られる: '見 + られる (passive / potential)',
+    読ませる: '読ま + せる (causative)',
+    書いている: '書い + て (て-form) + いる (〜ている: ongoing / state)',
+    食べてしまった: '食べ + て (て-form) + しまっ (〜てしまう: completely / by accident) + た (past)',
+    寒くなかった: '寒く + なかっ (negative) + た (past)',
+    した: 'し + た (past)',
+    行けば: '行け + ば (conditional)',
+  });
+  assert.deepEqual(Object.fromEntries(['読まされる', '書いてある', '降りそう', '食べたら', '食べず', '行かなきゃ', '寒く', '行け', '食べよう', '食べたがる'].map(text => [text, line(text)])), {
+    読まされる: '読ま + さ (causative) + れる (passive / potential)',
+    書いてある: '書い + て (て-form) + ある (〜てある: done and left so)',
+    降りそう: '降り + そう (looks like)',
+    食べたら: '食べ + たら (conditional)',
+    食べず: '食べ + ず (negative: without)',
+    行かなきゃ: '行か + なきゃ (must / if not)',
+    寒く: '寒く (adverb)',
+    行け: '行け (imperative)',
+    食べよう: '食べよ + う (volitional)',
+    食べたがる: '食べ + た (want to) + がる (〜がる: shows signs of)',
+  });
+  assert.deepEqual(groupTokens(tokenizer.tokenize('書いてある')), [{ text: '書いてある', lemma: '書く', reading: 'かいてある' }]);
+  assert.deepEqual(groupTokens(tokenizer.tokenize('降りそう')), [{ text: '降りそう', lemma: '降りる', reading: 'おりそう' }]);
+  assert.deepEqual(groupTokens(tokenizer.tokenize('読まされる')), [{ text: '読まされる', lemma: '読む', reading: 'よまされる' }]);
+  // On the page 勉強した is two words, 勉強 and した: the popup of した shows the line of する.
+  assert.deepEqual(['食べる', '寒い', '猫', '勉強した'].map(line), ['', '', '', '']);
 });

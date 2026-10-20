@@ -6,6 +6,9 @@ declare namespace kuromoji {
     surface_form: string;
     pos: string;
     pos_detail_1: string;
+    // The conjugation of a verb, adjective, or auxiliary: 五段・カ行イ音便 and 連用タ接続 in 書い.
+    conjugated_type: string;
+    conjugated_form: string;
     basic_form: string;
     // In katakana. A word that is not in the dictionary has none.
     reading?: string;
