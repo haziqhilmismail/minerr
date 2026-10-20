@@ -95,21 +95,23 @@ export function markerValues(card: CardFields, page: PageInfo, media: MediaHtml)
   };
 }
 
-// Senses as Yomitan {glossary} writes them: Lapis counts the <li data-dictionary> items to hide the Glossary copy of MainDefinition.
+// Senses as Yomitan {glossary} writes them, with its compact tags: a sense shows its tags only when they differ from the sense
+// before, and the glossary items of a sense go on one line.
 function yomitanGlossary(senses: Sense[]): string {
+  let previous = '';
   const items = senses.map(({ dict, tags, glossary }) => {
-    const label = `<i>(${[...tags.map(tag => tag.name), dict].map(escapeHtml).join(', ')})</i> `;
-    const lines = glossary.map(line => escapeHtml(line).replaceAll('\n', '<br>'));
-    const body = lines.length <= 1 ? lines.join('') : `<ul>${lines.map(line => `<li>${line}</li>`).join('')}</ul>`;
-    return `<li data-dictionary="${escapeHtml(dict)}">${label}${body}</li>`;
+    const names = tags.map(tag => escapeHtml(tag.name)).join(', ');
+    const label = names && names !== previous ? `<i>(${names})</i> ` : '';
+    previous = names;
+    return `<li data-dictionary="${escapeHtml(dict)}">${label}${glossary.map(line => escapeHtml(line).replaceAll('\n', '; ')).join('; ')}</li>`;
   });
-  return `<div style="text-align: left;" class="yomitan-glossary"><ol>${items.join('')}</ol></div>`;
+  return items.length ? `<div style="text-align: left;" class="yomitan-glossary"><ol>${items.join('')}</ol></div>` : '';
 }
 
-// The senses of the first dictionary of the entry, as Yomitan {single-glossary-<dictionary>}.
+// The main meaning: the first sense of the entry, as Yomitan {single-glossary-<dictionary>} writes it. The "forms" sense of
+// JMdict is a list of spellings, not a meaning.
 function mainDefinition(entry: Entry | null): string {
-  const dict = entry?.senses[0]?.dict;
-  return entry ? yomitanGlossary(entry.senses.filter(sense => sense.dict === dict)) : '';
+  return entry ? yomitanGlossary(entry.senses.filter(({ tags }) => !tags.some(tag => tag.name === 'forms')).slice(0, 1)) : '';
 }
 
 // Yomitan {frequencies}.
@@ -132,11 +134,13 @@ export function lapisFields(card: CardFields, page: PageInfo, media: MediaHtml):
     SentenceFurigana: '',
     SentenceAudio: values.audio,
     Picture: values.image,
-    Glossary: entry ? yomitanGlossary(entry.senses) : values.definition,
+    // Only the main meaning for now: the other senses stay out of the card.
+    Glossary: '',
     Hint: '',
     IsWordAndSentenceCard: '',
     IsClickCard: '',
-    IsSentenceCard: '',
+    // A sentence card: the sentence on the front, the word and its definition on the back.
+    IsSentenceCard: 'x',
     IsAudioCard: '',
     PitchPosition: entry ? pitchPositions(entry.pitches) : '',
     PitchCategories: entry ? pitchCategories(entry) : '',

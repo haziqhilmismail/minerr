@@ -61,7 +61,9 @@ test('pitchCategories names each pattern one time, with kifuku for a verb or an 
 
 test('lapisFields fills every field of the Lapis note type in order', async () => {
   const { lapisFields } = await import('../src/anki.ts');
-  const entry: Entry = { ...TABERU, senses: [...TABERU.senses.slice(0, 2), { dict: 'Jitendex', tags: [], glossary: ['to eat (Jitendex)', 'a <b>\nline'] }] };
+  const forms = { dict: 'JMdict', tags: [{ name: 'forms', category: '', notes: '' }], glossary: ['食べる、喰べる'] };
+  const entry: Entry = { ...TABERU, senses: [forms, ...TABERU.senses.slice(0, 2), { dict: 'Jitendex', tags: [{ name: 'v1', category: 'partOfSpeech', notes: '' }], glossary: ['to eat (Jitendex)', 'a <b>\nline'] },
+    { dict: 'Jitendex', tags: [{ name: 'forms', category: '', notes: '' }], glossary: ['食べる、喰べる'] }] };
   const fields = lapisFields({ ...CARD, entry, selection: '食べなかった' }, { url: 'https://example.com/?a=1&b=2', title: 'Cats & fish' },
     { image: '<img src="minerr-1.jpg">', audio: '[sound:minerr-1.mp3]', wordaudio: '[sound:minerr-word-ab.mp3]' });
   assert.deepEqual(Object.entries(fields), Object.entries({
@@ -70,20 +72,17 @@ test('lapisFields fills every field of the Lapis note type in order', async () =
     ExpressionReading: 'たべる',
     ExpressionAudio: '[sound:minerr-word-ab.mp3]',
     SelectionText: '食べなかった',
-    MainDefinition: '<div style="text-align: left;" class="yomitan-glossary"><ol>'
-      + '<li data-dictionary="JMdict"><i>(v1, JMdict)</i> to eat</li><li data-dictionary="JMdict"><i>(JMdict)</i> to live on</li></ol></div>',
+    MainDefinition: '<div style="text-align: left;" class="yomitan-glossary"><ol><li data-dictionary="JMdict"><i>(v1)</i> to eat</li></ol></div>',
     DefinitionPicture: '',
     Sentence: '猫が魚を<b>食べなかった</b>。',
     SentenceFurigana: '',
     SentenceAudio: '[sound:minerr-1.mp3]',
     Picture: '<img src="minerr-1.jpg">',
-    Glossary: '<div style="text-align: left;" class="yomitan-glossary"><ol>'
-      + '<li data-dictionary="JMdict"><i>(v1, JMdict)</i> to eat</li><li data-dictionary="JMdict"><i>(JMdict)</i> to live on</li>'
-      + '<li data-dictionary="Jitendex"><i>(Jitendex)</i> <ul><li>to eat (Jitendex)</li><li>a &lt;b&gt;<br>line</li></ul></li></ol></div>',
+    Glossary: '',
     Hint: '',
     IsWordAndSentenceCard: '',
     IsClickCard: '',
-    IsSentenceCard: '',
+    IsSentenceCard: 'x',
     IsAudioCard: '',
     PitchPosition: '<ol><li>[2]</li><li>[0]</li></ol>',
     PitchCategories: 'kifuku,heiban',
