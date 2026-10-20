@@ -246,7 +246,11 @@ The **Comprehension** section shows these items:
 | 60% to 69% | Challenging |
 | Less than 60% | Ambitious |
 
-On a YouTube video, the score uses only the subtitle lines that the overlay showed in the tab. The score changes while you watch. When you open a different video, the count starts again. You cannot click a subtitle sentence, because the line is not on the page now.
+On a video with timed subtitles, the score uses all the subtitle lines of the video. Timed subtitles are WhisperX subtitles, the YouTube subtitles from the Minerr server, or a subtitle file in the player. The score is available when the subtitles load, before you play the video. The menu then shows "N words in all M subtitle lines of the video."
+
+If a YouTube video has only the YouTube captions in the overlay, the score uses only the lines that the overlay showed in the tab. The score changes while you watch. When you open a different video, the count starts again. The menu then shows "N words in the M subtitle lines that the overlay showed."
+
+You cannot click a subtitle sentence, because the line is not on the page now.
 
 Migaku also uses the number of i+1 sentences in its score. Minerr uses only the percent of the words.
 
