@@ -29,7 +29,7 @@ async function ensureOffscreen(): Promise<void> {
 // finishes a move that stopped. It starts there, not at the top of this file, so a worker that only runs a command does not open IndexedDB.
 let moved: Promise<void> | undefined;
 
-async function toOffscreen<K extends 'parse' | 'lookup' | 'pitch' | 'lookupText' | 'wordKeys'>(message: Message<K>): Promise<Reply<K>> {
+async function toOffscreen<K extends 'parse' | 'lookup' | 'inflection' | 'pitch' | 'lookupText' | 'wordKeys'>(message: Message<K>): Promise<Reply<K>> {
   await ensureOffscreen();
   moved ??= listDictionaries()
     .then(dictionaries => moveStatusKeys(dictionaries, words => call({ type: 'wordKeys', words, target: 'offscreen' })))
@@ -84,6 +84,7 @@ serve(
   {
     parse: toOffscreen,
     lookup: toOffscreen,
+    inflection: toOffscreen,
     pitch: toOffscreen,
     lookupText: toOffscreen,
     cardDraft,

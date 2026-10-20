@@ -5,7 +5,7 @@ import { type HoverMode, hoverDelay, hoverMode } from './hover.ts';
 import { installKeys } from './keys.ts';
 import type { Entry } from './meta.ts';
 import {
-  addLabel, type Anchor, anchorRect, createBox, hideBox, isPopup, type Layer, markStatus, mount, position, render,
+  addLabel, type Anchor, anchorRect, anchorText, createBox, hideBox, isPopup, type Layer, markStatus, mount, position, render,
   setPopupVisible, showBox, showMessage, toast, type View,
 } from './popup-view.ts';
 import { call, messageOf } from './rpc.ts';
@@ -119,10 +119,15 @@ async function wrapWords(root: Element): Promise<void> {
 const countOf = (key: string) => [...document.querySelectorAll<HTMLElement>('.ml-word:not([data-ml-cont])')].filter(span => wordOf(span).key === key).length;
 
 async function open(anchor: Anchor, { lemma, word, headword }: Pick<View, 'lemma' | 'word' | 'headword'>, depth: number, lookup: Promise<Entry[]>): Promise<void> {
-  const view: View = { anchor, lemma, word, headword, status: 'unknown', groups: [], count: countOf(word.key) };
+  const view: View = { anchor, lemma, word, headword, status: 'unknown', groups: [], inflection: '', count: countOf(word.key) };
+  // The popup shows without the line if the parse fails.
+  const inflection = call({ type: 'inflection', text: anchorText(anchor) }).catch(error => {
+    console.warn('minerr inflection failed', error);
+    return '';
+  });
   opening = view;
   try {
-    [view.groups, view.status] = await Promise.all([lookup, getStatuses([word]).then(statuses => statuses.get(word.key) ?? 'unknown')]);
+    [view.groups, view.status, view.inflection] = await Promise.all([lookup, getStatuses([word]).then(statuses => statuses.get(word.key) ?? 'unknown'), inflection]);
   } catch (error) {
     console.warn('minerr lookup failed', error);
   }

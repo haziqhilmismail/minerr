@@ -142,7 +142,13 @@ try {
   await tab.hover('#ruby .ml-word[data-ml-lemma="暖かい"] >> nth=0');
   await tab.locator('minerr-popup .popup .lemma', { hasText: '暖かい' }).waitFor();
   assert.equal(await tab.locator('minerr-popup .popup .surface').innerText(), 'On the page: 暖かくて · Appears 1 time on this page');
+  assert.equal(await tab.locator('minerr-popup .popup .inflection').innerText(), '暖かい → 暖かく + て (て-form)');
   assert.equal(await tab.$$eval('#ruby .ml-word[data-ml-active]', spans => spans.map(span => span.textContent).join()), '暖,かくて');
+  await tab.keyboard.press('Escape');
+  await tab.mouse.move(0, 0);
+  await tab.hover('#ruby .ml-word[data-ml-lemma="空気"]');
+  await tab.locator('minerr-popup .popup .lemma', { hasText: '空気' }).waitFor();
+  assert.equal(await tab.locator('minerr-popup .popup .inflection').count(), 0, 'a word in its dictionary form has no inflection line');
   await tab.keyboard.press('Escape');
   await tab.mouse.move(0, 0);
   console.log('a word across text nodes is one word: 暖かくて, 低い, 食べた; ruby text is not parsed');
@@ -173,6 +179,7 @@ try {
   console.log('popup text:', JSON.stringify(popupText));
   assert.match(popupText, /^食べる\s*たべる/);
   assert.equal(await popup.locator('li').first().innerText(), 'v1 vt to eat (fixture)\nFixture');
+  assert.equal(await popup.locator('.inflection').innerText(), '食べる → 食べ + なかっ (negative) + た (past)');
   const chips = (locator: Locator) => locator.locator('.tag')
     .evaluateAll((tags: HTMLElement[]) => tags.map(tag => [tag.textContent, tag.className, tag.title]));
   assert.deepEqual(await chips(popup.locator('header')), [

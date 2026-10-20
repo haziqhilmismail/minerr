@@ -1,6 +1,7 @@
 import { entryIndex, hasTerm, listDictionaries, lookup, pitchPatterns } from './src/db.ts';
 import { dictionaryWords, entrySegments, type Words } from './src/entry.ts';
 import { groupTokens, lookupCandidates } from './src/group.ts';
+import { inflection, stepsText } from './src/inflection.ts';
 import { serve } from './src/rpc.ts';
 
 const tokenizer = new Promise<kuromoji.Tokenizer>((resolve, reject) => {
@@ -24,6 +25,8 @@ serve(
       return Promise.all(texts.map(text => entrySegments(parser.tokenize(text), words)));
     },
     lookup: ({ lemma }) => lookup(lemma),
+    // The word alone: the popup already has its text, and the page sends no parts of each word.
+    inflection: async ({ text }) => stepsText(inflection((await tokenizer).tokenize(text))),
     pitch: ({ words }) => pitchPatterns(words),
     lookupText: async ({ text }) => {
       const [parser, words] = await Promise.all([tokenizer, dictionaryWordsNow()]);

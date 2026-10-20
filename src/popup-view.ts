@@ -35,6 +35,7 @@ const STYLE = `
   .corner button:hover { background: var(--raised); color: var(--text); }
   .reading { font-size: 16px; color: var(--muted); }
   .surface { font-size: 12px; color: var(--muted); }
+  .inflection { font-size: 12px; color: var(--text); }
   .statuses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: 10px; padding: 3px;
     border-radius: 8px; background: var(--raised); }
   button { font: inherit; color: inherit; cursor: pointer; }
@@ -147,6 +148,8 @@ export interface View {
   headword?: { text: string; reading: string } | undefined;
   status: Status;
   groups: Entry[];
+  // How the word on the page is built from its dictionary form, '' for a dictionary form.
+  inflection: string;
   // The number of words on the page with this status key.
   count: number;
 }
@@ -262,6 +265,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, editCard, clo
         first?.termTags.length ? el('span', { className: 'tags' }, ...chips(first.termTags)) : ''),
       first ? metaRow(first) : '',
       notes.length ? el('div', { className: 'surface', textContent: notes.join(' · ') }) : '',
+      view.inflection ? el('div', { className: 'inflection', textContent: `${title} → ${view.inflection}` }) : '',
       statusRow,
       el('div', { className: 'corner' },
         el('button', { className: 'off', innerHTML: POWER_ICON, title: 'Turn Minerr off in all tabs (Alt+Shift+M turns it on)', ariaLabel: 'Turn Minerr off', onclick: () => minerrEnabled.set(false) }),

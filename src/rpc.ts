@@ -11,7 +11,7 @@ import type { Entry, PitchPattern } from './meta.ts';
 import type { Health, Job } from './whisper.ts';
 
 // Every message type, with the fields that call() sends and the value that its handler replies with.
-// The service worker handles parse to siteCaptions; it passes parse, lookup, pitch, lookupText, and wordKeys on to the offscreen document.
+// The service worker handles parse to siteCaptions; it passes parse, lookup, inflection, pitch, lookupText, and wordKeys on to the offscreen document.
 // The content scripts of a YouTube tab handle subsState, subsGenerate, and subsUse.
 // The page with the video overlay (a content script, or the player page) handles videoLine and videoRecord.
 // The content scripts of a page that is not YouTube handle videoAttach.
@@ -19,6 +19,8 @@ import type { Health, Job } from './whisper.ts';
 interface Protocol {
   parse: { request: { texts: string[] }; reply: Segment[][] };
   lookup: { request: { lemma: string }; reply: Entry[] };
+  // How the text of a word is built from its dictionary form (src/inflection.ts), '' for a dictionary form.
+  inflection: { request: { text: string }; reply: string };
   pitch: { request: { words: { lemma: string; reading: string }[] }; reply: (PitchPattern | null)[] };
   // The longest dictionary word at the start of text, and the number of characters of text that it covers.
   lookupText: { request: { text: string }; reply: { lemma: string; length: number; entries: Entry[]; entry: WordEntry | null } | null };

@@ -780,6 +780,14 @@ To turn the sentence highlight off or on, press `Alt+Shift+S` on a page. Or, on 
 
 Under the word, the popup shows how many times the word appears on the page, for example `Appears 4 times on this page`. Minerr counts the words with the same status key, so 食べた and 食べなかった both count for 食べる, and ねこ and ネコ both count for 猫.
 
+### How the word is built
+
+If the word on the page is a verb or an i-adjective in an inflected form, the popup shows how the word is built from its dictionary form. Each part has a label in parentheses. For example, the popup of 食べなかった shows this line:
+
+`食べる → 食べ + なかっ (negative) + た (past)`
+
+A word in its dictionary form has no line. If Minerr does not know a part, the line shows the dictionary form of the part as its label. Minerr cuts 勉強した into two words, 勉強 and した, so the popup of した shows the line of する.
+
 ## Furigana
 
 Minerr can show the reading of a word in hiragana over the word. It shows readings only over words with kanji.
@@ -907,6 +915,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/db.ts` | The dictionary storage in IndexedDB. |
 | `src/entry.ts` | The dictionary entry and the status key of each word, and the join of compound nouns. |
 | `src/group.ts`, `src/sentence.ts`, `src/yomitan.ts`, `src/zip.ts` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
+| `src/inflection.ts` | Pure function: the parts of an inflected word and their labels, for the popup line. |
 | `src/theme.ts`, `theme.css` | The theme setting, and the palette of the extension pages. |
 | `src/hover.ts` | The word popup setting, and the rule that decides when the popup opens. |
 | `action.html`, `action.ts` | The toolbar popup. |
