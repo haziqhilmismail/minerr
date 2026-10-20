@@ -127,6 +127,8 @@ test('a word with kanji gets its reading in hiragana; kana words and unknown wor
   assert.deepEqual(lookupCandidates('食べなかった', parse).slice(0, 3),
     [{ lemma: '食べなかった', length: 6 }, { lemma: '食べる', length: 6 }, { lemma: '食べなかっ', length: 5 }]);
   assert.deepEqual(lookupCandidates('猫が', parse), [{ lemma: '猫が', length: 2 }, { lemma: '猫', length: 1 }]);
+  assert.deepEqual(lookupCandidates('接して', parse).slice(0, 2), [{ lemma: '接して', length: 3 }, { lemma: '接す', length: 3 }]);
+  assert.deepEqual(lookupCandidates('接して', parse)[2], { lemma: '接する', length: 3 });
   assert.equal(lookupCandidates('あ'.repeat(30), parse)[0]?.length, 20);
 });
 
