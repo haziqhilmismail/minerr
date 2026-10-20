@@ -1,5 +1,5 @@
 import {
-  addDraft, type CardFields, fieldValues, getDeck, getNoteType, installLapis, modelFieldNames, modelNames, type NoteDraft, noteDraft, usesWordAudio, version,
+  addDraft, fieldValues, getDeck, getNoteType, installLapis, modelFieldNames, modelNames, type NoteDraft, noteDraft, usesWordAudio, version,
 } from './src/anki.ts';
 import { cardMedia, widenSentence } from './src/lineaudio.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
@@ -41,7 +41,7 @@ async function capture(windowId: number): Promise<string> {
 }
 
 // The note of a card with its media: the screenshot of the tab, the audio of the subtitle line, and the audio of the word.
-async function cardDraft(card: CardFields, sender: chrome.runtime.MessageSender): Promise<NoteDraft> {
+async function cardDraft({ card }: Message<'cardDraft'>, sender: chrome.runtime.MessageSender): Promise<NoteDraft> {
   if (!sender.tab) throw new Error('Add cards from a tab.');
   const image = await capture(sender.tab.windowId);
   const noteType = await getNoteType();
@@ -54,8 +54,9 @@ async function cardDraft(card: CardFields, sender: chrome.runtime.MessageSender)
   return noteDraft(noteType, { ...card, sentence, ...(audio ? { audio } : {}), ...(word ? { wordAudio: word } : {}) }, { url, title }, image);
 }
 
-async function addCard({ card }: Message<'addCard'>, sender: chrome.runtime.MessageSender): Promise<number> {
-  const noteId = await addDraft(await getDeck(), await cardDraft(card, sender));
+// A draft is the note of the edit form; without one, the card goes to Anki at once.
+async function addCard({ card, draft }: Message<'addCard'>, sender: chrome.runtime.MessageSender): Promise<number> {
+  const noteId = await addDraft(await getDeck(), draft ?? await cardDraft({ type: 'cardDraft', card }, sender));
   const statuses = await getStatuses([card.word]);
   if (statuses.get(card.word) === 'unknown') await setStatus(card.word, 'learning');
   return noteId;
@@ -77,6 +78,7 @@ serve(
     lookup: toOffscreen,
     pitch: toOffscreen,
     lookupText: toOffscreen,
+    cardDraft,
     addCard,
     importKnown,
     ankiInstallLapis: installLapis,

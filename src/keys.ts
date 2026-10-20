@@ -10,10 +10,14 @@ import { sameWord } from './words.ts';
 // What the keys can do with the popup. popup.ts gives it to installKeys.
 export interface PopupKeys {
   isOpen: () => boolean;
+  // A card form is open: only Esc works, to close it.
+  isEditing: () => boolean;
   // The status of the word of the top popup.
   setStatus: (status: Status) => void;
   addCard: () => void;
-  // Closes the top popup.
+  // Opens the card form of the top popup.
+  editCard: () => void;
+  // Closes the card form, else the top popup.
   close: () => void;
   // The word span of the first popup, if it is open.
   word: () => HTMLElement | null;
@@ -102,6 +106,7 @@ export function installKeys(popup: PopupKeys): void {
   const bindings: Record<string, (event: KeyboardEvent) => boolean> = {
     ...Object.fromEntries(STATUS_NAMES.map(status => [STATUSES[status].hotkey, statusKey(status)])),
     a: whenOpen(popup.addCard),
+    e: whenOpen(popup.editCard),
     // Shift+N is the next video on YouTube; only a popup that Shift opened takes it.
     n: event => (!event.shiftKey || popup.isOpen()) && nextUnknown(),
     'alt+s': popup.lookupSelection,
@@ -121,7 +126,7 @@ export function installKeys(popup: PopupKeys): void {
     if (event.ctrlKey || event.metaKey || isEditable(event)) return;
     const name = chord(event);
     // A site that is off still takes the key that turns it on.
-    if ((!active && name !== 'alt+shift+d') || !bindings[name]?.(event)) return;
+    if ((!active && name !== 'alt+shift+d') || (popup.isEditing() && name !== 'Escape') || !bindings[name]?.(event)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   }, true);

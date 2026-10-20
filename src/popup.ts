@@ -1,4 +1,5 @@
-import { type CardFields, definitionHtml, escapeHtml } from './anki.ts';
+import { type CardFields, definitionHtml, escapeHtml, type NoteDraft } from './anki.ts';
+import { cardForm } from './cardform.ts';
 import { JAPANESE } from './group.ts';
 import { type HoverMode, hoverDelay, hoverMode } from './hover.ts';
 import { installKeys } from './keys.ts';
@@ -40,6 +41,8 @@ let hovered: HTMLElement | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
 // The popup whose lookup runs; a newer open or a close makes it stale.
 let opening: View | null = null;
+// The popup with the open card form (E). While it is open, no other popup opens, and Esc closes the form.
+let editing: Layer | null = null;
 
 const top = () => layers.at(-1) ?? null;
 const spanOf = (layer: Layer | undefined) => (layer?.view.anchor.kind === 'word' ? layer.view.anchor.span : null);
@@ -57,7 +60,17 @@ function markActive(): void {
   setPopupWord(spanOf(layers[0]));
 }
 
+// False if no card form is open.
+function stopEdit(): boolean {
+  if (!editing) return false;
+  editing.box.classList.remove('editing');
+  editing.box.querySelector('form')?.remove();
+  editing = null;
+  return true;
+}
+
 function closeFrom(depth: number): void {
+  if (editing && layers.indexOf(editing) >= depth) stopEdit();
   for (const layer of layers.splice(depth)) hideBox(layer.box);
   markActive();
 }
@@ -100,7 +113,7 @@ async function open(anchor: Anchor, lemma: string, depth: number, lookup: Promis
   const box = (boxes[depth] ??= createBox());
   mount();
   showBox(box);
-  layers.push(render(box, view, { addCard, close: () => close() }));
+  layers.push(render(box, view, { addCard, editCard, close: () => close() }));
   position(box, anchorRect(anchor));
   markActive();
   const definitions = box.querySelector('.definitions');
@@ -135,11 +148,8 @@ function lookupSelection(): boolean {
 
 const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
 
-async function addCard(): Promise<void> {
-  const layer = top();
-  if (!layer || layer.addButton.disabled) return;
-  const { view, addButton: button } = layer;
-  const card: CardFields = {
+function cardOf(view: View): CardFields {
+  return {
     word: view.lemma,
     reading: view.groups[0]?.reading ?? '',
     sentence: sentenceHtml(view.anchor),
@@ -147,21 +157,52 @@ async function addCard(): Promise<void> {
     entry: view.groups[0] ?? null,
     selection: view.anchor.kind === 'text' ? view.anchor.range.toString().trim() : '',
   };
+}
+
+// Runs work with the add button busy, and shows its error in the popup. hide: the popup hides first, for the screenshot.
+async function busy<T>(layer: Layer, label: string, hide: boolean, work: () => Promise<T>): Promise<T | null> {
+  const button = layer.addButton;
   button.disabled = true;
-  button.replaceChildren('Adding to Anki…');
-  setPopupVisible(false);
-  await nextFrame();
-  await nextFrame();
+  button.replaceChildren(label);
+  if (hide) {
+    setPopupVisible(false);
+    await nextFrame();
+    await nextFrame();
+  }
   try {
-    await call({ type: 'addCard', card });
-    if (layers.includes(layer)) showMessage(layer, 'Added to Anki.');
+    return await work();
   } catch (error) {
     if (layers.includes(layer)) showMessage(layer, messageOf(error), true);
+    return null;
   } finally {
     setPopupVisible(true);
     button.disabled = false;
     button.replaceChildren(...addLabel());
   }
+}
+
+async function send(layer: Layer, card: CardFields, hide: boolean, draft?: NoteDraft): Promise<void> {
+  const added = await busy(layer, 'Adding to Anki…', hide, () => call({ type: 'addCard', card, ...(draft ? { draft } : {}) }));
+  if (added !== null && layers.includes(layer)) showMessage(layer, 'Added to Anki.');
+}
+
+async function addCard(): Promise<void> {
+  const layer = top();
+  if (layer && !layer.addButton.disabled) await send(layer, cardOf(layer.view), true);
+}
+
+// E: the card form, with the fields that the service worker made for the note type, the screenshot, and the audio.
+async function editCard(): Promise<void> {
+  const layer = top();
+  if (!layer || layer.addButton.disabled) return;
+  const card = cardOf(layer.view);
+  const draft = await busy(layer, 'Making the card…', true, () => call({ type: 'cardDraft', card }));
+  if (!draft || !layers.includes(layer) || editing) return;
+  editing = layer;
+  const form = cardForm(draft, { send: edited => { stopEdit(); send(layer, card, false, edited); }, cancel: stopEdit });
+  layer.box.classList.add('editing');
+  layer.box.append(form);
+  form.querySelector('textarea')?.focus();
 }
 
 let enabled = true;
@@ -176,7 +217,7 @@ hoverMode.watch(value => { mode = value; });
 function consider(span: HTMLElement, shift: boolean, buttonDown: boolean): void {
   clearTimeout(timer);
   const depth = depthOf(span);
-  if (!enabled || depth >= MAX_LAYERS || sameWord(span, spanOf(layers[depth]))) return;
+  if (!enabled || editing || depth >= MAX_LAYERS || sameWord(span, spanOf(layers[depth]))) return;
   const delay = hoverDelay({
     // A word in a popup opens a popup only with Shift, so the mouse can cross the definitions.
     mode: depth > 0 ? 'shift' : mode,
@@ -230,12 +271,14 @@ window.addEventListener('keydown', event => {
 
 installKeys({
   isOpen: () => layers.length > 0,
+  isEditing: () => editing !== null,
   setStatus: (status: Status) => {
     const layer = top();
     if (layer) setStatus(layer.view.lemma, status);
   },
   addCard,
-  close: () => close(),
+  editCard,
+  close: () => { if (!stopEdit()) close(); },
   word: () => spanOf(layers[0]),
   openWord,
   lookupSelection,

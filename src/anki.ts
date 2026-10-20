@@ -303,7 +303,7 @@ async function store(file: MediaFile): Promise<string> {
   return stored;
 }
 
-// A note before it goes to Anki. The fields name each file of media by its filename.
+// A note before it goes to Anki. The fields name each file of media by its filename; the edit form changes the fields.
 export interface NoteDraft {
   modelName: string;
   fields: Record<string, string>;
@@ -336,7 +336,7 @@ export function noteDraft(noteType: NoteType, card: CardFields, page: PageInfo, 
 export const usesWordAudio = (noteType: NoteType): boolean =>
   noteType.kind === 'lapis' || (noteType.kind === 'custom' && Object.values(noteType.fields).some(template => template.includes('{wordaudio}')));
 
-export const LAPIS_MISSING = 'Anki has no Lapis note type. Install Lapis in Options, or select another note type.';
+const LAPIS_MISSING = 'Anki has no Lapis note type. Install Lapis in Options, or select another note type.';
 
 // Adds the note and returns its ID. Only the files that a field still names go to the media folder of Anki.
 export async function addDraft(deck: string, { modelName, fields, media }: NoteDraft): Promise<number> {

@@ -79,6 +79,8 @@ const STYLE = `
     font-weight: 700; }
   .add:hover { filter: brightness(1.08); }
   .add:disabled { cursor: progress; opacity: .65; filter: none; }
+  .actions { display: flex; gap: 8px; }
+  .edit { padding: 8px 12px; border: 0; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--line); background: var(--raised); font-weight: 700; }
   .message { margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--ok); }
   .message:empty { display: none; }
   .message.error { color: var(--error); }
@@ -210,10 +212,11 @@ function metaRow({ reading, frequencies, pitches }: Entry): HTMLElement | '' {
 
 export interface Actions {
   addCard: () => void;
+  editCard: () => void;
   close: () => void;
 }
 
-export function render(box: HTMLDivElement, view: View, { addCard, close }: Actions): Layer {
+export function render(box: HTMLDivElement, view: View, { addCard, editCard, close }: Actions): Layer {
   const { lemma, groups } = view;
   const [first, ...others] = groups;
   const reading = first?.reading ?? '';
@@ -244,6 +247,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, close }: Acti
     ])]
     : [el('p', { className: 'empty', textContent: 'No dictionary entry. Import a dictionary in the options page.' })];
   const addButton = el('button', { className: 'add', onclick: addCard }, ...addLabel());
+  const editButton = el('button', { className: 'edit', title: 'Edit the card before Minerr sends it', onclick: editCard }, 'Edit ', el('kbd', { textContent: 'E' }));
   const message = el('div', { className: 'message', role: 'status' });
   box.replaceChildren(
     el('header', {},
@@ -258,7 +262,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, close }: Acti
         el('button', { className: 'off', innerHTML: POWER_ICON, title: 'Turn Minerr off in all tabs (Alt+Shift+M turns it on)', ariaLabel: 'Turn Minerr off', onclick: () => minerrEnabled.set(false) }),
         el('button', { className: 'close', textContent: '✕', title: 'Close (Esc)', ariaLabel: 'Close', onclick: close }))),
     el('div', { className: 'definitions' }, ...definitions),
-    el('footer', {}, addButton, message),
+    el('footer', {}, el('div', { className: 'actions' }, addButton, editButton), message),
   );
   const layer = { box, view, message, addButton, statusButtons };
   markStatus(layer, view.status);

@@ -27,6 +27,7 @@ The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedi
 - If the word has more than one reading in the dictionaries, the popup shows each reading with its own definitions.
 - It keeps the word statuses in the browser. A status change updates the underlines in all open tabs at once.
 - It sends cards to Anki through AnkiConnect, by default to the Lapis note type of the [mining guide](https://learnjapanese.moe/mining/). It makes the deck if it does not exist.
+- You can edit each field of a card before Minerr sends it.
 - It can mark the words of your mature Anki cards as known.
 - On YouTube, it shows the subtitles in its own large overlay at the bottom center of the video. You can look up and mine the words in the overlay. The overlay also works on other video sites and on video files from your computer.
 - A card from a subtitle line gets the audio of the line.
@@ -117,7 +118,8 @@ When the popup is open, use these keys:
 | `3` | Set the word to known. |
 | `4` | Set the word to ignored. |
 | `A` | Add an Anki card. |
-| `Esc` | Close the popup. |
+| `E` | Edit the card, then send it to Anki. See [Edit a card before you add it](#edit-a-card-before-you-add-it). |
+| `Esc` | Close the card form, or close the popup. |
 
 The keys do not work when the focus is in a text field.
 
@@ -154,6 +156,19 @@ Use this when you want to compare Minerr with another dictionary extension, for 
 Minerr hides the popup and makes a screenshot of the tab. Then it adds the card to Anki. If the word was unknown, its status changes to learning.
 
 The sentence on the card is the sentence that contains the word. Minerr cuts it at `。`, `！`, `？`, and line breaks, and keeps closing quotes such as `」` with it. Minerr shows the word in bold in the sentence.
+
+### Edit a card before you add it
+
+1. Move the mouse over a word.
+2. Press `E`, or click **Edit** in the popup.
+3. Change the fields in the card form.
+4. Click **Send**.
+
+Minerr makes the screenshot and the audio when you press `E`. The form shows each field of the note type with its content, as HTML. The sentence has the word in `<b>`. Under the fields, the form shows the screenshot and an audio player for each audio file. **Send** adds the note with the fields as you edited them. Minerr stores only the files that a field still names.
+
+To close the form without a card, click **Cancel** or press `Esc`. A second `Esc` closes the popup. The popup keys do not work while you type in the form. No other popup opens while the form is open.
+
+The form works with Lapis, with the classic note type, and with your own note type.
 
 ### Import known words from Anki
 
@@ -816,6 +831,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/anki.ts` | The AnkiConnect client, the note types, and the note draft of a card. |
 | `src/lapis.ts` | The pure parts of the Lapis fields: the furigana, the frequency rank, and the pitch accent. |
 | `src/wordaudio.ts` | The word audio from JapanesePod101, and the check for its placeholder clip. |
+| `src/cardform.ts` | The card form of the popup (`E`). |
 | `src/whisper.ts` | The client for the WhisperX server. |
 | `src/lineaudio.ts`, `src/record.ts` | The sentence audio of a card: the server cuts it, or the tab records the line. |
 | `src/db.ts` | The dictionary storage in IndexedDB. |
@@ -849,7 +865,7 @@ Node.js runs the `.ts` test files directly, without a build. To run the tests:
 3. Run `npm run build`. The browser tests load the extension from `dist`.
 4. Run `node test/unit.ts`, `node test/card-unit.ts`, and `node test/video-unit.ts`.
 5. Close Anki, because the next test uses port 8765.
-6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect. Then run `node test/card.ts`. It tests the Lapis note type and the word audio, with a mock AnkiConnect and a mock JapanesePod101.
+6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect. Then run `node test/card.ts`. It tests the Lapis note type, the word audio, and the card form, with a mock AnkiConnect and a mock JapanesePod101.
 7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/media.ts`, `node test/player.ts`, and `node test/sites.ts`, which use the same ports.
 8. Run `python3 -I -B -m unittest discover -s server` to test the WhisperX server. This test does not need WhisperX.
 

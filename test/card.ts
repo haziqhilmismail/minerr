@@ -1,4 +1,4 @@
-// The Lapis note type and the word audio, with a mock AnkiConnect on port 8765 and a mock JapanesePod101.
+// The Lapis note type, the word audio, and the card form (E), with a mock AnkiConnect on port 8765 and a mock JapanesePod101.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
@@ -126,6 +126,52 @@ try {
   assert.equal(at(params(from, 'addNote')[0], 'note', 'fields', 'ExpressionAudio'), '');
   console.log('no word audio from JapanesePod101: ExpressionAudio is empty, and the card is added');
   jpodHasAudio = true;
+
+  await open('猫');
+  await tab.keyboard.press('e');
+  const form = popup.locator('form.card-form');
+  await form.waitFor();
+  assert.deepEqual(await form.locator('label').allInnerTexts(), [...LAPIS_FIELDS]);
+  const sentence = form.getByLabel('Sentence', { exact: true });
+  assert.equal(await sentence.inputValue(), '<b>猫</b>が魚を食べなかった。');
+  assert.equal(await form.locator('img').count(), 1, 'the screenshot shows');
+  assert.equal(await form.locator('audio').count(), 1, 'the word audio shows');
+  assert.equal(await popup.locator('.definitions').isVisible(), false);
+  await sentence.press('End');
+  await sentence.pressSequentially('3a');
+  await form.getByRole('button', { name: 'Send' }).focus();
+  await tab.keyboard.press('3');
+  await tab.waitForTimeout(300);
+  assert.equal(await tab.$eval('#line .ml-word[data-ml-lemma="猫"]', span => span.className), 'ml-word ml-unknown', 'keys in the form do not change the status');
+  await sentence.press('Escape');
+  await form.waitFor({ state: 'detached' });
+  assert.equal(await popup.isVisible(), true, 'Esc closes the form first');
+  await tab.keyboard.press('Escape');
+  await popup.waitFor({ state: 'hidden' });
+  console.log('E: the form has every field; keys stay in the form; Esc closes the form, then the popup');
+
+  await open('猫');
+  await popup.getByRole('button', { name: 'Edit E' }).click();
+  await form.waitFor();
+  await sentence.fill('<b>猫</b>だ。');
+  await form.getByLabel('Hint', { exact: true }).fill('a pet');
+  from = anki.requests.length;
+  await form.getByRole('button', { name: 'Send' }).click();
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+  assert.deepEqual(actions(from), ['createDeck', 'modelNames', 'storeMediaFile', 'storeMediaFile', 'addNote']);
+  const edited = at(params(from, 'addNote')[0], 'note', 'fields');
+  assert.deepEqual([at(edited, 'Sentence'), at(edited, 'Hint'), at(edited, 'Expression'), at(edited, 'ExpressionAudio')],
+    ['<b>猫</b>だ。', 'a pet', '猫', `[sound:${wordFile}]`]);
+  console.log('Edit button, then Send: the note has the edited fields');
+
+  await worker.evaluate(() => chrome.storage.local.set({ noteType: { kind: 'builtin' } }));
+  await open('猫');
+  await tab.keyboard.press('e');
+  await form.waitFor();
+  assert.deepEqual(await form.locator('label').allInnerTexts(), ['Word', 'Reading', 'Sentence', 'Definition', 'Image', 'SentenceAudio']);
+  await form.getByRole('button', { name: 'Cancel' }).click();
+  await form.waitFor({ state: 'detached' });
+  console.log('E with the classic note type: the form has its fields');
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('CARD E2E PASS');

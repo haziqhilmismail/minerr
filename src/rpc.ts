@@ -1,4 +1,4 @@
-import type { CardFields, MediaFile } from './anki.ts';
+import type { CardFields, MediaFile, NoteDraft } from './anki.ts';
 import type { SubtitleSegment } from './captions.ts';
 import type { Segment } from './group.ts';
 import type { CardLine } from './lineaudio.ts';
@@ -20,7 +20,9 @@ interface Protocol {
   pitch: { request: { words: { lemma: string; reading: string }[] }; reply: (PitchPattern | null)[] };
   // The longest dictionary word at the start of text, and the number of characters of text that it covers.
   lookupText: { request: { text: string }; reply: { lemma: string; length: number; entries: Entry[] } | null };
-  addCard: { request: { card: CardFields }; reply: number };
+  // The note of the card for the edit form (E). addCard adds the draft if it has one, else the note of the card.
+  cardDraft: { request: { card: CardFields }; reply: NoteDraft };
+  addCard: { request: { card: CardFields; draft?: NoteDraft }; reply: number };
   importKnown: { request: { query: string; field: string }; reply: number };
   ankiVersion: { request: {}; reply: number };
   ankiModels: { request: {}; reply: string[] };
