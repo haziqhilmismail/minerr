@@ -32,19 +32,23 @@ All data stays on your computer. The extension sends requests only to AnkiConnec
 
 ## Install
 
-### 1. Get the extension
+### 1. Build the extension
+
+You need [Node.js](https://nodejs.org/) 24 or later.
 
 ```sh
 git clone https://github.com/haziqhilmismail/minerr.git
+cd minerr
+npm ci
+npm run build
 ```
 
-The extension needs no build step. The kuromoji files are in `vendor/kuromoji`.
+The build compiles the TypeScript code and writes the extension to the `dist` folder.
 
-If you use WSL, Chrome on Windows must load the extension from a Windows folder. Copy the committed files to a Windows folder:
+If you use WSL, Chrome on Windows must load the extension from a Windows folder. Build the extension, then copy the `dist` folder to a Windows folder:
 
 ```sh
-mkdir -p /mnt/c/Users/<you>/minerr
-git -C minerr archive HEAD | tar -x -C /mnt/c/Users/<you>/minerr
+npm run build && mkdir -p /mnt/c/Users/<you>/minerr && cp -r dist/. /mnt/c/Users/<you>/minerr/
 ```
 
 ### 2. Load the extension in Chrome
@@ -52,9 +56,9 @@ git -C minerr archive HEAD | tar -x -C /mnt/c/Users/<you>/minerr
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode**.
 3. Click **Load unpacked**.
-4. Select the `minerr` folder.
+4. Select the `minerr/dist` folder. If you use WSL, select the Windows folder.
 
-After you get a new version, click the reload button on the extension card.
+After you get a new version, run `npm run build` again. If you use WSL, copy the `dist` folder again with the command above. Then click the reload button on the extension card.
 
 Chrome gives an unpacked extension an ID from its folder path. If you load the extension from a different folder, it gets a new ID and starts with no data. Then you must import the dictionary again. To get your known words back, use **Import known words** (see below).
 
@@ -227,35 +231,41 @@ Minerr keeps the note type up to date. Each time its background service worker s
 
 ## Development
 
-The code has no build step and no framework.
+The code is TypeScript with no framework and no bundler. `npm run build` copies `manifest.json`, the HTML pages, and `vendor` to `dist`. Then `tsc` compiles each `.ts` file to a `.js` file in `dist`. `npm run typecheck` checks the types of the extension, the tests, and the scripts.
 
 | Path | Purpose |
 | --- | --- |
-| `manifest.json` | The Manifest V3 declaration. |
-| `background.js` | The service worker. It routes messages and calls AnkiConnect. |
-| `offscreen.js` | Runs kuromoji and the dictionary lookups in an offscreen document. |
-| `src/page.js` | Finds Japanese text on the page and wraps each word. |
-| `src/popup.js` | The dictionary popup and its keys. |
-| `src/status.js` | The word statuses, their colors, and their storage. |
-| `src/tags.js` | The colors of the dictionary tags, for the popup and the card. |
-| `src/anki.js` | The AnkiConnect client and the note type. |
-| `src/db.js` | The dictionary storage in IndexedDB. |
-| `src/group.js`, `src/sentence.js`, `src/yomitan.js`, `src/zip.js` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
+| `manifest.json` | The Manifest V3 declaration. Its paths are the `.js` files in `dist`. |
+| `background.ts` | The service worker. It routes messages and calls AnkiConnect and the WhisperX server. |
+| `offscreen.ts` | Runs kuromoji and the dictionary lookups in an offscreen document. |
+| `src/rpc.ts` | The messages between the parts of the extension, and the type of the reply to each message. |
+| `src/page.ts` | Finds Japanese text on the page and wraps each word. |
+| `src/popup.ts` | The dictionary popup and its keys. |
+| `src/subtitles.ts` | The subtitle overlay on YouTube. |
+| `src/status.ts` | The word statuses, their colors, and their storage. |
+| `src/tags.ts` | The colors of the dictionary tags, for the popup and the card. |
+| `src/anki.ts` | The AnkiConnect client and the note type. |
+| `src/whisper.ts` | The client for the WhisperX server. |
+| `src/db.ts` | The dictionary storage in IndexedDB. |
+| `src/group.ts`, `src/sentence.ts`, `src/yomitan.ts`, `src/zip.ts` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
 
-To run the tests:
+Node.js runs the `.ts` test files directly, without a build. To run the tests:
 
-1. Run `npm install`.
+1. Run `npm ci`.
 2. Download `JMdict_english.zip` to `test/fixtures/JMdict_english.zip`.
-3. Run `node test/unit.mjs`.
-4. Close Anki, because the next test uses port 8765.
-5. Run `node test/e2e.mjs`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect.
-6. Run `node test/subtitles.mjs`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video.
-7. Run `python3 -I -B -m unittest discover -s server` to test the WhisperX server. This test does not need WhisperX.
+3. Run `npm run build`. The browser tests load the extension from `dist`.
+4. Run `node test/unit.ts`.
+5. Close Anki, because the next test uses port 8765.
+6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect.
+7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it.
+8. Run `python3 -I -B -m unittest discover -s server` to test the WhisperX server. This test does not need WhisperX.
+
+`npm test` does steps 3 to 7 in one command, after a type check.
 
 More scripts:
 
-- `node test/screenshots.mjs` saves screenshots of the page, the popup, and the options page to `/tmp/minerr-ui`.
-- `node test/card-preview.mjs` saves screenshots of the card to `/tmp/minerr-card`.
+- `node test/screenshots.ts` saves screenshots of the page, the popup, and the options page to `/tmp/minerr-ui`.
+- `node test/card-preview.ts` saves screenshots of the card to `/tmp/minerr-card`.
 - If the system has no Japanese font, set `CJK_FONT_DIR` to a folder that contains one. Put an emoji font in the same folder, for example `seguiemj.ttf` from Windows. Without it, the `⭐` tag shows as a box.
 - If Chromium cannot start because a library such as `libnss3.so` is missing, set `LD_LIBRARY_PATH` to a folder with the missing libraries.
 - If you update kuromoji, run `npm run vendor` and commit the `vendor/kuromoji` folder.
