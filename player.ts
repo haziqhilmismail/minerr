@@ -3,11 +3,11 @@
 import './src/page.ts';
 import './src/popup.ts';
 import './src/iplusone.ts';
-import { parseSubtitles, segmentAt, type SubtitleSegment, toSrt } from './src/captions.ts';
+import { parseSubtitles, type SubtitleSegment, toSrt } from './src/captions.ts';
 import { byId } from './src/dom.ts';
-import { createOverlay } from './src/overlay.ts';
 import { messageOf } from './src/rpc.ts';
 import { applyTheme } from './src/theme.ts';
+import { attach, layer, setLines } from './src/video.ts';
 import { getJob, uploadFile } from './src/whisper.ts';
 
 applyTheme();
@@ -33,21 +33,14 @@ const hint = byId('hint', HTMLElement);
 const videoInput = byId('video-file', HTMLInputElement);
 const subsInput = byId('subs-file', HTMLInputElement);
 
-const { layer, show } = createOverlay();
 stage.append(layer);
+attach({ video: () => video });
 
 let file: File | null = null;
 let playError = false;
 let subs: Subtitles = { state: 'none' };
 // Counts the opened videos, so that a job for an earlier video does not change the subtitles of the current one.
 let opened = 0;
-
-let frame = 0;
-function follow(): void {
-  cancelAnimationFrame(frame);
-  show(subs.state === 'ready' ? segmentAt(subs.segments, video.currentTime)?.text ?? '' : '');
-  if (!video.paused) frame = requestAnimationFrame(follow);
-}
 
 function statusText(): [string, string] {
   if (playError) return [`Chrome cannot play ${file?.name ?? 'this file'}. Convert it to MP4 or WebM, then open it again.`, 'error'];
@@ -77,7 +70,7 @@ function render(): void {
   // WhisperX reports 0% until its first chunk is done, so 0 shows the moving bar of unknown progress too.
   if (subs.state === 'working' && subs.progress) progress.value = subs.progress;
   else progress.removeAttribute('value');
-  follow();
+  setLines(subs.state === 'ready' ? { kind: 'timed', segments: subs.segments } : { kind: 'none' });
 }
 
 function setSubs(next: Subtitles): void {
@@ -150,7 +143,6 @@ function save(): void {
   setTimeout(() => URL.revokeObjectURL(href), 1000);
 }
 
-for (const type of ['play', 'seeked', 'timeupdate']) video.addEventListener(type, follow);
 video.addEventListener('error', () => {
   playError = true;
   render();

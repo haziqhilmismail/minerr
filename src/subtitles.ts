@@ -1,6 +1,6 @@
-import { captionText, segmentAt, type SubtitleSegment } from './captions.ts';
-import { createOverlay } from './overlay.ts';
+import { captionText, type SubtitleSegment } from './captions.ts';
 import { call, type Message, messageOf, serve } from './rpc.ts';
+import { attach, layer, setLines } from './video.ts';
 import type { Job, JobStatus } from './whisper.ts';
 
 const POLL_MS = 2000;
@@ -35,30 +35,20 @@ type OverlayState = { videoId: string | null; job: TrackedJob | null }
 
 let state: OverlayState = { videoId: null, source: 'youtube', segments: null, job: null };
 
-const { layer, show } = createOverlay();
 document.head.append(Object.assign(document.createElement('style'), { textContent: STYLE }));
 
 let player: Element | null = null;
 
-const video = () => player?.querySelector('video');
+const video = () => player?.querySelector('video') ?? null;
 const currentVideoId = () => (location.pathname === '/watch' ? new URLSearchParams(location.search).get('v') : null);
 
-function render(): void {
-  if (state.source === 'whisperx') {
-    // An ad plays in the same video element, and its time is not the time of the video.
-    const ad = player?.classList.contains('ad-showing');
-    show(ad ? '' : segmentAt(state.segments, video()?.currentTime ?? 0)?.text ?? '');
-  } else {
-    show(captionText([...(player?.querySelectorAll('.caption-visual-line') ?? [])].map(l => l.textContent ?? '')));
-  }
-}
+// An ad plays in the same video element, and its time is not the time of the video.
+attach({ video, blocked: () => player?.classList.contains('ad-showing') ?? false });
 
-let frame = 0;
-function follow(): void {
-  cancelAnimationFrame(frame);
-  render();
-  const playing = video();
-  if (state.source === 'whisperx' && playing && !playing.paused) frame = requestAnimationFrame(follow);
+function render(): void {
+  setLines(state.source === 'whisperx'
+    ? { kind: 'timed', segments: state.segments }
+    : { kind: 'mirror', text: captionText([...(player?.querySelectorAll('.caption-visual-line') ?? [])].map(l => l.textContent ?? '')) });
 }
 
 const captions = new MutationObserver(() => {
@@ -75,7 +65,7 @@ async function changeVideo(videoId: string | null): Promise<void> {
 
 function useSegments(segments: SubtitleSegment[]): void {
   state = { ...state, source: 'whisperx', segments };
-  follow();
+  render();
 }
 
 // The 1 s check covers the first load and every single-page navigation; yt-navigate-finish only makes it quicker.
@@ -142,13 +132,12 @@ function use({ source }: Message<'subsUse'>): Snapshot {
   } else {
     state = { ...state, source: 'youtube' };
   }
-  follow();
+  render();
   return snapshot();
 }
 
 serve({ subsState: snapshot, subsGenerate: generate, subsUse: use }, () => true);
 
-for (const type of ['play', 'seeked', 'timeupdate']) document.addEventListener(type, follow, true);
 document.addEventListener('yt-navigate-finish', sync);
 setInterval(sync, 1000);
 sync();
