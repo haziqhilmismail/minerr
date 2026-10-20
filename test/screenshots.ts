@@ -140,7 +140,7 @@ try {
   const clip = join(work, 'clip.webm');
   execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=s=640x360:r=10:d=6', '-c:v', 'libvpx', '-b:v', '200k', clip]);
   const srt = join(work, 'clip.srt');
-  writeFileSync(srt, `1\n00:00:00,000 --> 00:00:06,000\n${TEXT.split('。')[0]}。\n`);
+  writeFileSync(srt, '1\n00:00:00,000 --> 00:00:03,000\n猫が魚を食べなかった。\n\n2\n00:00:03,000 --> 00:00:06,000\n今日は雨が降っているので、家で本を読みます。\n');
   const player = await context.newPage();
   await player.setViewportSize({ width: 1000, height: 720 });
   await player.goto(`chrome-extension://${extensionId}/player.html`);
@@ -155,6 +155,13 @@ try {
   for (const scheme of ['light', 'dark'] as const) {
     await player.emulateMedia({ colorScheme: scheme });
     await shot(player, `player-${scheme}.png`);
+  }
+  await player.keyboard.press('g');
+  await player.locator('.minerr-lines li[aria-current="true"]').waitFor();
+  await player.setViewportSize({ width: 1400, height: 720 });
+  for (const scheme of ['light', 'dark'] as const) {
+    await player.emulateMedia({ colorScheme: scheme });
+    await shot(player, `sidebar-${scheme}.png`);
   }
 } finally {
   await context.close();
