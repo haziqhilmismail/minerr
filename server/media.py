@@ -113,9 +113,12 @@ def keep_audio(path, key):
 
 
 def clip(source, start, end):
-    """MP3 bytes of the audio of source from start to end, in seconds."""
+    """MP3 bytes of the audio of source from start to end, in seconds, at one loudness (EBU R128, -16 LUFS) for each card."""
+    # One pass of loudnorm is within 2 LU of the target on clips of 2 to 8 s; two passes measured no closer, because the
+    # true-peak limit makes loudnorm dynamic again. loudnorm gives 192 kHz, so -ar sets 44.1 kHz.
     result = subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-ss', f'{start:.3f}', '-t', f'{end - start:.3f}', '-i', str(source),
-                             '-vn', '-ac', '1', '-c:a', 'libmp3lame', '-q:a', '4', '-f', 'mp3', 'pipe:1'],
+                             '-vn', '-ac', '1', '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-ar', '44100',
+                             '-c:a', 'libmp3lame', '-q:a', '4', '-f', 'mp3', 'pipe:1'],
                             check=True, capture_output=True, timeout=120)
     return result.stdout
 
