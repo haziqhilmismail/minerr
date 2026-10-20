@@ -7,7 +7,9 @@ import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { launch, listen, makeDictionary, useCjkFonts } from './harness.mjs';
+import type { Page, PageScreenshotOptions } from 'playwright';
+import { at } from '../src/parse.ts';
+import { launch, listen, makeDictionary, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-subs-'));
 const out = process.env.OUT_DIR ?? work;
@@ -24,16 +26,19 @@ const dictionary = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
   ['魚', 'さかな', 'n', '', 100, ['fish (fixture)'], 3, ''],
 ]);
 
-const ankiRequests = [];
-const ankiReplies = { createDeck: () => 1, modelNames: () => ['Basic'], createModel: () => ({}), addNote: () => 1700000000000 };
+const ankiRequests: unknown[] = [];
+const ankiReplies: Record<string, () => unknown> = { createDeck: () => 1, modelNames: () => ['Basic'], createModel: () => ({}), addNote: () => 1700000000000 };
 const anki = createServer((req, res) => {
   let body = '';
   req.on('data', chunk => { body += chunk; });
   req.on('end', () => {
-    const request = JSON.parse(body);
+    const request: unknown = JSON.parse(body);
     ankiRequests.push(request);
+    const action = at(request, 'action');
+    const handler = typeof action === 'string' ? ankiReplies[action] : undefined;
+    if (!handler) throw new Error(`The mock has no action ${String(action)}`);
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ result: ankiReplies[request.action](request.params), error: null }));
+    res.end(JSON.stringify({ result: handler(), error: null }));
   });
 });
 await listen(anki, 8765);
@@ -44,7 +49,7 @@ const SEGMENTS = [
 ];
 const JOB_STATES = [{ state: 'queued' }, { state: 'downloading' }, { state: 'transcribing', progress: 50 },
   { state: 'transcribing', progress: 50 }, { state: 'done', segments: SEGMENTS }];
-const whisperRequests = [];
+const whisperRequests: string[] = [];
 let cached = false;
 let jobPolls = 0;
 const whisper = createServer((req, res) => {
@@ -52,7 +57,7 @@ const whisper = createServer((req, res) => {
   req.on('data', chunk => { body += chunk; });
   req.on('end', () => {
     whisperRequests.push(`${req.method} ${req.url}${body ? ` ${body}` : ''}`);
-    const reply = (status, value) => {
+    const reply = (status: number, value: unknown) => {
       res.writeHead(status, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(value));
     };
@@ -88,9 +93,9 @@ const WATCH = `<!doctype html><meta charset="utf-8"><title>Fake YouTube</title>
 
 const { context, worker, extensionId } = await launch(join(work, 'profile'));
 await context.route('https://www.youtube.com/**', route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: WATCH }));
-const failures = [];
+const failures: string[] = [];
 context.on('weberror', error => failures.push(error.error().message));
-const shot = async (target, name, options = {}) => {
+const shot = async (target: Page, name: string, options: PageScreenshotOptions = {}) => {
   await target.screenshot({ path: join(out, name), ...options });
   console.log('saved', join(out, name));
 };
@@ -99,7 +104,7 @@ try {
   const options = await context.newPage();
   await options.goto(`chrome-extension://${extensionId}/options.html`);
   await options.setInputFiles('#dict-file', dictionary);
-  await options.waitForFunction(() => document.querySelector('#dict-status').textContent.startsWith('Imported'));
+  await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'));
 
   const tab = await context.newPage();
   await tab.setViewportSize({ width: 902, height: 528 });
@@ -109,14 +114,18 @@ try {
   assert.equal(await line.innerText(), '猫が魚を食べなかった\n今日は雨');
 
   const layout = await tab.evaluate(() => {
-    const player = document.querySelector('#movie_player').getBoundingClientRect();
-    const box = document.querySelector('.minerr-subs-line').getBoundingClientRect();
+    const playerElement = document.querySelector('#movie_player');
+    const overlayLine = document.querySelector('.minerr-subs-line');
     const native = document.querySelector('.ytp-caption-window-container');
+    const segment = document.querySelector('.ytp-caption-segment');
+    if (!playerElement || !overlayLine || !native || !segment) throw new Error('The page has no player, overlay, or captions');
+    const player = playerElement.getBoundingClientRect();
+    const box = overlayLine.getBoundingClientRect();
     return {
       centerOffset: Math.abs((box.left + box.right) / 2 - (player.left + player.right) / 2),
       aboveControls: player.bottom - box.bottom,
-      fontSize: parseFloat(getComputedStyle(document.querySelector('.minerr-subs-line')).fontSize),
-      nativeFontSize: parseFloat(getComputedStyle(document.querySelector('.ytp-caption-segment')).fontSize),
+      fontSize: parseFloat(getComputedStyle(overlayLine).fontSize),
+      nativeFontSize: parseFloat(getComputedStyle(segment).fontSize),
       native: { connected: native.isConnected, opacity: getComputedStyle(native).opacity, pointerEvents: getComputedStyle(native).pointerEvents },
       nativeParsed: native.querySelectorAll('.ml-word').length,
     };
@@ -133,15 +142,21 @@ try {
   console.log('overlay words:', words);
   assert.deepEqual(words, ['猫=猫', '魚=魚', '食べなかった=食べる', '今日=今日', '雨=雨']);
 
-  await tab.evaluate(() => { document.querySelectorAll('.ytp-caption-segment')[1].textContent = '魚が好き'; });
+  await tab.evaluate(() => {
+    const segment = document.querySelectorAll('.ytp-caption-segment')[1];
+    if (!segment) throw new Error('The page has no second caption line');
+    segment.textContent = '魚が好き';
+  });
   await line.locator('.ml-word[data-ml-lemma="好き"]').waitFor();
   assert.equal(await line.innerText(), '猫が魚を食べなかった\n魚が好き');
   console.log('overlay after the caption changed:', JSON.stringify(await line.innerText()));
 
-  const offState = () => tab.evaluate(() => ({
-    overlay: getComputedStyle(document.querySelector('.minerr-subs')).display,
-    native: getComputedStyle(document.querySelector('.ytp-caption-window-container')).opacity,
-  }));
+  const offState = () => tab.evaluate(() => {
+    const overlay = document.querySelector('.minerr-subs');
+    const native = document.querySelector('.ytp-caption-window-container');
+    if (!overlay || !native) throw new Error('The page has no overlay or captions');
+    return { overlay: getComputedStyle(overlay).display, native: getComputedStyle(native).opacity };
+  });
   await options.evaluate(() => chrome.storage.local.set({ enabled: false }));
   await tab.waitForFunction(() => document.documentElement.hasAttribute('data-minerr-off'));
   assert.deepEqual(await offState(), { overlay: 'none', native: '1' });
@@ -155,7 +170,7 @@ try {
   await popup.locator('li', { hasText: 'to eat (fixture)' }).waitFor();
   await popup.getByRole('button', { name: 'Add to Anki A' }).click();
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
-  const sentence = ankiRequests.find(r => r.action === 'addNote').params.note.fields.Sentence;
+  const sentence = at(ankiRequests.find(r => at(r, 'action') === 'addNote'), 'params', 'note', 'fields', 'Sentence');
   console.log('card sentence from the overlay:', sentence);
   assert.equal(sentence, '猫が魚を<b>食べなかった</b>');
   await tab.keyboard.press('Escape');
@@ -170,7 +185,8 @@ try {
   await tab.evaluate(() => document.documentElement.classList.remove('full'));
   await tab.setViewportSize({ width: 902, height: 528 });
 
-  const tabId = await worker.evaluate(async () => (await chrome.tabs.query({ url: 'https://www.youtube.com/*' }))[0].id);
+  const tabId = await worker.evaluate(async () => (await chrome.tabs.query({ url: 'https://www.youtube.com/*' }))[0]?.id);
+  assert.equal(typeof tabId, 'number');
   const action = await context.newPage();
   await action.setViewportSize({ width: 340, height: 200 });
   await action.goto(`chrome-extension://${extensionId}/action.html?tab=${tabId}`);
@@ -182,7 +198,7 @@ try {
 
   await action.click('#generate');
   await action.locator('#job', { hasText: 'Transcribing… 50%' }).waitFor({ timeout: 10000 });
-  assert.equal(await action.locator('#progress').evaluate(p => p.value), 50);
+  assert.equal(await action.locator('#progress').evaluate((p: HTMLProgressElement) => p.value), 50);
   console.log('popup while the job runs:', await action.textContent('#job'));
   await shot(action, 'action-progress-light.png', { fullPage: true });
   await action.emulateMedia({ colorScheme: 'dark' });
@@ -197,24 +213,28 @@ try {
   await tab.bringToFront();
   await line.locator('.ml-word[data-ml-lemma="食べる"]').waitFor();
   assert.equal(await line.innerText(), '猫が魚を食べなかった。');
-  await tab.evaluate(() => { document.querySelector('video').currentTime = 4; });
+  await tab.evaluate(() => {
+    const video = document.querySelector('video');
+    if (!video) throw new Error('The page has no video');
+    video.currentTime = 4;
+  });
   await line.locator('.ml-word[data-ml-lemma="雨"]').waitFor();
   assert.equal(await line.innerText(), '今日は雨が降っています。');
   console.log('WhisperX overlay after a seek to 4 s:', await line.innerText());
 
   await action.click('[data-source="youtube"]');
-  await tab.waitForFunction(() => document.querySelector('.minerr-subs-line').innerText === '猫が魚を食べなかった\n魚が好き');
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べなかった\n魚が好き');
   console.log('switched back to the YouTube captions');
 
   cached = true;
   await tab.reload();
-  await tab.waitForFunction(() => document.querySelector('.minerr-subs-line')?.innerText === '猫が魚を食べなかった。');
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べなかった。');
   console.log('after a reload: cached WhisperX subtitles shown without a new job');
   await tab.evaluate(() => {
     history.pushState({}, '', '/watch?v=othervideo');
     document.dispatchEvent(new Event('yt-navigate-finish'));
   });
-  await tab.waitForFunction(() => document.querySelector('.minerr-subs-line').innerText === '猫が魚を食べなかった\n今日は雨');
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べなかった\n今日は雨');
   assert.ok(whisperRequests.includes('GET /subs/othervideo'));
   console.log('after navigation to a video with no WhisperX subtitles: YouTube captions again');
 
@@ -227,7 +247,8 @@ try {
 
   await context.route('https://example.com/**', route => route.fulfill({ contentType: 'text/html', body: '<p>Not YouTube</p>' }));
   await (await context.newPage()).goto('https://example.com/');
-  const otherTabId = await worker.evaluate(async () => (await chrome.tabs.query({ url: 'https://example.com/*' }))[0].id);
+  const otherTabId = await worker.evaluate(async () => (await chrome.tabs.query({ url: 'https://example.com/*' }))[0]?.id);
+  assert.equal(typeof otherTabId, 'number');
   const elsewhere = await context.newPage();
   await elsewhere.goto(`chrome-extension://${extensionId}/action.html?tab=${otherTabId}`);
   await elsewhere.locator('#elsewhere:not([hidden])').waitFor();

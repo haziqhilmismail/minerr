@@ -4,7 +4,8 @@ import { mkdirSync, mkdtempSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { launch, listen, useCjkFonts } from './harness.mjs';
+import type { Locator, Page } from 'playwright';
+import { launch, listen, useCjkFonts } from './harness.ts';
 
 const out = process.env.OUT_DIR ?? '/tmp/minerr-ui';
 const jmdict = join(import.meta.dirname, 'fixtures', 'JMdict_english.zip');
@@ -24,7 +25,7 @@ const site = createServer((req, res) => {
 const pageUrl = `http://127.0.0.1:${await listen(site, 0)}/watch`;
 
 const { context, worker, extensionId } = await launch(join(work, 'profile'));
-const shot = async (target, name, fullPage = false) => {
+const shot = async (target: Page | Locator, name: string, fullPage = false) => {
   await target.screenshot({ path: join(out, name), fullPage });
   console.log('saved', join(out, name));
 };
@@ -34,14 +35,14 @@ try {
   await options.setViewportSize({ width: 900, height: 900 });
   await options.goto(`chrome-extension://${extensionId}/options.html`);
   await options.setInputFiles('#dict-file', jmdict);
-  await options.waitForFunction(() => document.querySelector('#dict-progress').value >= 2, null, { timeout: 60000 });
+  await options.waitForFunction(() => (document.querySelector<HTMLProgressElement>('#dict-progress')?.value ?? 0) >= 2, null, { timeout: 60000 });
   await shot(options.locator('#dictionaries'), 'options-importing-light.png');
   await options.reload();
   await options.locator('#dict-list li').first().waitFor();
   await shot(options.locator('#dictionaries'), 'options-unfinished-light.png');
 
   await options.setInputFiles('#dict-file', jmdict);
-  await options.waitForFunction(() => document.querySelector('#dict-status').textContent.startsWith('Imported'), null, { timeout: 180000 });
+  await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'), null, { timeout: 180000 });
   await options.fill('#deck', 'Japanese::Mining');
   await options.press('#deck', 'Tab');
   await options.click('#anki-check');
@@ -62,7 +63,8 @@ try {
   await shot(tab.locator('#dark'), 'page-dark.png');
 
   const popup = tab.locator('minerr-popup .popup');
-  for (const [scheme, word] of [['light', '#light .ml-word[data-ml-lemma="食べる"]'], ['dark', '#dark .ml-word[data-ml-lemma="猫"]']]) {
+  const popups: ['light' | 'dark', string][] = [['light', '#light .ml-word[data-ml-lemma="食べる"]'], ['dark', '#dark .ml-word[data-ml-lemma="猫"]']];
+  for (const [scheme, word] of popups) {
     await tab.emulateMedia({ colorScheme: scheme });
     await tab.hover(word);
     await popup.locator('li').first().waitFor();

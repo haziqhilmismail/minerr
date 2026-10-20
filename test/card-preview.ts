@@ -4,16 +4,16 @@ import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
-import { definitionHtml, NOTE_TYPE } from '../src/anki.ts';
-import { groupTerms, readYomitan } from '../src/yomitan.ts';
-import { useCjkFonts } from './harness.mjs';
+import { definitionHtml, NOTE_TYPE, RECOGNITION } from '../src/anki.ts';
+import { type DictTerm, groupTerms, readYomitan } from '../src/yomitan.ts';
+import { useCjkFonts } from './harness.ts';
 
 const out = process.env.OUT_DIR ?? '/tmp/minerr-card';
 mkdirSync(out, { recursive: true });
 useCjkFonts(mkdtempSync(join(tmpdir(), 'ml-card-')));
 
 const dict = await readYomitan(readFileSync(join(import.meta.dirname, 'fixtures', 'JMdict_english.zip')));
-const rows = [];
+const rows: DictTerm[] = [];
 for (const load of dict.banks) {
   rows.push(...(await load()).filter(t => t.expression === '食べる').map(t => ({ ...t, dict: dict.title })));
 }
@@ -21,7 +21,7 @@ const [group] = groupTerms(rows.sort((a, b) => b.score - a.score), dict.tags.map
 const image = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720">
 <rect width="1280" height="720" fill="#3b4a5e"/><rect y="560" width="1280" height="160" fill="#000"/>
 <text x="640" y="660" fill="#fff" font-size="64" text-anchor="middle" font-family="Noto Sans JP, sans-serif">猫が魚を食べなかった。</text></svg>`)}`;
-const fields = {
+const fields: Record<string, string> = {
   Word: '食べる',
   Reading: 'たべる',
   Sentence: '猫が魚を<b>食べなかった</b>。',
@@ -31,16 +31,17 @@ const fields = {
 console.log('Definition:', fields.Definition);
 
 // Enough of Anki's template syntax for these templates: {{#Field}}...{{/Field}} and {{Field}}.
-const fill = (template, values) => template
-  .replace(/{{#(\w+)}}([\s\S]*?){{\/\1}}/g, (_, name, inner) => (values[name] ? inner : ''))
-  .replace(/{{(\w+)}}/g, (_, name) => values[name]);
-const [{ Front, Back }] = NOTE_TYPE.cardTemplates;
+const fill = (template: string, values: Record<string, string>) => template
+  .replace(/{{#(\w+)}}([\s\S]*?){{\/\1}}/g, (_: string, name: string, inner: string) => (values[name] ? inner : ''))
+  .replace(/{{(\w+)}}/g, (_: string, name: string) => values[name] ?? '');
+const { Front, Back } = RECOGNITION;
 const front = fill(Front, fields);
 const sides = { front, back: fill(Back, { ...fields, FrontSide: front }) };
 
 const browser = await chromium.launch({ channel: 'chromium' });
 try {
-  for (const [device, viewport] of [['desktop', { width: 1000, height: 800 }], ['phone', { width: 390, height: 844 }]]) {
+  const devices: [string, { width: number; height: number }][] = [['desktop', { width: 1000, height: 800 }], ['phone', { width: 390, height: 844 }]];
+  for (const [device, viewport] of devices) {
     const page = await browser.newPage({ viewport });
     for (const [side, html] of Object.entries(sides)) {
       for (const night of [false, true]) {

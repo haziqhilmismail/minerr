@@ -1,14 +1,15 @@
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
+import type { Server } from 'node:http';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
+import type { TagRow, TermRow } from '../src/yomitan.ts';
 
 const here = import.meta.dirname;
 // Run npm run build first: the tests load the built extension in dist/.
 export const extension = process.env.EXTENSION_DIR ?? join(here, '..', 'dist');
 
-// rows are Yomitan term_bank rows, tags are tag_bank rows.
-export function makeDictionary(path, title, rows, tags = []) {
+export function makeDictionary(path: string, title: string, rows: TermRow[], tags: TagRow[] = []): string {
   execFileSync('python3', ['-I', join(here, 'make-zip.py'), path,
     `index.json=stored:${JSON.stringify({ title, revision: '1', format: 3 })}`,
     `term_bank_1.json=deflated:${JSON.stringify(rows)}`,
@@ -16,9 +17,13 @@ export function makeDictionary(path, title, rows, tags = []) {
   return path;
 }
 
-export const listen = (server, port) => new Promise(resolve => server.listen(port, '127.0.0.1', () => resolve(server.address().port)));
+// Resolves with the port, which is a free one if port is 0.
+export const listen = (server: Server, port: number) => new Promise<number>(resolve => server.listen(port, '127.0.0.1', () => {
+  const address = server.address();
+  resolve(typeof address === 'object' && address !== null ? address.port : port);
+}));
 
-export async function launch(profileDir) {
+export async function launch(profileDir: string) {
   const context = await chromium.launchPersistentContext(profileDir, {
     channel: 'chromium',
     headless: true,
@@ -29,7 +34,7 @@ export async function launch(profileDir) {
 }
 
 // If CJK_FONT_DIR is set, Chromium launched after this call also uses the fonts in that folder.
-export function useCjkFonts(work) {
+export function useCjkFonts(work: string): void {
   if (!process.env.CJK_FONT_DIR) return;
   const conf = join(work, 'fonts.conf');
   writeFileSync(conf, `<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig>

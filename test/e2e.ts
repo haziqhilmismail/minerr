@@ -3,7 +3,10 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { extension, launch, listen, makeDictionary } from './harness.mjs';
+import type { Locator } from 'playwright';
+import { at } from '../src/parse.ts';
+import { messageOf } from '../src/rpc.ts';
+import { extension, launch, listen, makeDictionary } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-e2e-'));
 
@@ -18,8 +21,8 @@ const fixture = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
   ['n', 'partOfSpeech', -3, 'noun', 0],
 ]);
 
-const ankiRequests = [];
-const ankiReplies = {
+const ankiRequests: unknown[] = [];
+const ankiReplies: Record<string, (params: unknown) => unknown> = {
   createDeck: () => 1,
   modelNames: () => ['Basic'],
   createModel: () => ({}),
@@ -32,14 +35,17 @@ const anki = createServer((req, res) => {
   let body = '';
   req.on('data', chunk => { body += chunk; });
   req.on('end', () => {
-    const request = JSON.parse(body);
+    const request: unknown = JSON.parse(body);
     ankiRequests.push(request);
     res.setHeader('Content-Type', 'application/json');
-    let reply;
+    let reply: { result: unknown; error: string | null };
     try {
-      reply = { result: ankiReplies[request.action](request.params), error: null };
+      const action = at(request, 'action');
+      const handler = typeof action === 'string' ? ankiReplies[action] : undefined;
+      if (!handler) throw new Error(`The mock has no action ${String(action)}`);
+      reply = { result: handler(at(request, 'params')), error: null };
     } catch (error) {
-      reply = { result: null, error: error.message };
+      reply = { result: null, error: messageOf(error) };
     }
     res.end(JSON.stringify(reply));
   });
@@ -54,14 +60,14 @@ const sitePort = await listen(site, 0);
 const pageUrl = `http://127.0.0.1:${sitePort}/watch`;
 
 const { context, worker, extensionId } = await launch(join(work, 'profile'));
-const failures = [];
+const failures: string[] = [];
 context.on('weberror', error => failures.push(error.error().message));
 
 try {
   console.log('extension loaded from', extension);
 
   // A database from before tags: version 1, no tags store, a term row without tag fields.
-  await worker.evaluate(() => new Promise((resolve, reject) => {
+  await worker.evaluate(() => new Promise<void>((resolve, reject) => {
     const request = indexedDB.open('minerr', 1);
     request.onupgradeneeded = () => {
       request.result.createObjectStore('dicts', { keyPath: 'title' });
@@ -82,11 +88,11 @@ try {
   const options = await context.newPage();
   await options.goto(`chrome-extension://${extensionId}/options.html`);
   await options.setInputFiles('#dict-file', fixture);
-  await options.waitForFunction(() => document.querySelector('#dict-status').textContent.startsWith('Imported'));
+  await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'));
   const imported = await options.textContent('#dict-status');
   console.log('options import status:', imported);
   assert.equal(imported, 'Imported Fixture: 3 terms');
-  assert.deepEqual(await options.$$eval('#dict-list li', items => items.map(li => li.innerText.split('\n'))), [
+  assert.deepEqual(await options.$$eval('#dict-list li', (items: HTMLElement[]) => items.map(li => li.innerText.split('\n'))), [
     ['Fixture', '3 terms', 'Delete'],
     ['Old', '1 terms. Import again to show tags.', 'Delete'],
   ]);
@@ -103,7 +109,9 @@ try {
     const line = document.createElement('div');
     line.className = 'caption';
     line.textContent = '猫が好きです';
-    document.querySelector('#subs').append(line);
+    const subs = document.querySelector('#subs');
+    if (!subs) throw new Error('The page has no #subs');
+    subs.append(line);
   });
   await tab.waitForSelector('.caption .ml-word[data-ml-lemma="猫"]');
   const late = await tab.$$eval('.caption .ml-word', spans => spans.map(s => s.dataset.mlLemma));
@@ -122,7 +130,8 @@ try {
   console.log('popup text:', JSON.stringify(popupText));
   assert.match(popupText, /^食べる\s*たべる/);
   assert.equal(await popup.locator('li').first().innerText(), 'v1 vt to eat (fixture)\nFixture');
-  const chips = locator => locator.locator('.tag').evaluateAll(tags => tags.map(tag => [tag.textContent, tag.className, tag.title]));
+  const chips = (locator: Locator) => locator.locator('.tag')
+    .evaluateAll((tags: HTMLElement[]) => tags.map(tag => [tag.textContent, tag.className, tag.title]));
   assert.deepEqual(await chips(popup.locator('header')), [
     ['⭐', 'tag tag-popular', 'high priority term'],
     ['ichi', 'tag', ''],
@@ -163,19 +172,21 @@ try {
 
   await popup.getByRole('button', { name: 'Add to Anki A' }).click();
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
-  const actions = ankiRequests.map(r => r.action);
+  const actions = ankiRequests.map(r => at(r, 'action'));
   console.log('AnkiConnect actions:', actions);
   assert.deepEqual(actions, ['createDeck', 'modelNames', 'createModel', 'addNote']);
-  assert.ok(ankiRequests.every(r => r.version === 6));
-  assert.deepEqual(ankiRequests[0].params, { deck: 'Minerr' });
-  assert.equal(ankiRequests[2].params.modelName, 'Minerr');
-  assert.deepEqual(ankiRequests[2].params.inOrderFields, ['Word', 'Reading', 'Sentence', 'Definition', 'Image']);
-  const { note } = ankiRequests[3].params;
-  const picture = note.picture[0];
-  console.log('addNote fields:', note.fields, 'picture:', picture.filename, picture.fields, `${picture.data.length} base64 chars`);
-  assert.equal(note.deckName, 'Minerr');
-  assert.equal(note.modelName, 'Minerr');
-  assert.deepEqual(note.fields, {
+  assert.ok(ankiRequests.every(r => at(r, 'version') === 6));
+  assert.deepEqual(at(ankiRequests[0], 'params'), { deck: 'Minerr' });
+  assert.equal(at(ankiRequests[2], 'params', 'modelName'), 'Minerr');
+  assert.deepEqual(at(ankiRequests[2], 'params', 'inOrderFields'), ['Word', 'Reading', 'Sentence', 'Definition', 'Image']);
+  const note = at(ankiRequests[3], 'params', 'note');
+  const picture = at(note, 'picture', 0);
+  const data = at(picture, 'data');
+  assert.ok(typeof data === 'string', 'picture data is a string');
+  console.log('addNote fields:', at(note, 'fields'), 'picture:', at(picture, 'filename'), at(picture, 'fields'), `${data.length} base64 chars`);
+  assert.equal(at(note, 'deckName'), 'Minerr');
+  assert.equal(at(note, 'modelName'), 'Minerr');
+  assert.deepEqual(at(note, 'fields'), {
     Word: '食べる',
     Reading: 'たべる',
     Sentence: '猫が魚を<b>食べなかった</b>。',
@@ -184,16 +195,16 @@ try {
       + ' to eat (fixture)<span class="dict">Fixture</span></li></ol>',
     Image: '',
   });
-  assert.deepEqual(picture.fields, ['Image']);
-  assert.ok(picture.data.startsWith('/9j/'), 'picture is base64 JPEG');
-  writeFileSync(join(work, 'card.jpg'), Buffer.from(picture.data, 'base64'));
+  assert.deepEqual(at(picture, 'fields'), ['Image']);
+  assert.ok(data.startsWith('/9j/'), 'picture is base64 JPEG');
+  writeFileSync(join(work, 'card.jpg'), Buffer.from(data, 'base64'));
   console.log('card screenshot saved to', join(work, 'card.jpg'));
 
   await tab.hover('#line .ml-word[data-ml-lemma="魚"]');
   await popup.locator('li', { hasText: 'fish (fixture)' }).waitFor();
   await tab.keyboard.press('a');
   await tab.waitForSelector('#line .ml-word[data-ml-lemma="魚"].ml-learning');
-  assert.equal(ankiRequests.at(-1).params.note.fields.Sentence, '猫が<b>魚</b>を食べなかった。');
+  assert.equal(at(ankiRequests.at(-1), 'params', 'note', 'fields', 'Sentence'), '猫が<b>魚</b>を食べなかった。');
   console.log('hotkey A on unknown 魚: card added, status now learning');
 
   await tab.keyboard.press('Escape');
@@ -201,27 +212,28 @@ try {
 
   await options.bringToFront();
   await options.click('#known-import');
-  await options.waitForFunction(() => document.querySelector('#known-status').textContent.startsWith('Marked'));
+  await options.waitForFunction(() => document.querySelector('#known-status')?.textContent?.startsWith('Marked'));
   assert.equal(await options.textContent('#known-status'), 'Marked 1 words as known.');
-  assert.deepEqual(ankiRequests.find(r => r.action === 'findNotes').params, { query: 'deck:"Minerr" prop:ivl>=21' });
+  assert.deepEqual(at(ankiRequests.find(r => at(r, 'action') === 'findNotes'), 'params'), { query: 'deck:"Minerr" prop:ivl>=21' });
   await other.waitForSelector('.ml-word[data-ml-lemma="猫"].ml-known');
   console.log('import known from Anki: 猫 known in open tab');
 
   await options.click('#anki-check');
-  await options.waitForFunction(() => document.querySelector('#anki-status').textContent.startsWith('Connected'));
+  await options.waitForFunction(() => document.querySelector('#anki-status')?.textContent?.startsWith('Connected'));
   assert.equal(await options.textContent('#anki-status'), 'Connected (AnkiConnect version 6)');
-  assert.equal(ankiRequests.at(-1).action, 'version');
+  assert.equal(at(ankiRequests.at(-1), 'action'), 'version');
   console.log('check connection:', await options.textContent('#anki-status'));
 
-  const created = ankiRequests[2].params;
-  const [{ Front, Back }] = created.cardTemplates;
-  let storedTemplates = { Recognition: { Front: 'old front', Back: 'old back' } };
-  let storedCss = 'old css';
+  const created = at(ankiRequests[2], 'params');
+  const Front = at(created, 'cardTemplates', 0, 'Front');
+  const Back = at(created, 'cardTemplates', 0, 'Back');
+  let storedTemplates: unknown = { Recognition: { Front: 'old front', Back: 'old back' } };
+  let storedCss: unknown = 'old css';
   ankiReplies.modelNames = () => ['Basic', 'Minerr'];
   ankiReplies.modelTemplates = () => storedTemplates;
   ankiReplies.modelStyling = () => ({ css: storedCss });
-  ankiReplies.updateModelTemplates = ({ model }) => { storedTemplates = model.templates; return null; };
-  ankiReplies.updateModelStyling = ({ model }) => { storedCss = model.css; return null; };
+  ankiReplies.updateModelTemplates = params => { storedTemplates = at(params, 'model', 'templates'); return null; };
+  ankiReplies.updateModelStyling = params => { storedCss = at(params, 'model', 'css'); return null; };
   const cdp = await context.newCDPSession(tab);
   await cdp.send('ServiceWorker.enable');
   const addAfterRestart = async () => {
@@ -239,17 +251,17 @@ try {
   };
 
   const stale = await addAfterRestart();
-  const staleActions = stale.map(r => r.action).sort();
+  const staleActions = stale.map(r => at(r, 'action')).sort();
   console.log('AnkiConnect actions after a restart with an old note type:', staleActions);
   assert.deepEqual(staleActions, ['addNote', 'createDeck', 'modelNames', 'modelStyling', 'modelTemplates', 'updateModelStyling', 'updateModelTemplates']);
-  const templates = stale.find(r => r.action === 'updateModelTemplates').params.model;
-  const styling = stale.find(r => r.action === 'updateModelStyling').params.model;
-  assert.equal(templates.name, 'Minerr');
-  assert.deepEqual(templates.templates, { Recognition: { Front, Back } });
-  assert.equal(styling.name, 'Minerr');
-  assert.equal(styling.css, created.css);
+  const templates = at(stale.find(r => at(r, 'action') === 'updateModelTemplates'), 'params', 'model');
+  const styling = at(stale.find(r => at(r, 'action') === 'updateModelStyling'), 'params', 'model');
+  assert.equal(at(templates, 'name'), 'Minerr');
+  assert.deepEqual(at(templates, 'templates'), { Recognition: { Front, Back } });
+  assert.equal(at(styling, 'name'), 'Minerr');
+  assert.equal(at(styling, 'css'), at(created, 'css'));
 
-  const current = (await addAfterRestart()).map(r => r.action).sort();
+  const current = (await addAfterRestart()).map(r => at(r, 'action')).sort();
   console.log('AnkiConnect actions after a restart with the current note type:', current);
   assert.deepEqual(current, ['addNote', 'createDeck', 'modelNames', 'modelStyling', 'modelTemplates']);
 
