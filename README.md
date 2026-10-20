@@ -123,7 +123,7 @@ The keys do not work when the focus is in a text field.
 
 - To close the popup, press `Esc`, click outside it, or click **✕** in its top-right corner.
 - To turn Minerr off in all tabs, click the power button in the popup, or press `Alt+Shift+M`. The underlines and the popup stop at once.
-- To turn Minerr on again, press `Alt+Shift+M`.
+- To turn Minerr on again, press `Alt+Shift+M`, or click the Minerr button in the Chrome toolbar and turn on **Minerr on**.
 
 When Minerr is off, YouTube shows its own captions again, and the Minerr subtitle overlay is hidden.
 
