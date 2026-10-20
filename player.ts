@@ -71,7 +71,8 @@ function render(): void {
   generateButton.disabled = subs.state === 'working';
   saveButton.hidden = !(subs.state === 'ready' && subs.origin === 'whisperx');
   progress.hidden = subs.state !== 'working';
-  if (subs.state === 'working' && subs.progress !== null) progress.value = subs.progress;
+  // WhisperX reports 0% until its first chunk is done, so 0 shows the moving bar of unknown progress too.
+  if (subs.state === 'working' && subs.progress) progress.value = subs.progress;
   else progress.removeAttribute('value');
   follow();
 }
