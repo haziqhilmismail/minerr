@@ -131,6 +131,8 @@ export interface View {
   lemma: string;
   status: Status;
   groups: Entry[];
+  // The number of words on the page with this lemma.
+  count: number;
 }
 
 // A rendered popup: its box, its word, and the controls that the keys and the card code change later.
@@ -207,6 +209,10 @@ export function render(box: HTMLDivElement, view: View, { addCard, close }: Acti
   const [first, ...others] = groups;
   const reading = first?.reading ?? '';
   const surface = view.span.textContent;
+  const notes = [
+    ...(surface !== lemma ? [`On the page: ${surface}`] : []),
+    ...(view.count ? [`Appears ${view.count} ${view.count === 1 ? 'time' : 'times'} on this page`] : []),
+  ];
   const statusButtons = new Map<Status, HTMLButtonElement>();
   const statusRow = el('div', { className: 'statuses', role: 'group', ariaLabel: 'Word status' },
     ...STATUS_NAMES.map(status => {
@@ -237,7 +243,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, close }: Acti
         reading !== lemma ? el('span', { className: 'reading', textContent: reading }) : '',
         first?.termTags.length ? el('span', { className: 'tags' }, ...chips(first.termTags)) : ''),
       first ? metaRow(first) : '',
-      surface !== lemma ? el('div', { className: 'surface', textContent: `On the page: ${surface}` }) : '',
+      notes.length ? el('div', { className: 'surface', textContent: notes.join(' · ') }) : '',
       statusRow,
       el('div', { className: 'corner' },
         el('button', { className: 'off', innerHTML: POWER_ICON, title: 'Turn Minerr off in all tabs (Alt+Shift+M turns it on)', ariaLabel: 'Turn Minerr off', onclick: () => minerrEnabled.set(false) }),

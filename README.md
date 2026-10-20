@@ -378,6 +378,16 @@ You can choose when the word popup opens.
 
 In all modes, `Shift` opens the popup at once. You can press `Shift` before or after you move the mouse onto the word. If a popup is open, the popup of the next word opens after 0.05 seconds. A quick pass of the mouse over a word does not open a popup. The change applies at once in all tabs.
 
+### Sentence highlight
+
+When you move the mouse onto a word, Minerr gives the sentence of the word a light blue background. While the popup is open, the sentence of its word keeps the background. Minerr cuts the sentence with the same rule as the card sentence.
+
+To turn the sentence highlight off or on, press `Alt+Shift+S` on a page. Or, on the options page, use **Highlight the sentence of the word under the mouse** in **Word popup**. The highlight is on by default.
+
+### Count on the page
+
+Under the word, the popup shows how many times the word appears on the page, for example `Appears 4 times on this page`. Minerr counts the words with the same dictionary form, so 食べた and 食べなかった both count for 食べる.
+
 ## Furigana
 
 Minerr can show the reading of a word in hiragana over the word. It shows readings only over words with kanji.
@@ -457,6 +467,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/popup-view.ts` | The content of the popup and its position. |
 | `src/furigana.ts` | The furigana setting, and the CSS that shows the reading over a word. |
 | `src/pitch-colors.ts` | The pitch colors of the words on a page. |
+| `src/sentence-hover.ts` | The highlight of the sentence of the word under the mouse. |
 | `src/site.ts` | Minerr on or off for each site, and the state that says if Minerr shows on a page. |
 | `src/keys.ts`, `src/chord.ts` | The keys that work on a page without a popup, and the names of the keys. |
 | `src/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |

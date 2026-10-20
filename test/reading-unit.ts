@@ -9,6 +9,7 @@ import { chord } from '../src/chord.ts';
 import { groupTokens, toHiragana } from '../src/group.ts';
 import { entryStars, highs, morae, pitchPattern, stars, toMeta, withMeta } from '../src/meta.ts';
 import { at, isStringList } from '../src/parse.ts';
+import { sentenceBounds } from '../src/sentence.ts';
 import { toggleSite } from '../src/site.ts';
 import { readYomitan } from '../src/yomitan.ts';
 
@@ -111,4 +112,13 @@ test('a word with kanji gets its reading in hiragana; kana words and words that 
     { text: 'した', lemma: 'する' },
   ]);
   assert.equal(toHiragana('キョウ、ヴァーチャル'), 'きょう、ゔぁーちゃる');
+});
+
+test('sentenceBounds finds the sentence around an offset, with its closing quote and without edge white space', () => {
+  const text = '昨日は雨だった。 「猫が魚を食べた！」と彼は言った\n次の行';
+  const around = (word: string) => {
+    const [start, end] = sentenceBounds(text, text.indexOf(word));
+    return text.slice(start, end);
+  };
+  assert.deepEqual(['雨', '魚', '彼', '次'].map(around), ['昨日は雨だった。', '「猫が魚を食べた！」', 'と彼は言った', '次の行']);
 });

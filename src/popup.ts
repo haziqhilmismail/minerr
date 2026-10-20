@@ -6,6 +6,7 @@ import {
 } from './popup-view.ts';
 import { call, messageOf } from './rpc.ts';
 import { sentenceAround } from './sentence.ts';
+import { installSentenceHover, setPopupWord } from './sentence-hover.ts';
 import { watchActive } from './site.ts';
 import { getStatuses, onStatusChange, setStatus, STATUS_NAMES, STATUSES } from './status.ts';
 import { isEditable } from './chord.ts';
@@ -34,6 +35,7 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 function markActive(span: HTMLElement | null): void {
   document.querySelector('.ml-word[data-ml-active]')?.removeAttribute('data-ml-active');
   span?.setAttribute('data-ml-active', '');
+  setPopupWord(span);
 }
 
 let opening: View | null = null;
@@ -42,7 +44,8 @@ let opening: View | null = null;
 export async function openWord(span: HTMLElement): Promise<void> {
   const lemma = span.dataset.mlLemma;
   if (lemma === undefined) return;
-  const view: View = { span, lemma, status: 'unknown', groups: [] };
+  const count = document.querySelectorAll(`.ml-word[data-ml-lemma="${CSS.escape(lemma)}"]`).length;
+  const view: View = { span, lemma, status: 'unknown', groups: [], count };
   opening = view;
   try {
     [view.groups, view.status] = await Promise.all([
@@ -104,6 +107,8 @@ const HOTKEYS: Record<string, () => void> = {
   a: addCard,
   Escape: close,
 };
+
+installSentenceHover();
 
 let enabled = true;
 watchActive(value => {

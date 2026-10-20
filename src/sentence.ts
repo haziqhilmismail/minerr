@@ -22,6 +22,17 @@ export function sentenceAround(before: string, word: string, after: string): Sen
   return { start, word, end };
 }
 
+// The start and end offsets in text of the sentence that holds the character at offset, without the white space at its edges.
+export function sentenceBounds(text: string, offset: number): [number, number] {
+  for (const match of text.matchAll(SENTENCE)) {
+    const end = match.index + match[0].length;
+    if (offset >= end && end < text.length) continue;
+    const start = match.index + match[0].length - match[0].trimStart().length;
+    return [start, Math.max(start, match.index + match[0].trimEnd().length)];
+  }
+  return [0, text.length];
+}
+
 // A run of the text of a block: a word with its status, or plain text with status null.
 export interface Piece {
   text: string;

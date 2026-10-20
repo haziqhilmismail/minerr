@@ -175,6 +175,44 @@ try {
   assert.deepEqual(await colors(), ['猫:atamadaka:rgb(0, 0, 0)', '魚:heiban:rgb(0, 0, 0)', '食べなかった:nakadaka:rgb(0, 0, 0)']);
   console.log('pitch colors: words colored by pattern, new words too, and back to the page color when off');
 
+  const sentence = () => tab.evaluate(() => [...(CSS.highlights.get('minerr-sentence') ?? [])].map(range => range.toString()));
+  await tab.mouse.move(0, 0);
+  await tab.hover('#wrap .ml-word[data-ml-lemma="魚"] >> nth=1');
+  assert.deepEqual(await sentence(), ['猫が魚を食べた。']);
+  assert.equal(await tab.evaluate(() => {
+    const range = [...(CSS.highlights.get('minerr-sentence') ?? [])][0];
+    return [...document.querySelectorAll('#wrap .ml-word')].filter(span => range instanceof Range && range.intersectsNode(span)).map(span => span.textContent).join();
+  }), '猫,魚,食べた');
+  await popup.locator('.lemma', { hasText: '魚' }).waitFor();
+  assert.equal(await popup.locator('.surface').innerText(), 'Appears 4 times on this page');
+  await tab.screenshot({ path: join(work, 'sentence.png') });
+  await tab.hover('minerr-popup .popup .definitions');
+  assert.deepEqual(await sentence(), ['猫が魚を食べた。'], 'the sentence of the popup word stays while the mouse is on the popup');
+  await tab.keyboard.press('Escape');
+  await tab.mouse.move(0, 0);
+  await tab.hover('#line .ml-word[data-ml-lemma="食べる"]');
+  assert.deepEqual(await sentence(), ['猫が魚を食べなかった。']);
+  await popup.locator('.lemma', { hasText: '食べる' }).waitFor();
+  assert.equal(await popup.locator('.surface').innerText(), 'On the page: 食べなかった · Appears 4 times on this page');
+  await tab.mouse.move(0, 0);
+  await tab.hover('#late .ml-word[data-ml-lemma="雨"]');
+  await popup.locator('.lemma', { hasText: '雨' }).waitFor();
+  assert.equal(await popup.locator('.surface').innerText(), 'Appears 1 time on this page');
+  await tab.keyboard.press('Escape');
+  await tab.keyboard.press('Alt+Shift+S');
+  await toast.filter({ hasText: 'Sentence highlight off.' }).waitFor();
+  assert.deepEqual(await options.evaluate(() => chrome.storage.local.get('sentenceHighlight')), { sentenceHighlight: false });
+  assert.equal(await options.isChecked('#sentence-highlight'), false);
+  await tab.mouse.move(0, 0);
+  await tab.hover('#line .ml-word[data-ml-lemma="猫"]');
+  assert.deepEqual(await sentence(), []);
+  await tab.keyboard.press('Alt+Shift+S');
+  await toast.filter({ hasText: 'Sentence highlight on.' }).waitFor();
+  await tab.waitForFunction(() => CSS.highlights.get('minerr-sentence')?.size === 1);
+  assert.deepEqual(await sentence(), ['猫が魚を食べなかった。']);
+  await tab.keyboard.press('Escape');
+  console.log('sentence highlight: the sentence of the hovered or popup word; Alt+Shift+S turns it off and on; popup shows the count on the page; saved', join(work, 'sentence.png'));
+
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('READING E2E PASS');
 } finally {
