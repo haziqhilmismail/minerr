@@ -7,7 +7,7 @@ export const wordStatuses = (element: Element): Status[] => [...element.querySel
 
 // The large centered subtitle line over a video, on YouTube, on the player page, and on other sites.
 // The layer fills its positioned parent as a size container, so the text size follows the video in every view mode.
-// The layer is always dark: it sits over video. Its children (the line list too) can use the tokens.
+// The layer is always dark: it sits over video.
 const STYLE = `
   .minerr-subs { ${TOKENS} color-scheme: dark;
     position: absolute; inset: 0; z-index: 60; container-type: size; pointer-events: none; --minerr-scale: 1; }
