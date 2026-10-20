@@ -80,7 +80,7 @@ try {
   console.log('video comprehension:', videoShown);
   assert.deepEqual(videoShown, [
     '40%', 'Ambitious', 'Unknown 3', 'Learning 0', 'Known 2', 'Ignored 0',
-    '5 words in 2 subtitle lines. Known and ignored words are understood.',
+    '5 words in the 2 subtitle lines that the overlay showed. Known and ignored words are understood.',
     'Recommended sentences (1)', '猫が魚を食べた。',
   ]);
   assert.equal(await videoPopup.locator('#sentences button').count(), 0);

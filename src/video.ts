@@ -12,6 +12,7 @@ import {
 import { recordPart } from './record.ts';
 import { serve } from './rpc.ts';
 import { isIPlusOne } from './sentence.ts';
+import { setTrack } from './stats.ts';
 import { type VideoAction, videoKey } from './videokeys.ts';
 import {
   cleanSubs, gapMode, playMode, type SecondDisplay, secondDisplay, type SubEffect, subEffect, subObscured, subScale,
@@ -156,6 +157,7 @@ const bookmarkKey = (id: string) => `bm:${id}`;
 function useLines(next: Lines): void {
   lines = next;
   const segments = lines.kind === 'timed' ? lines.segments : [];
+  setTrack(segments);
   if (segments !== listed) {
     listed = segments;
     list.setLines(segments, bookmarks);

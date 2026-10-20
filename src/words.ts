@@ -17,7 +17,7 @@ export function setSpanStatus(span: HTMLElement, status: Status): void {
 }
 
 // The status key of a word: the key of its dictionary entry, or else its lemma.
-const segmentWord = ({ lemma = '', entry }: Segment): WordId => entry ?? { key: lemma };
+export const segmentWord = ({ lemma = '', entry }: Segment): WordId => entry ?? { key: lemma };
 
 // The word of a span, as wordFragment wrote it.
 export const wordOf = (span: HTMLElement): WordId => ({ key: span.dataset.mlKey ?? span.dataset.mlLemma ?? '' });
