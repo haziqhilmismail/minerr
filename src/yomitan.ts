@@ -83,8 +83,13 @@ export function flattenGlossaryItem(item: unknown): string {
 
 const splitTags = (names: string | null | undefined) => (names ?? '').split(' ').filter(Boolean);
 
+// JMdict gives the redirect rows of a word (起き上る ⟶起き上がる) the negative sequence of the word.
+// A dictionary without entries writes 0 or no sequence.
+const entryOf = (sequence: unknown) => (typeof sequence === 'number' && Number.isSafeInteger(sequence) && sequence !== 0 ? Math.abs(sequence) : undefined);
+
 // An empty reading means the expression is its own reading.
 export function toTerm([expression, reading, definitionTags, , score, glossary, sequence, termTags]: TermRow): Term {
+  const entry = entryOf(sequence);
   return {
     expression,
     reading: reading || expression,
@@ -92,7 +97,7 @@ export function toTerm([expression, reading, definitionTags, , score, glossary, 
     termTags: splitTags(termTags),
     glossary: glossary.map(flattenGlossaryItem).filter(Boolean),
     score,
-    ...(typeof sequence === 'number' ? { sequence } : {}),
+    ...(entry ? { sequence: entry } : {}),
   };
 }
 

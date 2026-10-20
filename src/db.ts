@@ -1,4 +1,4 @@
-import type { EntryIndex, EntryRow } from './entry.ts';
+import { type EntryIndex, type EntryRow, MAX_ENTRY_ROWS } from './entry.ts';
 import { type DictMeta, type Entry, morae, pitchPattern, type PitchPattern, withMeta } from './meta.ts';
 import { at, isList, isStringList } from './parse.ts';
 import { type DictTag, type DictTerm, groupTerms, readYomitan } from './yomitan.ts';
@@ -162,8 +162,8 @@ const read = (start: Read['start']) => new Promise<unknown>((done, fail) => {
   reads.push({ start, done, fail });
 });
 
-async function entryRows(index: 'expression' | 'reading' | 'sequence', key: IDBValidKey): Promise<EntryRow[]> {
-  const rows = await read(terms => terms.index(index).getAll(key));
+async function entryRows(index: 'expression' | 'reading' | 'sequence', key: IDBValidKey, count?: number): Promise<EntryRow[]> {
+  const rows = await read(terms => terms.index(index).getAll(key, count));
   return isList(rows) ? rows.filter(isEntryRow) : [];
 }
 
@@ -171,7 +171,8 @@ async function entryRows(index: 'expression' | 'reading' | 'sequence', key: IDBV
 export const entryIndex: EntryIndex = {
   byExpression: text => entryRows('expression', text),
   byReading: text => entryRows('reading', text),
-  bySequence: (dict, sequence) => entryRows('sequence', [dict, sequence]),
+  // One row more than an entry can have is enough to see that the sequence is not an entry.
+  bySequence: (dict, sequence) => entryRows('sequence', [dict, sequence], MAX_ENTRY_ROWS + 1),
   headwords: async texts => {
     const counts = await Promise.all(texts.map(text => read(terms => terms.index('expression').count(text))));
     return new Set(texts.filter((_, i) => Number(counts[i]) > 0));

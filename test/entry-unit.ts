@@ -110,6 +110,12 @@ test('runs of nouns join by the longest dictionary headword', async () => {
   assert.deepEqual(await keys('食肉目', noCompound), ['食肉=食肉=食肉', '目=目=目']);
 });
 
+test('a sequence with more rows than one word has is not an entry', async () => {
+  const shared = Array.from({ length: 250 }, (_, i) => ({ dict: 'Bad', expression: `語${i}`, reading: 'ご', score: 0, sequence: 1 }));
+  const bad = dictionaryWords(memoryIndex([...shared, { dict: 'Bad', expression: '猫', reading: 'ねこ', score: 0, sequence: 1 }, ...rows]));
+  assert.equal(await bad.entry('猫', 'ねこ'), null);
+});
+
 test('no dictionary: the parse is the kuromoji grouping and no word has an entry', async () => {
   const none = dictionaryWords(memoryIndex([]));
   for (const text of ['猫とねことネコ', '食肉目ネコ科ネコ属', '本を開いた']) {
@@ -132,4 +138,7 @@ test('real JMdict: 猫/ねこ/ネコ share 猫, and 食肉目ネコ科ネコ属 
   assert.deepEqual(await keys('食肉目ネコ科ネコ属', real), ['食肉目=食肉目=食肉目', 'ネコ科=ネコ科=ネコ科', 'ネコ属=ネコ属=ネコ属']);
   assert.equal(await real.entry('かみ', 'かみ'), null);
   assert.deepEqual(await real.entry('上手', 'うわて'), { key: '上手【うわて】', headword: '上手', reading: 'うわて' });
+  const rise = { key: '起き上がる', headword: '起き上がる', reading: 'おきあがる' };
+  assert.deepEqual(await real.entry('起き上る', 'おきあがる'), { ...rise, oldKey: '起き上る' });
+  assert.deepEqual(await real.entry('起上がる', null), { ...rise, oldKey: '起上がる' });
 });

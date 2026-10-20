@@ -37,6 +37,9 @@ export interface Words {
 const KANA = /^[ぁ-ゖァ-ヺー]+$/;
 const toKatakana = (text: string) => text.replace(/[ぁ-ゖ]/g, kana => String.fromCharCode(kana.charCodeAt(0) + 0x60));
 
+// JMdict has at most 90 rows in one entry. More rows are a dictionary that gives one sequence to many words.
+export const MAX_ENTRY_ROWS = 200;
+
 // The first row with the highest score.
 const best = (rows: EntryRow[]) => rows.reduce<EntryRow | undefined>((top, row) => (top && top.score >= row.score ? top : row), undefined);
 
@@ -56,7 +59,7 @@ async function resolve(index: EntryIndex, lemma: string, reading: string | null)
   if (dict === undefined || sequence === undefined || others.length) return null;
   const entry = await index.bySequence(dict, sequence);
   const head = best(entry);
-  if (!head) return null;
+  if (!head || entry.length > MAX_ENTRY_ROWS) return null;
   const spelled = head.expression === lemma ? found.filter(row => row.expression === lemma) : await index.byExpression(head.expression);
   const main = best(spelled.filter(row => row.dict === dict));
   return {

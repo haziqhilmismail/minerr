@@ -25,6 +25,11 @@ const fixture = makeDictionary(join(work, 'jmdict.zip'), 'JMdict', [
   term('ネコ属', 'ネコぞく', -200, 1900510, 'Felis'),
   term('猫', 'ねこま', -200, 2698030, 'cat (archaic)'),
 ]);
+// A term dictionary without entries: every row has sequence 0.
+const flat = makeDictionary(join(work, 'flat.zip'), 'Flat', [
+  ['紙', 'かみ', 'n', '', 100, ['paper'], 0, ''],
+  ['猫', 'ねこ', 'n', '', 0, ['cat'], 0, ''],
+]);
 
 const site = createServer((req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -45,6 +50,8 @@ try {
   await options.goto(`chrome-extension://${extensionId}/options.html`);
   await options.setInputFiles('#dict-file', fixture);
   await options.locator('#dict-status', { hasText: 'Imported JMdict' }).waitFor();
+  await options.setInputFiles('#dict-file', flat);
+  await options.locator('#dict-status', { hasText: 'Imported Flat' }).waitFor();
 
   const tab = await context.newPage();
   await tab.goto(pageUrl);
@@ -68,7 +75,7 @@ try {
   await tab.keyboard.press('3');
   await tab.locator('#cats .ml-word.ml-known', { hasText: '猫' }).waitFor();
   assert.deepEqual(await statuses(), ['猫 known', 'ねこ known', 'ネコ known', 'かみ unknown', '紙 unknown']);
-  console.log('key 3 on 猫: ねこ and ネコ are known too, かみ is not');
+  console.log('key 3 on 猫: ねこ and ネコ are known too; かみ is not, and neither is 紙, which shares sequence 0 with 猫 in Flat');
 
   await tab.keyboard.press('Escape');
   await tab.mouse.move(0, 0);

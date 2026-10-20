@@ -199,6 +199,8 @@ test('readYomitan returns index metadata, tags, and flattened terms per bank', a
   const rows = [
     ['猫', 'ねこ', '1 n', '', 10, ['cat', { type: 'text', text: 'feline' }], 1, '⭐ ichi'],
     ['ねこ', '', '', '', 5, [{ type: 'structured-content', content: { tag: 'li', content: 'cat (kana)' } }], 2, ''],
+    ['ネコ', '', '', '', 1, ['⟶猫'], -1, ''],
+    ['犬', 'いぬ', '', '', 1, ['dog'], 0, ''],
   ];
   const zip = makeZip([
     `index.json=stored:${JSON.stringify({ title: 'Tiny', revision: 'r1', format: 3 })}`,
@@ -219,6 +221,8 @@ test('readYomitan returns index metadata, tags, and flattened terms per bank', a
   assert.deepEqual(await bank(), [
     { expression: '猫', reading: 'ねこ', definitionTags: ['1', 'n'], termTags: ['⭐', 'ichi'], glossary: ['cat', 'feline'], score: 10, sequence: 1 },
     { expression: 'ねこ', reading: 'ねこ', definitionTags: [], termTags: [], glossary: ['cat (kana)'], score: 5, sequence: 2 },
+    { expression: 'ネコ', reading: 'ネコ', definitionTags: [], termTags: [], glossary: ['⟶猫'], score: 1, sequence: 1 },
+    { expression: '犬', reading: 'いぬ', definitionTags: [], termTags: [], glossary: ['dog'], score: 1 },
   ]);
   const untagged = makeZip([`index.json=stored:${JSON.stringify({ title: 'Bare', revision: 'r1', format: 3 })}`]);
   assert.deepEqual((await readYomitan(untagged)).tags, []);
