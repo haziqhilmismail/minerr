@@ -358,6 +358,8 @@ The audio comes from one of these sources:
 
 The sentence audio needs subtitles with times. A card from the YouTube captions that Minerr copies from the player has no sentence audio.
 
+The `SentenceAudio` field is new. If your note type is from an earlier version, Anki asks for a full sync one time after the update. Sync all your devices before you update Minerr. See [The note type](#the-note-type).
+
 Anki on a computer plays MP3 and WebM files. If a phone app does not play a WebM file, start the server before you add the card. Then the card gets an MP3 file.
 
 ## Play modes
@@ -522,6 +524,8 @@ The card has a light theme and a night mode theme. It also fits phone screens. I
 | ![Card front](docs/card-front.png) | ![Card back](docs/card-back.png) |
 
 Minerr keeps the note type up to date. Each time its background service worker starts, the first card that you add sets the templates and the CSS to the current version. If you change the templates or the CSS in Anki, Minerr replaces your changes. If the note type does not have a field of the current version, Minerr adds the field. For example, a note type from an earlier version gets the `SentenceAudio` field. Minerr does not remove or rename a field. If you want your own design, make a copy of the note type in Anki and edit the copy.
+
+A new field changes the schema of the note type. After this change, Anki asks for a full sync one time. A full sync replaces the collection on one side with the collection on the other side. Before you update Minerr, sync Anki on all your devices. Then add the first card, and upload the collection from this computer when Anki asks.
 
 If an Anki window to add, browse, or edit cards is open, AnkiConnect cannot change the note type. Then the popup tells you to close the window.
 
