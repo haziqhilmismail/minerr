@@ -163,6 +163,34 @@ To turn the highlight off or on:
 
 When you turn Minerr off, the highlight also goes away.
 
+## Comprehension score
+
+The toolbar menu shows how much of the current tab you understand.
+
+1. Open a page with Japanese text, or a YouTube video.
+2. Click the Minerr button in the Chrome toolbar.
+
+The **Comprehension** section shows these items:
+
+- The score: the percent of the words with the status known or ignored. A learning word does not count as understood.
+- A label for the score, as in Migaku. The table below gives the labels.
+- The number of different words with each status.
+- The recommended sentences: the i+1 sentences of the tab, each one time. Click a sentence to scroll the tab to it. The sentence gets a yellow flash.
+
+| Score | Label |
+| --- | --- |
+| 99% or more | Exceptional |
+| 95% to 98% | Excellent |
+| 90% to 94% | Great |
+| 80% to 89% | Good |
+| 70% to 79% | Approachable |
+| 60% to 69% | Challenging |
+| Less than 60% | Ambitious |
+
+On a YouTube video, the score uses only the subtitle lines that the overlay showed in the tab. The score changes while you watch. When you open a different video, the count starts again. You cannot click a subtitle sentence, because the line is not on the page now.
+
+Migaku also uses the number of i+1 sentences in its score. Minerr uses only the percent of the words.
+
 ## Subtitles on YouTube
 
 On a YouTube video page, Minerr shows the subtitles in its own overlay, in large white text on a dark box. The overlay is at the bottom center of the video, above the player controls. The text size changes with the player size, also in theater mode and full screen. Minerr hides the captions of YouTube, because the overlay shows the same text.
@@ -408,6 +436,8 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/iplusone.ts` | The i+1 highlight. The pure part is `iPlusOneSentences` in `src/sentence.ts`. |
 | `src/overlay.ts` | The subtitle overlay line, for YouTube and the player. |
 | `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
+| `src/stats.ts` | The comprehension score and the recommended sentences of a tab, for the toolbar popup. |
+| `src/score.ts` | Pure functions for the score, its label, and the text of the i+1 sentences. |
 
 Node.js runs the `.ts` test files directly, without a build. To run the tests:
 
@@ -437,6 +467,8 @@ The WhisperX server has two endpoints for the player:
 - `GET /files/<sha256>` returns the cached subtitles of a file.
 
 `node test/media.ts` tests the i+1 highlight and the player, with a mock AnkiConnect and a mock WhisperX server. It uses port 8765 and port 8766. `npm test` runs it after `node test/subtitles.ts`.
+
+`node test/pages-unit.ts` tests the pure functions of the comprehension score. `node test/pages.ts` tests the comprehension score in the toolbar popup in Chromium. `npm test` runs both after `node test/media.ts`.
 
 ## Third-party data
 

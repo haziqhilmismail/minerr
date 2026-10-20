@@ -1,0 +1,93 @@
+// The comprehension score of the tab and its i+1 sentences, for the toolbar popup.
+// On a page with the subtitle overlay (YouTube), the score covers the subtitle lines that the tab showed; elsewhere, the page text.
+import { iPlusOneRanges } from './iplusone.ts';
+import { serve } from './rpc.ts';
+import { comprehension, type Comprehension, iPlusOneTexts, type Word } from './score.ts';
+import type { Piece } from './sentence.ts';
+import { getStatuses, type Status, STATUS_NAMES, STATUSES } from './status.ts';
+
+export interface PageStats {
+  source: 'page' | 'video';
+  // The number of subtitle lines in the score; 0 for a page.
+  lines: number;
+  score: Comprehension | null;
+  // The i+1 sentences, each one time, in text order. Only page sentences can be shown (pageStatsShow).
+  sentences: string[];
+}
+
+// A part of a subtitle line: a word with its lemma, or plain text with lemma null.
+interface Token {
+  text: string;
+  lemma: string | null;
+}
+
+const FOCUS = 'minerr-focus';
+const FOCUS_MS = 2000;
+document.head.append(Object.assign(document.createElement('style'), {
+  textContent: `::highlight(${FOCUS}) { background-color: rgba(250, 204, 21, 0.75); color: #000; }`,
+}));
+
+const statusOf = (span: Element): Status => STATUS_NAMES.find(status => span.classList.contains(STATUSES[status].className)) ?? 'unknown';
+const tidy = (text: string) => text.replace(/\s+/g, ' ').trim();
+
+// The ranges of the sentences in the last page reply, in the order of its list.
+let shownRanges: Range[] = [];
+
+function pageStats(): PageStats {
+  const words: Word[] = [...document.querySelectorAll<HTMLElement>('.ml-word')]
+    .map(span => ({ lemma: span.dataset.mlLemma ?? '', status: statusOf(span) }));
+  const sentences = new Map<string, Range>();
+  for (const range of iPlusOneRanges()) {
+    const text = tidy(range.toString());
+    if (!sentences.has(text)) sentences.set(text, range);
+  }
+  shownRanges = [...sentences.values()];
+  return { source: 'page', lines: 0, score: comprehension(words), sentences: [...sentences.keys()] };
+}
+
+// The subtitle lines of the current video that the overlay showed, by their text.
+const lines = new Map<string, Token[]>();
+let lineVideo = '';
+
+function recordLine(): void {
+  const line = document.querySelector('.minerr-subs-line');
+  const video = new URLSearchParams(location.search).get('v') ?? location.pathname;
+  if (video !== lineVideo) {
+    lineVideo = video;
+    lines.clear();
+  }
+  // page.ts replaces the text of the line with word spans after the parse; record the line once it has them.
+  const text = line?.textContent ?? '';
+  if (!line || !text || lines.has(text) || !line.querySelector('.ml-word')) return;
+  lines.set(text, [...line.childNodes].map(node => ({
+    text: node.textContent ?? '',
+    lemma: node instanceof HTMLElement && node.classList.contains('ml-word') ? node.dataset.mlLemma ?? null : null,
+  })));
+}
+
+async function videoStats(): Promise<PageStats> {
+  recordLine();
+  const tokens = [...lines.values()];
+  const statuses = await getStatuses([...new Set(tokens.flat().flatMap(token => (token.lemma ? [token.lemma] : [])))]);
+  const pieces = tokens.map(line => line.map(({ text, lemma }): Piece => ({ text, status: lemma ? statuses.get(lemma) ?? 'unknown' : null })));
+  const words = tokens.flat().flatMap(({ lemma }) => (lemma ? [{ lemma, status: statuses.get(lemma) ?? 'unknown' }] : []));
+  shownRanges = [];
+  return { source: 'video', lines: lines.size, score: comprehension(words), sentences: [...new Set(pieces.flatMap(iPlusOneTexts))] };
+}
+
+let focusTimer: ReturnType<typeof setTimeout> | undefined;
+
+function show({ index }: { index: number }): void {
+  const range = shownRanges[index];
+  if (!range?.startContainer.isConnected) throw new Error('The page changed. Open this menu again.');
+  range.startContainer.parentElement?.scrollIntoView({ block: 'center' });
+  CSS.highlights.set(FOCUS, new Highlight(range));
+  clearTimeout(focusTimer);
+  focusTimer = setTimeout(() => CSS.highlights.delete(FOCUS), FOCUS_MS);
+}
+
+// ponytail: any page with the overlay layer counts as a video page, also a YouTube page without a video; a page score there needs a URL rule.
+const stats = (): PageStats | Promise<PageStats> => (document.querySelector('.minerr-subs') ? videoStats() : pageStats());
+
+serve({ pageStats: stats, pageStatsShow: show }, () => true);
+for (const type of ['timeupdate', 'seeked']) document.addEventListener(type, recordLine, true);

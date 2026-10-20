@@ -1,5 +1,7 @@
 import { byId } from './src/dom.ts';
 import { call, type Message, messageOf } from './src/rpc.ts';
+import type { PageStats } from './src/stats.ts';
+import { STATUS_NAMES, STATUSES } from './src/status.ts';
 import type { Snapshot, Source } from './src/subtitles.ts';
 import { applyTheme } from './src/theme.ts';
 import { iPlusOne } from './src/settings.ts';
@@ -83,6 +85,58 @@ async function refresh(): Promise<void> {
   }
 }
 
+const scoreEmpty = byId('score-empty', HTMLElement);
+const scoreLabel = byId('score-label', HTMLElement);
+const scoreBasis = byId('score-basis', HTMLElement);
+
+function sentenceItem(text: string, index: number, source: PageStats['source']): HTMLLIElement {
+  const item = document.createElement('li');
+  if (source === 'video' || tab?.id === undefined) {
+    item.textContent = text;
+    return item;
+  }
+  const tabId = tab.id;
+  const button = Object.assign(document.createElement('button'), { textContent: text, title: 'Show this sentence in the tab' });
+  button.addEventListener('click', () => call({ type: 'pageStatsShow', index }, tabId).catch(error => { scoreBasis.textContent = messageOf(error); }));
+  item.append(button);
+  return item;
+}
+
+function showStats({ source, lines, score, sentences }: PageStats): void {
+  if (!score) {
+    scoreEmpty.textContent = source === 'video'
+      ? 'Play the video with Japanese subtitles. The score uses the subtitle lines that the overlay showed.'
+      : 'This page has no Japanese words.';
+    return;
+  }
+  scoreEmpty.hidden = true;
+  byId('score', HTMLElement).hidden = false;
+  byId('score-percent', HTMLElement).textContent = `${score.percent}%`;
+  scoreLabel.textContent = score.rating.label;
+  scoreLabel.style.color = score.rating.color;
+  byId('score-counts', HTMLElement).replaceChildren(...STATUS_NAMES.map(status => {
+    const dot = Object.assign(document.createElement('span'), { className: 'dot' });
+    dot.style.background = STATUSES[status].color;
+    const item = document.createElement('li');
+    item.append(dot, `${STATUSES[status].label} ${score.unique[status]}`);
+    return item;
+  }));
+  scoreBasis.textContent = `${score.words} words ${source === 'video' ? `in ${lines} subtitle lines` : 'on this page'}. Known and ignored words are understood.`;
+  byId('sentences-title', HTMLElement).textContent = sentences.length
+    ? `Recommended sentences (${sentences.length})`
+    : 'No recommended sentences. No sentence has exactly one unknown word.';
+  byId('sentences', HTMLElement).replaceChildren(...sentences.map((text, index) => sentenceItem(text, index, source)));
+}
+
+async function showTabStats(): Promise<void> {
+  try {
+    if (tab?.id === undefined) throw new Error('No tab');
+    showStats(await call({ type: 'pageStats' }, tab.id));
+  } catch {
+    scoreEmpty.textContent = 'Minerr cannot read this tab. If the tab was open before Minerr started, reload it.';
+  }
+}
+
 async function act(message: Message<'subsGenerate'> | Message<'subsUse'>): Promise<void> {
   if (watchTabId === undefined) return;
   try {
@@ -111,5 +165,6 @@ byId('options', HTMLAnchorElement).addEventListener('click', event => {
   chrome.runtime.openOptionsPage();
 });
 
+showTabStats();
 refresh();
 setInterval(refresh, POLL_MS);

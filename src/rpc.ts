@@ -2,6 +2,7 @@ import type { CardFields } from './anki.ts';
 import type { SubtitleSegment } from './captions.ts';
 import type { Segment } from './group.ts';
 import { at } from './parse.ts';
+import type { PageStats } from './stats.ts';
 import type { Snapshot, Source } from './subtitles.ts';
 import type { Health, Job } from './whisper.ts';
 import type { Group } from './yomitan.ts';
@@ -9,6 +10,7 @@ import type { Group } from './yomitan.ts';
 // Every message type, with the fields that call() sends and the value that its handler replies with.
 // The service worker handles parse to whisperCached; it passes parse and lookup on to the offscreen document.
 // The content scripts of a YouTube tab handle subsState, subsGenerate, and subsUse.
+// The content scripts of every tab, and the reader page, handle pageStats and pageStatsShow (src/stats.ts).
 interface Protocol {
   parse: { request: { texts: string[] }; reply: Segment[][] };
   lookup: { request: { lemma: string }; reply: Group[] };
@@ -24,6 +26,8 @@ interface Protocol {
   subsState: { request: {}; reply: Snapshot };
   subsGenerate: { request: {}; reply: Snapshot };
   subsUse: { request: { source: Source }; reply: Snapshot };
+  pageStats: { request: {}; reply: PageStats };
+  pageStatsShow: { request: { index: number }; reply: void };
 }
 
 type MessageType = keyof Protocol;
