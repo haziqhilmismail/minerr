@@ -96,6 +96,9 @@ const WATCH = `<!doctype html><html dark><meta charset="utf-8"><title>Fake YouTu
   html:not([dark]) body { background: #fff; color: #0f0f0f; }
   #columns { display: flex; flex-wrap: wrap; gap: 24px; }
   #secondary { width: 402px; }
+  #masthead-container { position: fixed; top: 0; width: 100%; height: 24px; display: flex; justify-content: space-between; background: #212121; }
+  ytd-watch-flexy[theater] #full-bleed-container { margin: 0 -24px 24px; height: 56.25vw; max-height: calc(100vh - 169px); }
+  ytd-watch-flexy[theater] #movie_player { width: 100%; height: 100%; }
   #movie_player { position: relative; width: 854px; height: 480px; overflow: hidden; background: #000; user-select: none; }
   .full body { padding: 0; } .full #movie_player { position: fixed; inset: 0; width: auto; height: auto; }
   video { width: 100%; height: 100%; }
@@ -104,8 +107,9 @@ const WATCH = `<!doctype html><html dark><meta charset="utf-8"><title>Fake YouTu
   .caption-window { position: absolute; left: 50%; bottom: 2%; transform: translateX(-50%); text-align: center; }
   .ytp-caption-segment { font-size: 20px; color: #fff; background: rgba(8, 8, 8, .75); }
 </style>
+<div id="masthead-container"><span>YouTube</span><span id="avatar">Avatar</span></div>
 <h1 id="title">猫の動画</h1>
-<ytd-watch-flexy><div id="columns"><div id="primary">
+<ytd-watch-flexy><div id="full-bleed-container"></div><div id="columns"><div id="primary">
 <div id="movie_player">
   <video src="data:video/webm;base64,${readFileSync(clip).toString('base64')}" muted></video>
   <div class="ytp-caption-window-container"><div class="caption-window"><span class="captions-text">
@@ -186,15 +190,15 @@ try {
   await tab.keyboard.press('d');
   await tab.locator('.minerr-subs-toast', { hasText: 'This key needs subtitles with times.' }).waitFor();
   assert.deepEqual(await tab.evaluate(() => Reflect.get(window, 'seen')), ['d'], 'on mirrored captions YouTube gets the key');
-  const sidebar = tab.locator('ytd-watch-flexy #secondary > .minerr-lines');
+  const sidebar = tab.locator('body > .minerr-lines');
   const related = tab.locator('#related');
   await tab.keyboard.press('g');
   await sidebar.waitFor();
   assert.equal(await sidebar.locator('.minerr-lines-empty').innerText(),
     'The subtitle sidebar needs subtitles with times. Generate them with WhisperX, or start the Minerr server for the YouTube subtitles.');
   assert.equal(await sidebar.locator('li').count(), 0);
-  assert.equal(await related.isHidden(), true, 'the sidebar takes the place of the recommended videos');
-  console.log('sidebar on mirrored captions: a message in place of the recommended videos');
+  assert.equal(await related.isVisible(), true, 'the recommended videos stay');
+  console.log('sidebar on mirrored captions: a message');
 
   await tab.evaluate(() => {
     const segment = document.querySelectorAll('.ytp-caption-segment')[1];
@@ -209,21 +213,20 @@ try {
     const overlay = document.querySelector('.minerr-subs');
     const native = document.querySelector('.ytp-caption-window-container');
     const side = document.querySelector('.minerr-lines');
-    const others = document.querySelector('#related');
-    if (!overlay || !native || !side || !others) throw new Error('The page has no overlay, captions, or sidebar');
+    if (!overlay || !native || !side) throw new Error('The page has no overlay, captions, or sidebar');
     return { overlay: getComputedStyle(overlay).display, native: getComputedStyle(native).opacity,
-      sidebar: getComputedStyle(side).display, related: getComputedStyle(others).display };
+      sidebar: getComputedStyle(side).display, room: getComputedStyle(document.documentElement).marginRight };
   });
   await options.evaluate(() => chrome.storage.local.set({ enabled: false }));
   await tab.waitForFunction(() => document.documentElement.hasAttribute('data-minerr-off'));
-  assert.deepEqual(await offState(), { overlay: 'none', native: '1', sidebar: 'none', related: 'block' });
+  assert.deepEqual(await offState(), { overlay: 'none', native: '1', sidebar: 'none', room: '0px' }, 'Minerr off gives the page its width back');
   await options.evaluate(() => chrome.storage.local.set({ enabled: true }));
   await tab.waitForFunction(() => !document.documentElement.hasAttribute('data-minerr-off'));
-  assert.deepEqual(await offState(), { overlay: 'block', native: '0', sidebar: 'flex', related: 'none' });
+  assert.deepEqual(await offState(), { overlay: 'block', native: '0', sidebar: 'flex', room: '360.8px' });
   await tab.keyboard.press('g');
   await sidebar.waitFor({ state: 'hidden' });
   assert.equal(await related.isVisible(), true);
-  console.log('Minerr off: YouTube captions and recommended videos back, overlay and sidebar hidden; on: both back');
+  console.log('Minerr off: YouTube captions back, overlay and sidebar hidden; on: both back');
 
   await tab.hover('.minerr-subs-line .ml-word[data-ml-lemma="食べる"]');
   const popup = tab.locator('minerr-popup .popup');
@@ -357,27 +360,54 @@ try {
   await tab.mouse.move(0, 0);
 
   await worker.evaluate(() => chrome.storage.local.set({ 'w:猫': 'known' }));
-  await tab.setViewportSize({ width: 1360, height: 640 });
+  await tab.setViewportSize({ width: 1360, height: 900 });
+  const PARTS = ['#masthead-container', '#avatar', '#movie_player', '#secondary', '#full-bleed-container'];
+  const boxes = () => tab.evaluate(selectors => Object.fromEntries(selectors.map(selector => {
+    const box = document.querySelector(selector)?.getBoundingClientRect();
+    if (!box) throw new Error(`The page has no ${selector}`);
+    return [selector, { left: box.left, right: box.right, top: box.top, width: box.width, height: box.height }];
+  })), [...PARTS, '.minerr-lines']);
+  const pageBoxes = async () => Object.fromEntries(Object.entries(await boxes()).filter(([selector]) => selector !== '.minerr-lines'));
+  const closedPage = await pageBoxes();
   await tab.keyboard.press('g');
   await sidebar.locator('li .ml-word.ml-unknown[data-ml-lemma="魚"]').waitFor();
   const cards = sidebar.locator('li');
   assert.deepEqual(await cards.evaluateAll(rows => rows.map(row => `${row.querySelector('time')?.textContent} ${row.querySelector('.text')?.textContent}`)),
     ['0:00 猫が魚を食べた', '0:02 今日は雨', '0:06 ［音楽］', '0:10 雨が降る']);
-  const sideLayout = await tab.evaluate(() => {
-    const player = document.querySelector('#movie_player')?.getBoundingClientRect();
-    const side = document.querySelector('.minerr-lines')?.getBoundingClientRect();
-    if (!player || !side) throw new Error('The page has no player or sidebar');
-    return { gap: side.left - player.right, top: side.top - player.top, width: side.width };
-  });
-  console.log('YouTube sidebar layout:', sideLayout);
-  assert.deepEqual(sideLayout, { gap: 24, top: 0, width: 402 }, 'the sidebar is the column at the right of the video, not over it');
-  await tab.waitForFunction(() => [...document.querySelectorAll('.minerr-lines .add')].map(add => add.getAttribute('aria-disabled')).join() === 'false,false,true,false');
+  const nothingCovered = async (view: string) => {
+    const found = await boxes();
+    const side = found['.minerr-lines'];
+    console.log(`YouTube sidebar layout, ${view}:`, found);
+    assert.deepEqual(side && { top: side.top, height: side.height, right: side.left + side.width, width: side.width },
+      { top: 0, height: 900, right: 1360, width: 400 }, `${view}: the sidebar is as high as the window, at its right side`);
+    for (const selector of PARTS) {
+      const part = found[selector];
+      assert.ok(side && part && part.right <= side.left, `${view}: ${selector} ends at ${part?.right}, left of the sidebar at ${side?.left}`);
+    }
+    return found;
+  };
+  await nothingCovered('default view');
   await shot(tab, 'sidebar-youtube-dark.png');
   assert.equal(await sidebar.evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(15, 15, 15)', 'the sidebar has the colors of the dark theme');
+  assert.ok(await sidebar.locator('.text').first().evaluate(node => parseFloat(getComputedStyle(node).fontSize)) >= 18, 'the line text is 18 px or larger');
   await tab.evaluate(() => document.documentElement.removeAttribute('dark'));
   assert.equal(await sidebar.evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(255, 255, 255)', 'the sidebar has the colors of the light theme');
   await shot(tab, 'sidebar-youtube-light.png');
+  const theater = (on: boolean) => tab.evaluate(value => {
+    const flexy = document.querySelector('ytd-watch-flexy');
+    const player = document.querySelector('#movie_player');
+    if (!flexy || !player) throw new Error('The page has no watch page');
+    flexy.toggleAttribute('theater', value);
+    document.querySelector(value ? '#full-bleed-container' : '#primary')?.prepend(player);
+  }, on);
+  await theater(true);
+  const inTheater = await nothingCovered('theater mode');
+  assert.deepEqual(inTheater['#movie_player'] && [inTheater['#movie_player'].width, inTheater['#movie_player'].height], [960, 540],
+    'in theater mode the player fills the width of the page beside the sidebar, at 16:9');
+  await shot(tab, 'sidebar-youtube-theater-light.png');
   await tab.evaluate(() => document.documentElement.setAttribute('dark', ''));
+  await shot(tab, 'sidebar-youtube-theater-dark.png');
+  await theater(false);
 
   const currentCard = (time: string) => tab.waitForFunction(t => document.querySelector('.minerr-lines li[aria-current="true"] time')?.textContent === t, time);
   await tab.evaluate(() => { const video = document.querySelector('video'); if (video) video.currentTime = 10.5; });
@@ -390,13 +420,13 @@ try {
   assert.ok(playedTo >= 2 && playedTo < 2.2, `Play pauses at the end of the line, ${playedTo}`);
 
   const notesBefore = ankiRequests.filter(r => at(r, 'action') === 'addNote').length;
-  await cards.nth(0).getByRole('button', { name: 'Add a card for the unknown word of the line' }).click();
+  await cards.nth(0).getByRole('button', { name: 'Add a card for a word of the line' }).click();
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor({ timeout: 15000 });
   const notes = ankiRequests.filter(r => at(r, 'action') === 'addNote');
   assert.equal(notes.length, notesBefore + 1);
   const plusFields = at(notes.at(-1), 'params', 'note', 'fields');
   console.log('YouTube card from +:', plusFields);
-  assert.equal(at(plusFields, 'Word'), '魚');
+  assert.equal(at(plusFields, 'Word'), '魚', 'a line with one unknown word gives its card at once');
   assert.equal(at(plusFields, 'Sentence'), '猫が<b>魚</b>を食べた');
   assert.match(String(at(plusFields, 'SentenceAudio')), /^\[sound:minerr-\d+\.mp3\]$/);
   assert.match(String(at(plusFields, 'Image')), /^<img src="minerr-\d+\.jpg">$/);
@@ -405,17 +435,30 @@ try {
   await tab.mouse.move(0, 0);
 
   const shownCards = () => sidebar.locator('li:not([hidden]) time').allTextContents();
+  const filter = sidebar.getByRole('combobox', { name: 'Filter the lines' });
   await cards.nth(3).getByRole('button', { name: 'Bookmark the line (B)' }).click();
-  await sidebar.getByRole('button', { name: 'Bookmarks' }).click();
+  await sidebar.locator('option[value="bookmarks"]', { hasText: 'Bookmarks (1)' }).waitFor({ state: 'attached' });
+  await filter.selectOption('bookmarks');
   assert.deepEqual(await shownCards(), ['0:10']);
-  await sidebar.getByRole('button', { name: '1 unknown word' }).click();
+  await filter.selectOption('iPlusOne');
   assert.deepEqual(await shownCards(), ['0:02', '0:10'], 'the card from + made 魚 learning');
-  await sidebar.getByRole('button', { name: 'All' }).click();
+  await worker.evaluate(() => chrome.storage.local.set({ 'w:今日': 'known', 'w:雨': 'unknown', 'w:降る': 'known' }));
+  await sidebar.locator('li .ml-word.ml-known[data-ml-lemma="降る"]').waitFor();
+  await tab.waitForFunction(() => document.querySelectorAll('.minerr-lines .ml-word.ml-unknown[data-ml-lemma="雨"]').length === 2);
+  assert.deepEqual(await shownCards(), ['0:02', '0:10'], 'both lines have the one unknown word 雨');
+  await filter.selectOption('unique');
+  assert.deepEqual(await shownCards(), ['0:02'], 'Unique 1 unknown word shows only the first line of 雨');
+  await filter.selectOption('unknown2');
+  assert.deepEqual(await shownCards(), []);
+  await sidebar.locator('.minerr-lines-empty', { hasText: 'No line matches the filter.' }).waitFor();
+  await sidebar.getByRole('button', { name: 'Show all lines' }).click();
+  assert.deepEqual(await shownCards(), ['0:00', '0:02', '0:06', '0:10'], 'Clear filter shows all lines');
+  assert.equal(await filter.inputValue(), 'all');
   await tab.keyboard.press('g');
   await sidebar.waitFor({ state: 'hidden' });
-  assert.equal(await related.isVisible(), true, 'the recommended videos come back');
+  assert.deepEqual(await pageBoxes(), closedPage, 'a closed sidebar gives the page its layout back');
   await tab.setViewportSize({ width: 902, height: 528 });
-  console.log('YouTube sidebar: cards with times beside the video, Play, a card from +, the follow mark, filters, and bookmarks');
+  console.log('YouTube sidebar: a full-height panel that the page makes room for, Play, a card from +, the follow mark, filters, and bookmarks');
 
   const setStorage = (items: Record<string, unknown>) => worker.evaluate(value => chrome.storage.local.set(value), items);
   const lineStyle = () => line.evaluate(node => ({ filter: getComputedStyle(node).filter, color: getComputedStyle(node).color }));

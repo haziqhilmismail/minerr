@@ -11,7 +11,7 @@
     { "matches": ["<all_urls>"], "js": ["content.js"] }
   ],
   "web_accessible_resources": [
-    { "resources": ["src/anki.js", "src/anywhere.js", "src/autopause.js", "src/captions.js", "src/cardform.js", "src/chord.js", "src/dom.js", "src/furigana.js", "src/group.js", "src/hover.js", "src/iplusone.js", "src/keys.js", "src/lapis.js", "src/linelist.js", "src/meta.js", "src/overlay.js", "src/page.js", "src/parse.js", "src/pitch-colors.js", "src/playback.js", "src/popup-view.js", "src/popup.js", "src/record.js", "src/rpc.js", "src/score.js", "src/sentence-hover.js", "src/sentence-text.js", "src/sentence.js", "src/settings.js", "src/site.js", "src/stats.js", "src/status.js", "src/subtitles.js", "src/tags.js", "src/theme.js", "src/video.js", "src/videokeys.js", "src/videosettings.js", "src/whisper.js", "src/words.js"], "matches": ["<all_urls>"] }
+    { "resources": ["src/anki.js", "src/anywhere.js", "src/autopause.js", "src/captions.js", "src/cardform.js", "src/chord.js", "src/dom.js", "src/furigana.js", "src/group.js", "src/hover.js", "src/iplusone.js", "src/keys.js", "src/lapis.js", "src/linefilter.js", "src/linelist.js", "src/meta.js", "src/overlay.js", "src/page.js", "src/parse.js", "src/pitch-colors.js", "src/playback.js", "src/popup-view.js", "src/popup.js", "src/record.js", "src/rpc.js", "src/score.js", "src/sentence-hover.js", "src/sentence-text.js", "src/sentence.js", "src/settings.js", "src/site.js", "src/stats.js", "src/status.js", "src/subtitles.js", "src/tags.js", "src/theme.js", "src/video.js", "src/videokeys.js", "src/videosettings.js", "src/whisper.js", "src/words.js"], "matches": ["<all_urls>"] }
   ],
   "action": { "default_title": "Minerr", "default_popup": "action.html" },
   "commands": {

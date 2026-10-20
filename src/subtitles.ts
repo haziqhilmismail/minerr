@@ -10,20 +10,24 @@ const MAX_RETRY_MS = 60000;
 
 // YouTube's caption window stays in the DOM (the overlay reads it), but it is invisible and takes no mouse events.
 // When Minerr is off (page.ts sets data-minerr-off on the root), YouTube's own captions come back and the overlay hides.
-// The open subtitle sidebar takes the place of the recommended videos, in the colors of YouTube's light or dark theme.
+// The open subtitle sidebar (src/linelist.ts) narrows the page. The masthead is fixed, so it gets its own right edge;
+// the theater player is as high as the narrower page is wide, where YouTube makes it as high as the window is wide.
+// The sidebar has the colors of YouTube's light or dark theme; :root makes them win over the colors of src/linelist.ts.
 const STYLE = `
   :root:not([data-minerr-off]) .ytp-caption-window-container { opacity: 0 !important; pointer-events: none !important; }
   :root[data-minerr-off] .minerr-subs { display: none; }
-  :root:not([data-minerr-off]) ytd-watch-flexy #secondary:has(> .minerr-lines:not([hidden])) > :not(.minerr-lines) { display: none !important; }
-  #secondary > .minerr-lines {
-    position: sticky; top: calc(var(--ytd-masthead-height, 56px) + 16px); height: calc(100vh - var(--ytd-masthead-height, 56px) - 40px);
-    margin-bottom: 16px; color-scheme: light;
+  :root[data-minerr-side]:not([data-minerr-off]) #masthead-container { left: 0 !important; right: var(--minerr-side-width) !important; width: auto !important; }
+  :root[data-minerr-side]:not([data-minerr-off]) ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container {
+    height: calc((100vw - var(--minerr-side-width)) * 9 / 16) !important;
+  }
+  :root .minerr-lines {
+    color-scheme: light;
     --minerr-side-bg: light-dark(#ffffff, #0f0f0f); --minerr-side-card: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.1));
     --minerr-side-text: light-dark(#0f0f0f, #f1f1f1); --minerr-side-muted: light-dark(#606060, #aaaaaa);
     --minerr-side-line: light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.2)); --minerr-side-accent: light-dark(#065fd4, #3ea6ff);
     --minerr-side-on-accent: light-dark(#ffffff, #0f0f0f);
   }
-  html[dark] #secondary > .minerr-lines { color-scheme: dark; }
+  html[dark] .minerr-lines { color-scheme: dark; }
 `;
 
 // 'youtube' shows the YouTube subtitles: with times when the server downloaded them, else a mirror of YouTube's own captions.
@@ -141,9 +145,7 @@ function sync(): void {
     if (player) captions.observe(player, { childList: true, subtree: true, characterData: true });
   }
   if (player && layer.parentElement !== player) player.append(layer);
-  // Without the column of the watch page, the sidebar stays at the right of the window.
-  const column = document.querySelector('ytd-watch-flexy #secondary') ?? document.body;
-  if (sidebar.parentElement !== column) column.prepend(sidebar);
+  if (sidebar.parentElement !== document.body) document.body.append(sidebar);
   const videoId = currentVideoId();
   if (videoId !== state.videoId) changeVideo(videoId);
 }

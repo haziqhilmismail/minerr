@@ -341,12 +341,13 @@ try {
   assert.equal(await videoTime(), 3, 'a click on a line goes to it');
   await player.keyboard.press('b');
   await toast.filter({ hasText: 'Bookmarked the line.' }).waitFor();
-  await browser.getByRole('button', { name: 'Bookmarks' }).click();
+  const filter = browser.getByRole('combobox', { name: 'Filter the lines' });
+  await filter.selectOption('bookmarks');
   assert.deepEqual(await visibleRows(), ['今日は雨が降っている。']);
   await browser.locator('li .ml-word[data-ml-lemma="雨"].ml-learning').first().waitFor();
-  await browser.getByRole('button', { name: 'Learning' }).click();
+  await filter.selectOption('learning');
   assert.deepEqual(await visibleRows(), ['今日は雨が降っている。']);
-  await browser.getByRole('button', { name: '1 unknown word' }).click();
+  await filter.selectOption('iPlusOne');
   await player.waitForFunction(() => [...document.querySelectorAll('.minerr-lines li:not([hidden]) .text')].map(n => n.textContent).join() === '猫が魚を食べた。');
   const bookmarkKey = await worker.evaluate(async () => Object.keys(await chrome.storage.local.get(null)).filter(key => key.startsWith('bm:')));
   assert.equal(bookmarkKey.length, 1);

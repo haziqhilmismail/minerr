@@ -10,7 +10,6 @@
     font: 15px/1.6 "Hiragino Sans", "Yu Gothic UI", "Meiryo", "Noto Sans JP", system-ui, sans-serif; }
   [hidden] { display: none !important; }
   main { max-width: 1120px; margin: 0 auto; padding: 20px 20px 40px; }
-  main:has(.minerr-lines:not([hidden])) { max-width: 1480px; }
   header { display: flex; align-items: baseline; gap: 12px; margin: 0 2px 14px; }
   h1 { margin: 0; font-size: 20px; line-height: 1.2; }
   header span { color: var(--muted); }
@@ -23,10 +22,10 @@
   button.primary:hover:not(:disabled) { border-color: transparent; filter: brightness(1.08); }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  /* The subtitle sidebar is a column at the right of the video, as high as the video, also in full screen. */
-  .watch { display: flex; gap: 12px; }
-  .watch > .minerr-lines { flex: none; width: 340px; contain: size; }
+  /* The subtitle sidebar (src/linelist.ts) is at the right of the window, also in full screen, where the video makes room for it. */
+  .watch { display: flex; }
   .watch:fullscreen { padding: 12px; background: var(--bg); }
+  :root[data-minerr-side]:not([data-minerr-off]) .watch:fullscreen { padding-right: calc(var(--minerr-side-width) + 12px); }
   .stage { position: relative; display: grid; place-items: center; flex: 1; min-width: 0; aspect-ratio: 16 / 9;
     max-height: calc(100vh - 150px); min-height: 240px; overflow: hidden; border-radius: 12px; background: #000; }
   .watch:fullscreen .stage { max-height: none; aspect-ratio: auto; }
