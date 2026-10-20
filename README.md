@@ -456,8 +456,11 @@ The subtitle sidebar shows all lines of the video as cards, beside the video. It
 3. Do one of these steps on the card:
    - Click the card, or its time, to go to the line.
    - Click **▶** to play the line one time. The video pauses at the end of the line.
+   - Click **+** to add a card for the unknown word of the line. The card gets the line as the sentence, the audio of the line, and a screenshot of the line. The video pauses at the start of the line for the screenshot.
    - Click **★** to bookmark the line.
 4. Press `G` again, or click **×**, to close the sidebar.
+
+The **+** button works only on a line with exactly one unknown word. On a line with no unknown word or with two or more, **+** is gray. To add a word from such a line, move the mouse over the word and press `A`. The card also gets the sentence and the audio of that line.
 
 The sidebar follows the video. The card of the current line has a colored bar at its left side, and the list scrolls to keep that card in view. If you scroll the list, the list stays where you put it for 3 seconds.
 

@@ -352,6 +352,7 @@ try {
   });
   console.log('YouTube sidebar layout:', sideLayout);
   assert.deepEqual(sideLayout, { gap: 24, top: 0, width: 402 }, 'the sidebar is the column at the right of the video, not over it');
+  await tab.waitForFunction(() => [...document.querySelectorAll('.minerr-lines .add')].map(add => add.getAttribute('aria-disabled')).join() === 'false,false,true,false');
   await shot(tab, 'sidebar-youtube-dark.png');
   assert.equal(await sidebar.evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(15, 15, 15)', 'the sidebar has the colors of the dark theme');
   await tab.evaluate(() => document.documentElement.removeAttribute('dark'));
@@ -369,18 +370,33 @@ try {
   console.log('YouTube sidebar Play: the video played the first line and paused at', playedTo);
   assert.ok(playedTo >= 2 && playedTo < 2.2, `Play pauses at the end of the line, ${playedTo}`);
 
+  const notesBefore = ankiRequests.filter(r => at(r, 'action') === 'addNote').length;
+  await cards.nth(0).getByRole('button', { name: 'Add a card for the unknown word of the line' }).click();
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor({ timeout: 15000 });
+  const notes = ankiRequests.filter(r => at(r, 'action') === 'addNote');
+  assert.equal(notes.length, notesBefore + 1);
+  const plusFields = at(notes.at(-1), 'params', 'note', 'fields');
+  console.log('YouTube card from +:', plusFields);
+  assert.equal(at(plusFields, 'Word'), '魚');
+  assert.equal(at(plusFields, 'Sentence'), '猫が<b>魚</b>を食べた');
+  assert.match(String(at(plusFields, 'SentenceAudio')), /^\[sound:minerr-\d+\.mp3\]$/);
+  assert.match(String(at(plusFields, 'Image')), /^<img src="minerr-\d+\.jpg">$/);
+  assert.equal(whisperRequests.at(-1), 'POST /clip {"url":"https://www.youtube.com/watch?v=timedvideo","start":0,"end":2.5}', 'the server cuts the audio of the line');
+  await tab.keyboard.press('Escape');
+  await tab.mouse.move(0, 0);
+
   const shownCards = () => sidebar.locator('li:not([hidden]) time').allTextContents();
   await cards.nth(3).getByRole('button', { name: 'Bookmark the line (B)' }).click();
   await sidebar.getByRole('button', { name: 'Bookmarks' }).click();
   assert.deepEqual(await shownCards(), ['0:10']);
   await sidebar.getByRole('button', { name: '1 unknown word' }).click();
-  assert.deepEqual(await shownCards(), ['0:00', '0:02', '0:10']);
+  assert.deepEqual(await shownCards(), ['0:02', '0:10'], 'the card from + made 魚 learning');
   await sidebar.getByRole('button', { name: 'All' }).click();
   await tab.keyboard.press('g');
   await sidebar.waitFor({ state: 'hidden' });
   assert.equal(await related.isVisible(), true, 'the recommended videos come back');
   await tab.setViewportSize({ width: 902, height: 528 });
-  console.log('YouTube sidebar: cards with times beside the video, Play, the follow mark, filters, and bookmarks');
+  console.log('YouTube sidebar: cards with times beside the video, Play, a card from +, the follow mark, filters, and bookmarks');
 
   const setStorage = (items: Record<string, unknown>) => worker.evaluate(value => chrome.storage.local.set(value), items);
   const lineStyle = () => line.evaluate(node => ({ filter: getComputedStyle(node).filter, color: getComputedStyle(node).color }));

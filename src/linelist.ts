@@ -3,6 +3,7 @@
 // The cards are page text (VIDEO in src/site.ts), so page.ts underlines their words and the popup works on them.
 import type { SubtitleSegment } from './captions.ts';
 import { wordStatuses } from './overlay.ts';
+import { addWordCard } from './popup.ts';
 import { isIPlusOne } from './sentence.ts';
 import type { Status } from './status.ts';
 
@@ -43,6 +44,8 @@ const STYLE = `
   .minerr-lines li[aria-current="true"] time { color: var(--minerr-side-accent); font-weight: 700; }
   .minerr-lines .card-head button { width: 28px; height: 26px; padding: 0; border-color: transparent; color: var(--minerr-side-muted); font-size: 14px; line-height: 1; }
   .minerr-lines .card-head button:hover { border-color: var(--minerr-side-line); color: var(--minerr-side-text); }
+  .minerr-lines .card-head .add { font-size: 18px; }
+  .minerr-lines .card-head .add[aria-disabled="true"] { opacity: 0.35; cursor: not-allowed; }
   .minerr-lines li[data-bookmark] .mark { color: #e0a800; }
   .minerr-lines .text { margin: 0; font-size: 16px; white-space: pre-line; overflow-wrap: anywhere; }
   .minerr-lines-empty { margin: 0; padding: 14px; color: var(--minerr-side-muted); }
@@ -67,6 +70,8 @@ const FILTER_NAMES = Object.keys(LINE_FILTERS).filter((name): name is LineFilter
 
 // After the user scrolls the list, the list stops to follow the video for this long.
 const HOLD_MS = 3000;
+const ADD_LABEL = 'Add a card for the unknown word of the line';
+const ADD_OFF = 'A card from + needs a line with exactly one unknown word. Move the mouse over a word and press A to add any word.';
 
 // Minerr keeps the start times of the bookmarked lines of each video.
 const bookmarkKey = (id: string) => `bm:${id}`;
@@ -78,6 +83,8 @@ export interface LineActions {
   seek: (index: number) => void;
   // Plays the line once, then pauses at its end.
   play: (index: number) => void;
+  // Pauses the video at the start of the line, for the screenshot of a card.
+  still: (index: number) => Promise<void>;
   toast: (text: string) => void;
 }
 
@@ -97,6 +104,12 @@ const button = (className: string, text: string, label: string) =>
   Object.assign(document.createElement('button'), { type: 'button', className, textContent: text, title: label, ariaLabel: label });
 
 const textOf = (row: Element) => row.querySelector('.text') ?? row;
+
+// The unknown word of an i+1 line, or null.
+function unknownWord(row: Element): HTMLElement | null {
+  const text = textOf(row);
+  return isIPlusOne(wordStatuses(text)) ? text.querySelector<HTMLElement>('.ml-word.ml-unknown:not([data-ml-cont])') : null;
+}
 
 export function createLineList(actions: LineActions): LineList {
   document.head.append(Object.assign(document.createElement('style'), { textContent: STYLE }));
@@ -134,6 +147,10 @@ export function createLineList(actions: LineActions): LineList {
     row.hidden = !LINE_FILTERS[filter].keeps({ statuses, marked });
     row.toggleAttribute('data-bookmark', marked);
     row.querySelector('.mark')?.setAttribute('aria-pressed', String(marked));
+    const add = row.querySelector('.add');
+    const on = isIPlusOne(statuses);
+    add?.setAttribute('aria-disabled', String(!on));
+    add?.setAttribute('title', on ? ADD_LABEL : ADD_OFF);
   }
 
   function showEmpty(): void {
@@ -147,7 +164,7 @@ export function createLineList(actions: LineActions): LineList {
     showEmpty();
   }
 
-  // A status change or the parse of page.ts changes the classes of the words, and so the filters of those rows.
+  // A status change or the parse of page.ts changes the classes of the words: the filters and the + of those rows.
   const changed = new Set<HTMLLIElement>();
   let pending = 0;
   new MutationObserver(records => {
@@ -166,14 +183,24 @@ export function createLineList(actions: LineActions): LineList {
     });
   }).observe(list, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
 
+  async function add(row: HTMLLIElement, index: number): Promise<void> {
+    if (!unknownWord(row)) return;
+    await actions.still(index);
+    // The seek can come after a status change; the line must still have its one unknown word.
+    const word = unknownWord(row);
+    if (word) await addWordCard(word);
+  }
+
   function card(segment: SubtitleSegment, index: number): HTMLLIElement {
     const row = document.createElement('li');
     const play = button('play', '▶', 'Play the line');
+    const plus = button('add', '+', ADD_LABEL);
     const mark = button('mark', '★', 'Bookmark the line (B)');
     play.addEventListener('click', () => actions.play(index));
+    plus.addEventListener('click', () => add(row, index));
     mark.addEventListener('click', () => actions.toast(toggleBookmark(index)));
     const cardHead = Object.assign(document.createElement('div'), { className: 'card-head' });
-    cardHead.append(Object.assign(document.createElement('time'), { textContent: minutes(segment.start) }), play, mark);
+    cardHead.append(Object.assign(document.createElement('time'), { textContent: minutes(segment.start) }), play, plus, mark);
     row.append(cardHead, Object.assign(document.createElement('p'), { className: 'text', textContent: segment.text }));
     row.addEventListener('click', event => {
       if (!(event.target instanceof Element && event.target.closest('.ml-word, button'))) actions.seek(index);

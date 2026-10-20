@@ -40,9 +40,11 @@ const SCALE_STEP = 0.1;
 const FRAME = 1 / 30;
 const TIMED_HINT = 'This key needs subtitles with times. Generate them with WhisperX, or start the Minerr server for the YouTube subtitles.';
 const LIST_HINT = 'The subtitle sidebar needs subtitles with times. Generate them with WhisperX, or start the Minerr server for the YouTube subtitles.';
+// A seek that never ends (a stalled network) does not keep a card from the sidebar waiting longer than this.
+const SEEK_WAIT_MS = 2000;
 
 const { layer, line, show, toast } = createOverlay();
-const list = createLineList({ seek: goTo, play: playLine, toast });
+const list = createLineList({ seek: goTo, play: playLine, still: stillAt, toast });
 let target: Target = { video: () => null };
 // The lines from the page, and the lines that the overlay uses: the same, or without bracketed text.
 let given: Lines = { kind: 'none' };
@@ -196,6 +198,15 @@ function playLine(index: number): void {
   goTo(index);
   playOnce = index;
   play(playing);
+}
+
+async function stillAt(index: number): Promise<void> {
+  const playing = video();
+  if (!playing || !timed()?.segments[index]) return;
+  playing.pause();
+  const seeked = new Promise(resolve => playing.addEventListener('seeked', resolve, { once: true }));
+  goTo(index);
+  await Promise.race([seeked, new Promise(resolve => setTimeout(resolve, SEEK_WAIT_MS))]);
 }
 
 function toggleList(): void {

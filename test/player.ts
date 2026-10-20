@@ -287,7 +287,8 @@ try {
   await player.evaluate(() => document.exitFullscreen());
   assert.deepEqual(await cards.evaluateAll(rows => rows.map(row => `${row.querySelector('time')?.textContent} ${row.querySelector('.text')?.textContent}`)),
     ['0:00 猫が魚を食べた', '0:03 今日は雨が降っている']);
-  console.log('sidebar: a card with its time for each line beside the video');
+  await player.waitForFunction(() => [...document.querySelectorAll('.minerr-lines .add')].map(add => add.getAttribute('aria-disabled')).join() === 'false,true');
+  console.log('sidebar: a card with its time for each line beside the video; + only on the line with one unknown word');
 
   const currentCard = (time: string) => player.waitForFunction(t => document.querySelector('.minerr-lines li[aria-current="true"] time')?.textContent === t, time);
   await currentCard('0:00');
@@ -302,6 +303,19 @@ try {
   assert.equal(await line.innerText(), '猫が魚を食べた', 'the line that Play played stays on the screen');
   console.log('sidebar Play: from 4 s, the video played 0 s to', playedOnce.time, 's and the mark followed');
 
+  const requestsBefore = anki.requests.length;
+  await cards.nth(0).getByRole('button', { name: 'Add a card for the unknown word of the line' }).click();
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor({ timeout: 15000 });
+  const fields = at(anki.requests.slice(requestsBefore).find(r => at(r, 'action') === 'addNote'), 'params', 'note', 'fields');
+  console.log('card from +:', fields);
+  assert.equal(at(fields, 'Word'), '魚');
+  assert.equal(at(fields, 'Sentence'), '猫が<b>魚</b>を食べた');
+  assert.match(String(at(fields, 'SentenceAudio')), /^\[sound:minerr-\d+\.webm\]$/, 'the card has the audio of the line');
+  assert.match(String(at(fields, 'Image')), /^<img src="minerr-\d+\.jpg">$/, 'the card has a screenshot');
+  assert.deepEqual(await playback(), { paused: true, time: 0 }, '+ pauses the video at the start of the line');
+  await player.keyboard.press('Escape');
+  await player.mouse.move(0, 0);
+
   const sidebarDisplay = () => sidebar.evaluate(node => getComputedStyle(node).display);
   await setStorage({ enabled: false });
   await player.waitForFunction(() => document.documentElement.hasAttribute('data-minerr-off'));
@@ -311,7 +325,7 @@ try {
   assert.equal(await sidebarDisplay(), 'flex');
   await player.keyboard.press('g');
   await sidebar.waitFor({ state: 'hidden' });
-  console.log('sidebar: Minerr off hides the sidebar');
+  console.log('sidebar +: a card for 魚 with the line, its audio, and a screenshot; Minerr off hides the sidebar');
 
   const POOL = ['猫が魚を食べた。', '今日は雨が降っている。', '本を読む。', '彼は駅まで歩いて行った。', '明日は友達と映画を見る予定です。'];
   const stamp = (seconds: number) => `00:${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')},000`;
