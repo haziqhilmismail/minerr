@@ -20,6 +20,7 @@
 """Local WhisperX subtitle server for Minerr. Run: uv run server/whisper_server.py"""
 
 import argparse
+import hashlib
 import json
 import os
 import queue
@@ -31,11 +32,15 @@ import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 PORT = 8766
 CACHE = Path.home() / '.cache' / 'minerr' / 'subs'
+# Uploads go to disk next to the cache, not to /tmp, which is in memory on some systems.
+UPLOADS = Path.home() / '.cache' / 'minerr' / 'uploads'
+CHUNK = 1 << 20
 VIDEO_ID = re.compile(r'[A-Za-z0-9_-]{11}')
+SHA256 = re.compile(r'[0-9a-f]{64}')
 # Whisper ends a Japanese sentence with 。！？ or, when it omits the punctuation, with a space.
 SENTENCE = re.compile(r'.+?(?:[。！？!?]+[」』）)]*|\s+|$)', re.S)
 MAX_CHARS = 40
@@ -80,6 +85,27 @@ def subtitle_segments(segments):
     return [part for segment in segments for part in split_segment(segment)]
 
 
+def receive(stream, length, filename):
+    """Copies length bytes of stream to a new file in UPLOADS, one chunk at a time. Returns the path and the SHA-256."""
+    suffix = Path(filename).suffix
+    UPLOADS.mkdir(parents=True, exist_ok=True)
+    digest = hashlib.sha256()
+    with tempfile.NamedTemporaryFile(dir=UPLOADS, suffix=suffix if re.fullmatch(r'\.\w{1,10}', suffix) else '', delete=False) as out:
+        path = Path(out.name)
+        try:
+            while length:
+                chunk = stream.read(min(CHUNK, length))
+                if not chunk:
+                    raise ValueError('The upload ended before Content-Length bytes.')
+                digest.update(chunk)
+                out.write(chunk)
+                length -= len(chunk)
+        except BaseException:
+            path.unlink(missing_ok=True)
+            raise
+    return path, digest.hexdigest()
+
+
 class Transcriber:
     def __init__(self, model, threads, batch_size):
         self.name, self.threads, self.batch_size = model, threads, batch_size
@@ -89,6 +115,7 @@ class Transcriber:
         import whisperx
         if self.model is None:
             self.model = whisperx.load_model(self.name, 'cpu', compute_type='int8', language='ja', threads=self.threads)
+        # load_audio runs ffmpeg, so audio_path can also be a video file: ffmpeg takes out its audio.
         audio = whisperx.load_audio(str(audio_path))
         result = self.model.transcribe(audio, batch_size=self.batch_size, language='ja',
                                        progress_callback=lambda percent: on_progress(round(percent)))
@@ -113,45 +140,59 @@ class Jobs:
         self.queue = queue.Queue()
         threading.Thread(target=self.work, daemon=True).start()
 
-    def cache_path(self, vid):
-        return CACHE / f'{vid}.{self.transcribe.name}.json'
+    # key is a YouTube video id, or the SHA-256 of an uploaded file.
+    def cache_path(self, key):
+        return CACHE / f'{key}.{self.transcribe.name}.json'
 
-    def cached(self, vid):
-        path = self.cache_path(vid)
+    def cached(self, key):
+        path = self.cache_path(key)
         return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else None
 
-    def start(self, vid):
+    def start(self, key, upload=None):
+        """Queues a job for key, or returns the running job for key. The job owns upload, a file that it deletes when it ends."""
         with self.lock:
             for job_id, job in self.jobs.items():
-                if job['video'] == vid and job['state'] not in ('done', 'error'):
+                if job['key'] == key and job['state'] not in ('done', 'error'):
+                    if upload:
+                        upload.unlink(missing_ok=True)
                     return job_id
             job_id = uuid.uuid4().hex
-            self.jobs[job_id] = {'video': vid, 'state': 'queued'}
+            self.jobs[job_id] = {'key': key, 'upload': upload, 'state': 'queued'}
         self.queue.put(job_id)
         return job_id
 
     def get(self, job_id):
+        """The public fields of the job, or None."""
         with self.lock:
-            return dict(self.jobs[job_id]) if job_id in self.jobs else None
+            job = self.jobs.get(job_id)
+            return {k: v for k, v in job.items() if k not in ('key', 'upload')} if job else None
 
     def update(self, job_id, **fields):
         with self.lock:
             self.jobs[job_id].update(fields)
 
+    def subtitles(self, job_id, key, upload):
+        def on_progress(percent):
+            self.update(job_id, progress=percent)
+        if upload:
+            self.update(job_id, state='transcribing', progress=0)
+            return self.transcribe(upload, on_progress)
+        with tempfile.TemporaryDirectory(prefix='minerr-audio-') as folder:
+            self.update(job_id, state='downloading')
+            audio = download_audio(key, folder)
+            self.update(job_id, state='transcribing', progress=0)
+            return self.transcribe(audio, on_progress)
+
     def work(self):
         while True:
             job_id = self.queue.get()
-            vid = self.jobs[job_id]['video']
+            key, upload = self.jobs[job_id]['key'], self.jobs[job_id]['upload']
             try:
-                segments = self.cached(vid)
+                segments = self.cached(key)
                 if segments is None:
-                    with tempfile.TemporaryDirectory(prefix='minerr-audio-') as folder:
-                        self.update(job_id, state='downloading')
-                        audio = download_audio(vid, folder)
-                        self.update(job_id, state='transcribing', progress=0)
-                        segments = self.transcribe(audio, lambda percent: self.update(job_id, progress=percent))
+                    segments = self.subtitles(job_id, key, upload)
                     CACHE.mkdir(parents=True, exist_ok=True)
-                    path = self.cache_path(vid)
+                    path = self.cache_path(key)
                     path.with_suffix('.tmp').write_text(json.dumps(segments, ensure_ascii=False), encoding='utf-8')
                     os.replace(path.with_suffix('.tmp'), path)
                 self.update(job_id, state='done', segments=segments)
@@ -159,9 +200,12 @@ class Jobs:
                 self.update(job_id, state='error', error=f'yt-dlp failed: {(error.stderr or "").strip()[-300:]}')
             except Exception as error:
                 self.update(job_id, state='error', error=f'{type(error).__name__}: {error}')
+            finally:
+                if upload:
+                    upload.unlink(missing_ok=True)
 
 
-def handler(jobs, health):
+def handler(jobs, health, port=PORT):
     class Handler(BaseHTTPRequestHandler):
         def reply(self, status, body):
             data = json.dumps(body, ensure_ascii=False).encode()
@@ -171,9 +215,10 @@ def handler(jobs, health):
             self.end_headers()
             self.wfile.write(data)
 
-        # The Host check stops DNS rebinding; the JSON content type makes a browser preflight cross-site POSTs, which fail.
+        # The Host check stops DNS rebinding. The POST content types (JSON, octet-stream) make a browser preflight
+        # cross-site requests, and the server answers no preflight, so they fail.
         def allowed(self):
-            if self.headers.get('Host') not in (f'127.0.0.1:{PORT}', f'localhost:{PORT}'):
+            if self.headers.get('Host') not in (f'127.0.0.1:{port}', f'localhost:{port}'):
                 self.reply(403, {'error': 'Forbidden host.'})
                 return False
             return True
@@ -186,8 +231,8 @@ def handler(jobs, health):
                 return self.reply(200, health)
             if len(path) == 2 and path[0] == 'jobs':
                 job = jobs.get(path[1])
-                return self.reply(200, {k: v for k, v in job.items() if k != 'video'}) if job else self.reply(404, {'error': 'No such job.'})
-            if len(path) == 2 and path[0] == 'subs' and VIDEO_ID.fullmatch(path[1]):
+                return self.reply(200, job) if job else self.reply(404, {'error': 'No such job.'})
+            if len(path) == 2 and (path[0] == 'subs' and VIDEO_ID.fullmatch(path[1]) or path[0] == 'files' and SHA256.fullmatch(path[1])):
                 segments = jobs.cached(path[1])
                 return self.reply(200, segments) if segments is not None else self.reply(404, {'error': 'No subtitles yet.'})
             self.reply(404, {'error': 'Not found.'})
@@ -195,6 +240,8 @@ def handler(jobs, health):
         def do_POST(self):
             if not self.allowed():
                 return
+            if self.path == '/files':
+                return self.upload()
             if self.path != '/jobs' or not self.headers.get('Content-Type', '').startswith('application/json'):
                 return self.reply(404, {'error': 'Not found.'})
             try:
@@ -203,6 +250,21 @@ def handler(jobs, health):
             except (ValueError, AttributeError) as error:
                 return self.reply(400, {'error': str(error)})
             self.reply(200, {'id': jobs.start(vid)})
+
+        # POST /files: the body is the media file. The job transcribes it and caches the subtitles by its SHA-256.
+        def upload(self):
+            if self.headers.get('Content-Type') != 'application/octet-stream':
+                return self.reply(415, {'error': 'Send the file as application/octet-stream.'})
+            filename = unquote(self.headers.get('X-Filename', ''))
+            if not filename:
+                return self.reply(400, {'error': 'Send the file name in X-Filename.'})
+            if not self.headers.get('Content-Length', '').isdigit():
+                return self.reply(411, {'error': 'Send a Content-Length.'})
+            try:
+                path, sha256 = receive(self.rfile, int(self.headers['Content-Length']), filename)
+            except ValueError as error:
+                return self.reply(400, {'error': str(error)})
+            self.reply(200, {'id': jobs.start(sha256, path), 'sha256': sha256})
 
         def log_message(self, format, *args):
             pass
