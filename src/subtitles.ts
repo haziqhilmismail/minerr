@@ -1,4 +1,5 @@
 import { captionText, type SubtitleSegment } from './captions.ts';
+import { SIDE_OPEN } from './linelist.ts';
 import { call, type Message, messageOf, serve } from './rpc.ts';
 import { attach, layer, setLines, sidebar } from './video.ts';
 import { secondDisplay } from './videosettings.ts';
@@ -10,24 +11,19 @@ const MAX_RETRY_MS = 60000;
 
 // YouTube's caption window stays in the DOM (the overlay reads it), but it is invisible and takes no mouse events.
 // When Minerr is off (page.ts sets data-minerr-off on the root), YouTube's own captions come back and the overlay hides.
-// The open subtitle sidebar (src/linelist.ts) narrows the page. The masthead is fixed, so it gets its own right edge;
-// the theater player is as high as the narrower page is wide, where YouTube makes it as high as the window is wide.
-// The sidebar has the colors of YouTube's light or dark theme; :root makes them win over the colors of src/linelist.ts.
+// The open subtitle sidebar (src/linelist.ts) narrows the page. The masthead is fixed, so it gets its own right edge.
+// The theater player is as high as the narrower page is wide, where YouTube makes it as high as the window is wide.
+// YouTube sets the min-width of #columns from the window, wider than the narrower page. Minerr removes that min-width
+// and hides #secondary (the recommended videos), so the player column gets the width of the page.
 const STYLE = `
   :root:not([data-minerr-off]) .ytp-caption-window-container { opacity: 0 !important; pointer-events: none !important; }
   :root[data-minerr-off] .minerr-subs { display: none; }
-  :root[data-minerr-side]:not([data-minerr-off]) #masthead-container { left: 0 !important; right: var(--minerr-side-width) !important; width: auto !important; }
-  :root[data-minerr-side]:not([data-minerr-off]) ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container {
+  ${SIDE_OPEN} #masthead-container { left: 0 !important; right: var(--minerr-side-width) !important; width: auto !important; }
+  ${SIDE_OPEN} ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container {
     height: calc((100vw - var(--minerr-side-width)) * 9 / 16) !important;
   }
-  :root .minerr-lines {
-    color-scheme: light;
-    --minerr-side-bg: light-dark(#ffffff, #0f0f0f); --minerr-side-card: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.1));
-    --minerr-side-text: light-dark(#0f0f0f, #f1f1f1); --minerr-side-muted: light-dark(#606060, #aaaaaa);
-    --minerr-side-line: light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.2)); --minerr-side-accent: light-dark(#065fd4, #3ea6ff);
-    --minerr-side-on-accent: light-dark(#ffffff, #0f0f0f);
-  }
-  html[dark] .minerr-lines { color-scheme: dark; }
+  ${SIDE_OPEN} ytd-watch-flexy #columns { min-width: 0 !important; }
+  ${SIDE_OPEN} ytd-watch-flexy #secondary { display: none !important; }
 `;
 
 // 'youtube' shows the YouTube subtitles: with times when the server downloaded them, else a mirror of YouTube's own captions.

@@ -484,9 +484,11 @@ More settings in **Video**:
 The subtitle sidebar shows all lines of the video as cards. It is a panel at the right side of the window, from the top to the bottom. The page gets narrower and moves to the left of the panel, so the panel does not cover the page. It needs subtitles with times.
 
 - On YouTube, the full page moves to the left of the panel, also the bar at the top. In theater mode, the video fills the width at the left of the panel.
+- On YouTube, the recommended videos are hidden while the panel is open. The video gets their width.
 - In YouTube full screen, the panel does not show. It shows again when you leave full screen.
 - In the video player, the panel stays at the right side in full screen too.
 - When you close the panel, the page gets its full width again.
+- The panel has the colors of the Minerr theme (**Theme** on the options page), not the colors of the page.
 
 1. Press `G` on the video. The sidebar opens.
 2. Find a line. Each card shows the time and the line. The words have their status colors, and a word opens its popup on hover, as in the overlay.
@@ -504,7 +506,7 @@ The word of the card from **+**:
 - If the line has no unknown word, the list shows all words of the line.
 - To close the list, click **Cancel**, click **+** again, or press `Esc`. Use `Tab` and `Enter` to select a word with the keyboard.
 
-The sidebar follows the video. The card of the current line has a colored bar at its left side, and the list scrolls to keep that card in view. While the mouse is on the sidebar, or while a word list of **+** is open, the list does not scroll, and the sidebar shows **Scroll paused**. When the mouse leaves the sidebar, the list goes to the current line.
+The sidebar follows the video. The card of the current line has a teal border, and the list scrolls to keep that card in view. While the mouse is on the sidebar, or while a word list of **+** is open, the list does not scroll, and the sidebar shows **Scroll paused**. When the mouse leaves the sidebar, the list goes to the current line.
 
 With only the YouTube captions that Minerr copies from the player, the sidebar shows a message. These captions have no times.
 
@@ -922,7 +924,7 @@ Minerr does not change a status before you click **Save**.
 
 ## Theme
 
-The options page, the toolbar menu, and the word popup have a light theme and a dark theme.
+The options page, the toolbar menu, the word popup, and the subtitle sidebar have a light theme and a dark theme.
 
 1. Open the options page.
 2. In **Theme**, click **System**, **Light**, or **Dark**.
@@ -964,7 +966,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/db.ts` | The dictionary storage in IndexedDB. |
 | `src/entry.ts` | The dictionary entry and the status key of each word, and the join of word overrides and compound nouns. |
 | `src/group.ts`, `src/sentence.ts`, `src/yomitan.ts`, `src/zip.ts` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
-| `src/theme.ts`, `src/tokens.ts` | The theme setting, and the design tokens of every surface (see `docs/design.md`). The build writes the tokens to `dist/theme.css` for the extension pages. |
+| `src/theme.ts`, `src/tokens.ts` | The theme setting, and the design tokens of every surface (see `docs/design.md`). The build writes the tokens and the base rules of the pages (`PAGE_CSS`) to `dist/theme.css`. |
 | `src/hover.ts` | The word popup setting, and the rule that decides when the popup opens. |
 | `action.html`, `action.ts` | The toolbar popup. |
 | `player.html`, `player.ts` | The video player page. Content scripts do not run on extension pages, so the page loads `src/page.ts`, `src/popup.ts`, `src/iplusone.ts`, and `src/stats.ts` itself. |
