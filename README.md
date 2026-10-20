@@ -140,6 +140,24 @@ The sentence on the card is the sentence that contains the word. Minerr cuts it 
 
 Minerr sets each word from the matching cards to known. The default search is `deck:"Minerr" prop:ivl>=21`, which finds the cards with an interval of 21 days or more. The default field is `Word`.
 
+## Find i+1 sentences
+
+An i+1 sentence has exactly one unknown word. You know all the other words in it, so it makes a good card. Minerr gives each i+1 sentence a soft yellow background.
+
+- Minerr counts only the words with a red underline. Learning, known, and ignored words do not count.
+- Minerr cuts the sentences with the same rule as the card sentence: at `。`, `！`, `？`, and line breaks.
+- The highlight also shows in the subtitle overlay on YouTube and in the video player.
+- When a word status changes, the highlight changes in all open tabs.
+
+The highlight does not change the page. Minerr uses the CSS Custom Highlight API.
+
+To turn the highlight off or on:
+
+1. Click the Minerr button in the Chrome toolbar.
+2. Click the **Highlight i+1 sentences** switch.
+
+When you turn Minerr off, the highlight also goes away.
+
 ## Subtitles on YouTube
 
 On a YouTube video page, Minerr shows the subtitles in its own overlay, in large white text on a dark box. The overlay is at the bottom center of the video, above the player controls. The text size changes with the player size, also in theater mode and full screen. Minerr hides the captions of YouTube, because the overlay shows the same text.
@@ -201,6 +219,39 @@ On a Ryzen 5 7600X (6 cores), the server needs about 24 seconds for 100 seconds 
 The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.<model>.json`. When you open a video again, Minerr shows these subtitles at once. To make the subtitles again, delete the file.
 
 The audio stays on your computer. Only `yt-dlp` connects to YouTube, to download the audio. WhisperX downloads its models from Hugging Face the first time. The server accepts connections only from your computer.
+
+## Mine a local video
+
+You can mine a video file from your computer. The Minerr video player shows the subtitles in the same large overlay as on YouTube.
+
+1. Click the Minerr button in the Chrome toolbar.
+2. Click **Play a local video**. The player opens in a new tab.
+3. Drop a video file on the page, or click **Choose a video**.
+4. To use a subtitle file, drop it together with the video, or click **Add subtitle file**. Minerr reads `.srt` and `.vtt` files.
+5. Pause the video, then move the mouse over a word in the subtitles.
+6. Press `A` to add an Anki card.
+
+The `Sentence` field gets the subtitle line that contains the word. The `Image` field gets a screenshot of the player tab.
+
+Chrome plays MP4 and WebM files. If Chrome cannot play the file, the player shows an error. Then convert the file to MP4 or WebM, for example with `ffmpeg -i video.mkv video.mp4`.
+
+To show the video in full screen, click **Full screen**. Do not use the full screen of the video controls, because it shows the video without the subtitles. The player removes that button.
+
+### Make subtitles with WhisperX
+
+If you have no subtitle file, the WhisperX server can make the subtitles. Start the server first, as [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx) shows.
+
+1. Open the video in the player.
+2. Click **Generate with WhisperX**.
+3. Wait until the player shows `WhisperX subtitles: <number> lines.`
+
+The player sends the video file to the server on your computer. The file does not go to the internet. The server takes out the audio with ffmpeg and transcribes it. The server deletes its copy of the file when the job ends.
+
+Keep the player tab open while the server works. If you close the tab, open the video again and click **Generate with WhisperX** again. The server keeps the subtitles in `~/.cache/minerr/subs/<SHA-256 of the file>.<model>.json`. Thus it does not transcribe the same file two times.
+
+### Save the subtitles
+
+Click **Save subtitles** to download the WhisperX subtitles as an `.srt` file. The file gets the name of the video, for example `lesson.srt` for `lesson.mp4`. Keep the `.srt` file in the same folder as the video. Next time, open the video and the `.srt` file together. Then you do not need the server. Most video players also show an `.srt` file that has the name of the video.
 
 ## The note type
 
@@ -351,6 +402,22 @@ More scripts:
 - If the system has no Japanese font, set `CJK_FONT_DIR` to a folder that contains one. Put an emoji font in the same folder, for example `seguiemj.ttf` from Windows. Without it, the `⭐` tag shows as a box.
 - If Chromium cannot start because a library such as `libnss3.so` is missing, set `LD_LIBRARY_PATH` to a folder with the missing libraries.
 - If you update kuromoji, run `npm run vendor` and commit the `vendor/kuromoji` folder.
+
+### Files of the i+1 highlight and the player
+
+| Path | Purpose |
+| --- | --- |
+| `player.html`, `player.ts` | The video player page. Content scripts do not run on extension pages, so the page loads `src/page.ts`, `src/popup.ts`, and `src/iplusone.ts` itself. |
+| `src/iplusone.ts` | The i+1 highlight. The pure part is `iPlusOneSentences` in `src/sentence.ts`. |
+| `src/overlay.ts` | The subtitle overlay line, for YouTube and the player. |
+| `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
+
+The WhisperX server has two endpoints for the player:
+
+- `POST /files` takes the file as the request body, with `Content-Type: application/octet-stream` and the URL-encoded file name in `X-Filename`. It returns the job ID and the SHA-256 of the file.
+- `GET /files/<sha256>` returns the cached subtitles of a file.
+
+`node test/media.ts` tests the i+1 highlight and the player, with a mock AnkiConnect and a mock WhisperX server. It uses port 8765 and port 8766. `npm test` runs it after `node test/subtitles.ts`.
 
 ## Third-party data
 

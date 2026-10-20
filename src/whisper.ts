@@ -19,10 +19,10 @@ export type Job =
 export type JobStatus = Exclude<Job, { state: 'done' }> | { state: 'done' };
 
 // Returns the JSON reply, or null for 404 (no such job, no cached subtitles).
-async function request(path: string, body?: object): Promise<unknown> {
+async function request(path: string, init?: RequestInit): Promise<unknown> {
   let response;
   try {
-    response = await fetch(SERVER + path, body && { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    response = await fetch(SERVER + path, init);
   } catch {
     throw new Error('Start the WhisperX server: uv run server/whisper_server.py');
   }
@@ -77,7 +77,16 @@ export async function health(): Promise<Health> {
 }
 
 export async function startJob(url: string): Promise<{ id: string }> {
-  const id = at(await request('/jobs', { url }), 'id');
+  const id = at(await request('/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) }), 'id');
+  if (typeof id !== 'string') unexpected();
+  return { id };
+}
+
+// Sends the file to the server, which transcribes it in a job. fetch streams the file from the disk.
+// The header must be ISO-8859-1 text, so the file name is URL-encoded.
+export async function uploadFile(file: File): Promise<{ id: string }> {
+  const headers = { 'Content-Type': 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) };
+  const id = at(await request('/files', { method: 'POST', headers, body: file }), 'id');
   if (typeof id !== 'string') unexpected();
   return { id };
 }

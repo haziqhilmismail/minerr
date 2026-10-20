@@ -5,6 +5,6 @@ import { join } from 'node:path';
 const root = join(import.meta.dirname, '..');
 const dist = join(root, 'dist');
 rmSync(dist, { recursive: true, force: true });
-for (const path of ['manifest.json', 'vendor', ...globSync('*.html', { cwd: root })]) {
+for (const path of ['manifest.json', 'vendor', ...globSync('*.{html,css}', { cwd: root })]) {
   cpSync(join(root, path), join(dist, path), { recursive: true });
 }
