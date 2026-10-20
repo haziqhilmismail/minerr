@@ -3,21 +3,24 @@ const CENTRAL = 0x02014b50;
 const STORED = 0;
 const DEFLATE = 8;
 
-async function inflate(bytes) {
+export type Bytes = ArrayBuffer | Uint8Array<ArrayBuffer>;
+export type ZipMembers = Map<string, () => Promise<Uint8Array<ArrayBuffer>>>;
+
+async function inflate(bytes: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-// Reads the central directory and returns name -> async () => Uint8Array, so members decompress one at a time.
+// Reads the central directory and returns name -> async () => bytes, so members decompress one at a time.
 // ponytail: no ZIP64 and no encryption; Yomitan dictionaries use neither.
-export function unzip(input) {
+export function unzip(input: Bytes): ZipMembers {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let eocd = bytes.length - 22;
   while (eocd >= 0 && view.getUint32(eocd, true) !== EOCD) eocd--;
   if (eocd < 0) throw new Error('Not a zip file');
 
-  const members = new Map();
+  const members: ZipMembers = new Map();
   let at = view.getUint32(eocd + 16, true);
   for (let i = view.getUint16(eocd + 10, true); i > 0; i--) {
     if (view.getUint32(at, true) !== CENTRAL) throw new Error('Corrupt zip central directory');

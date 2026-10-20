@@ -5,21 +5,21 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import kuromoji from 'kuromoji';
-import { definitionHtml } from '../src/anki.js';
-import { groupTokens } from '../src/group.js';
-import { sentenceAround } from '../src/sentence.js';
-import { flattenGlossaryItem, groupTerms, readYomitan } from '../src/yomitan.js';
-import { unzip } from '../src/zip.js';
+import { definitionHtml } from '../src/anki.ts';
+import { groupTokens } from '../src/group.ts';
+import { sentenceAround } from '../src/sentence.ts';
+import { type DictTerm, flattenGlossaryItem, groupTerms, readYomitan } from '../src/yomitan.ts';
+import { unzip } from '../src/zip.ts';
 
 const here = import.meta.dirname;
 const JMDICT = join(here, 'fixtures', 'JMdict_english.zip');
 
-const tokenizer = await new Promise((resolve, reject) =>
+const tokenizer = await new Promise<kuromoji.Tokenizer>((resolve, reject) =>
   kuromoji.builder({ dicPath: join(here, '..', 'node_modules', 'kuromoji', 'dict') })
     .build((err, t) => (err ? reject(err) : resolve(t))));
-const parse = text => groupTokens(tokenizer.tokenize(text));
+const parse = (text: string) => groupTokens(tokenizer.tokenize(text));
 
-function makeZip(members) {
+function makeZip(members: string[]) {
   const out = join(mkdtempSync(join(tmpdir(), 'ml-zip-')), 'test.zip');
   execFileSync('python3', ['-I', join(here, 'make-zip.py'), out, ...members]);
   return readFileSync(out);
@@ -159,7 +159,11 @@ test('unzip reads stored and deflated members exactly', async () => {
   const long = 'ねこ cat '.repeat(500);
   const members = unzip(makeZip(['a.txt=stored:hello stored', `dir/b.txt=deflated:${long}`]));
   assert.deepEqual([...members.keys()], ['a.txt', 'dir/b.txt']);
-  const text = async name => new TextDecoder().decode(await members.get(name)());
+  const text = async (name: string) => {
+    const read = members.get(name);
+    assert.ok(read, `no member ${name}`);
+    return new TextDecoder().decode(await read());
+  };
   assert.equal(await text('a.txt'), 'hello stored');
   assert.equal(await text('dir/b.txt'), long);
 });
@@ -182,8 +186,10 @@ test('readYomitan returns index metadata, tags, and flattened terms per bank', a
     { name: '⭐', category: 'popular', notes: 'high priority term' },
     { name: 'n', category: 'partOfSpeech', notes: 'noun' },
   ]);
-  assert.equal(dict.banks.length, 1);
-  assert.deepEqual(await dict.banks[0](), [
+  const [bank, ...more] = dict.banks;
+  assert.ok(bank);
+  assert.equal(more.length, 0);
+  assert.deepEqual(await bank(), [
     { expression: '猫', reading: 'ねこ', definitionTags: ['1', 'n'], termTags: ['⭐', 'ichi'], glossary: ['cat', 'feline'], score: 10 },
     { expression: 'ねこ', reading: 'ねこ', definitionTags: [], termTags: [], glossary: ['cat (kana)'], score: 5 },
   ]);
@@ -195,14 +201,16 @@ test('real JMdict Yomitan zip parses with 食べる -> "to eat"', async () => {
   assert.ok(existsSync(JMDICT), `missing ${JMDICT}; download it as the README says`);
   const dict = await readYomitan(readFileSync(JMDICT));
   let count = 0;
-  const rows = [];
+  const rows: DictTerm[] = [];
   for (const load of dict.banks) {
     const terms = await load();
     count += terms.length;
     rows.push(...terms.filter(t => t.expression === '食べる').map(t => ({ ...t, dict: dict.title })));
   }
   const [taberu] = groupTerms(rows.sort((a, b) => b.score - a.score), dict.tags.map(tag => ({ ...tag, dict: dict.title })));
+  assert.ok(taberu, 'a group for 食べる');
   const [first] = taberu.senses;
+  assert.ok(first, 'a sense for 食べる');
   console.log(`JMdict "${dict.title}": ${dict.banks.length} banks, ${count} terms, ${dict.tags.length} tags,`
     + ` 食べる -> ${JSON.stringify(taberu.termTags.map(t => t.name))} ${JSON.stringify(first)}`);
   assert.ok(count > 100000, `term count ${count}`);
@@ -213,13 +221,13 @@ test('real JMdict Yomitan zip parses with 食べる -> "to eat"', async () => {
 });
 
 test('captionText joins the caption lines with line breaks and drops empty lines', async () => {
-  const { captionText } = await import('../src/captions.js');
+  const { captionText } = await import('../src/captions.ts');
   assert.equal(captionText([' 猫が好きです ', '', '魚も好き']), '猫が好きです\n魚も好き');
   assert.equal(captionText([]), '');
 });
 
 test('segmentAt finds the segment that covers a time, with the end exclusive', async () => {
-  const { segmentAt } = await import('../src/captions.js');
+  const { segmentAt } = await import('../src/captions.ts');
   const segments = [{ start: 0, end: 2, text: 'あ' }, { start: 2, end: 4, text: 'い' }, { start: 6, end: 8, text: 'う' }];
   assert.deepEqual([0, 1.99, 2, 5, 7, 8].map(t => segmentAt(segments, t)?.text ?? null), ['あ', 'あ', 'い', null, 'う', null]);
 });

@@ -10,7 +10,7 @@ const TAG_COLORS = {
 };
 const DEFAULT_COLOR = '#565b6b';
 
-export const tagClass = category => (Object.hasOwn(TAG_COLORS, category) ? `tag tag-${category}` : 'tag');
+export const tagClass = (category: string): string => (Object.hasOwn(TAG_COLORS, category) ? `tag tag-${category}` : 'tag');
 
 // Sizes are in em, so the chips fit the popup and the Anki card.
 export const TAG_CSS = `
