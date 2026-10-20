@@ -226,6 +226,32 @@
       <p id="audio-padding-help" class="help">A card from a subtitle line gets the audio of the line, and this much audio before and after it.</p>
     </div>
     <div class="field">
+      <p id="play-mode-heading" style="font-weight: 600">Play mode</p>
+      <div class="segmented" role="radiogroup" aria-labelledby="play-mode-heading" aria-describedby="play-mode-help" style="margin-top: 4px">
+        <label><input type="radio" name="playMode" value="normal">Normal</label>
+        <label><input type="radio" name="playMode" value="before">Pause before each line</label>
+        <label><input type="radio" name="playMode" value="after">Pause after each line</label>
+        <label><input type="radio" name="playMode" value="iPlusOne">Pause after i+1 lines</label>
+      </div>
+      <p id="play-mode-help" class="help">An i+1 line has exactly one unknown word. The play mode needs subtitles with times.</p>
+    </div>
+    <div class="field">
+      <p id="auto-resume-heading" style="font-weight: 600">Play again after a pause of the play mode</p>
+      <div class="segmented" role="radiogroup" aria-labelledby="auto-resume-heading" style="margin-top: 4px">
+        <label><input type="radio" name="autoResume" value="off">No</label>
+        <label><input type="radio" name="autoResume" value="3">After 3 s</label>
+        <label><input type="radio" name="autoResume" value="6">After 6 s</label>
+        <label><input type="radio" name="autoResume" value="10">After 10 s</label>
+      </div>
+    </div>
+    <div class="field">
+      <label class="check"><input id="auto-lookup" type="checkbox">Open the first unknown word after a pause of the play mode</label>
+    </div>
+    <div class="field">
+      <label class="check"><input id="pause-on-hover" type="checkbox" aria-describedby="pause-on-hover-help">Pause while the mouse is on the subtitles</label>
+      <p id="pause-on-hover-help" class="help">The video also stays paused while the popup of a subtitle word is open. It plays again when the mouse goes away and the popup closes.</p>
+    </div>
+    <div class="field">
       <label class="check"><input id="sub-obscured" type="checkbox" aria-describedby="sub-obscured-help">Obscure the subtitles</label>
       <p id="sub-obscured-help" class="help">The text shows when you move the mouse onto it or pause the video. Press W on a video to turn this on or off.</p>
       <div class="segmented" role="radiogroup" aria-label="Obscure effect" style="margin-top: 8px">

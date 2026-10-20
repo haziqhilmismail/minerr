@@ -220,6 +220,11 @@ async function open(span: HTMLElement): Promise<void> {
   markActive(span);
 }
 
+// Opens the popup of a word span, as a hover does. The video overlay uses it to look up the first unknown word of a line.
+export function openWord(span: HTMLElement): Promise<void> {
+  return open(span);
+}
+
 function close(): void {
   clearTimeout(timer);
   current = null;

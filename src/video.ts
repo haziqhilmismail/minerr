@@ -1,12 +1,16 @@
 // One video element, its subtitle lines, and the overlay over it. YouTube, the player page, and other sites all use this module.
 import type { SubtitleSegment } from './captions.ts';
+import { modePause, played, setHold } from './autopause.ts';
 import type { CardLine } from './lineaudio.ts';
-import { createOverlay } from './overlay.ts';
-import { cleanSegments, cleanText, GAP_LEAD, GAP_MODES, gapEnd, type GapMode, jumpTarget } from './playback.ts';
+import { createOverlay, wordStatuses } from './overlay.ts';
+import {
+  autoPause, cleanSegments, cleanText, GAP_LEAD, GAP_MODES, gapEnd, type GapMode, jumpTarget, PLAY_MODES, type PlayMode,
+} from './playback.ts';
 import { recordPart } from './record.ts';
 import { serve } from './rpc.ts';
+import { isIPlusOne } from './sentence.ts';
 import { type VideoAction, videoKey } from './videokeys.ts';
-import { cleanSubs, gapMode, type SubEffect, subEffect, subObscured, subScale } from './videosettings.ts';
+import { cleanSubs, gapMode, playMode, type SubEffect, subEffect, subObscured, subScale } from './videosettings.ts';
 import type { AudioSource } from './whisper.ts';
 
 // What the overlay shows. 'timed' lines have times (WhisperX, a subtitle file, the subtitles of the site from the server).
@@ -46,6 +50,11 @@ let scale = 1;
 let hinted = false;
 // The index of the line on the screen in the timed lines, or -1.
 let shownIndex = -1;
+let mode: PlayMode = 'normal';
+// The line time of the last frame, to see which line edge the video passed.
+let lastTime = 0;
+// The line that the play mode paused at its end: it stays on the screen until the video plays or seeks.
+let heldIndex = -1;
 
 export { layer };
 
@@ -62,7 +71,8 @@ const currentIndex = (): number => {
 
 function render(): void {
   const found = timed();
-  shownIndex = found && !target.blocked?.() ? currentIndex() : -1;
+  const held = heldIndex >= 0 && video()?.paused;
+  shownIndex = found && !target.blocked?.() ? (held ? heldIndex : currentIndex()) : -1;
   if (lines.kind === 'mirror') show(lines.text);
   else show(found?.segments[shownIndex]?.text ?? '');
 }
@@ -82,11 +92,23 @@ function crossGap(playing: HTMLVideoElement): void {
   }
 }
 
+// Before render, so the overlay still has the words of the line that ends, for the i+1 rule.
+function checkPause(playing: HTMLVideoElement): void {
+  const found = timed();
+  const now = lineTime();
+  const index = found && !recording && !playing.paused ? autoPause(found.segments, mode, lastTime, now) : null;
+  lastTime = now;
+  if (index === null || (PLAY_MODES[mode].only === 'iPlusOne' && !isIPlusOne(wordStatuses(line)))) return;
+  if (PLAY_MODES[mode].pause === 'end') heldIndex = index;
+  modePause(playing, line);
+}
+
 let frame = 0;
 function follow(): void {
   cancelAnimationFrame(frame);
-  render();
   const playing = video();
+  if (playing) checkPause(playing);
+  render();
   layer.toggleAttribute('data-paused', !playing || playing.paused);
   if (!timed() || !playing || playing.paused) return;
   crossGap(playing);
@@ -233,6 +255,15 @@ cleanSubs.watch(value => {
   follow();
 });
 gapMode.watch(value => { gap = value; });
+playMode.watch(value => { mode = value; });
+
+line.addEventListener('mouseenter', () => { const playing = video(); if (playing) setHold(playing, 'hover', true); });
+line.addEventListener('mouseleave', () => { const playing = video(); if (playing) setHold(playing, 'hover', false); });
+// popup.ts marks the word of the open popup with data-ml-active.
+new MutationObserver(() => {
+  const playing = video();
+  if (playing) setHold(playing, 'popup', layer.querySelector('.ml-word[data-ml-active]') !== null);
+}).observe(layer, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-ml-active'] });
 
 subScale.watch(value => {
   scale = value;
@@ -242,6 +273,10 @@ subScale.watch(value => {
 // Media events do not bubble, but the capture phase on the document sees them for any video element.
 for (const type of ['play', 'pause', 'seeked', 'timeupdate']) {
   document.addEventListener(type, event => {
-    if (event.target === video()) follow();
+    if (event.target !== video()) return;
+    if (type === 'play') played();
+    if (type === 'play' || type === 'seeked') heldIndex = -1;
+    if (type !== 'timeupdate') lastTime = lineTime();
+    follow();
   }, true);
 }

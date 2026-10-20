@@ -285,6 +285,25 @@ The sentence audio needs subtitles with times. A card from the YouTube captions 
 
 Anki on a computer plays MP3 and WebM files. If a phone app does not play a WebM file, start the server before you add the card. Then the card gets an MP3 file.
 
+## Play modes
+
+A play mode pauses the video on its own. Open the options page, go to **Video**, and select a **Play mode**:
+
+| Play mode | The video pauses |
+| --- | --- |
+| **Normal** | Never. This is the default. |
+| **Pause before each line** | At the start of each line. Read the line, then play the video to hear it. |
+| **Pause after each line** | At the end of each line. The line stays on the screen. |
+| **Pause after i+1 lines** | At the end of each line with exactly one unknown word. |
+
+The play modes need subtitles with times. Press `↓` or `S` to hear the line again. Press `→` or `D` to go to the next line.
+
+More settings in **Video**:
+
+- **Play again after a pause of the play mode.** The video plays again after 3, 6, or 10 seconds. It does not play while the mouse is on the line or a word popup is open.
+- **Open the first unknown word after a pause of the play mode.** The popup of the first unknown word of the line opens.
+- **Pause while the mouse is on the subtitles.** The video pauses when the mouse moves onto the subtitle line. It also stays paused while the popup of a subtitle word is open. The video plays again when the mouse goes away and the popup closes. This setting is on by default.
+
 ## Subtitle display
 
 Open the options page and go to **Video** to change these settings. They apply to the subtitle overlay on all video pages.
@@ -480,6 +499,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/overlay.ts` | The subtitle overlay line, for YouTube and the player. |
 | `src/playback.ts`, `src/videokeys.ts` | Pure rules for timed lines (jumps, play modes, gaps, text clean-up), and the table of the video keys. |
 | `src/videosettings.ts`, `src/videooptions.ts` | The video settings, and their part of the options page. |
+| `src/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
 | `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 
 Node.js runs the `.ts` test files directly, without a build. To run the tests:

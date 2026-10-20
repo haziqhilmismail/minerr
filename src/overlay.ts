@@ -1,3 +1,9 @@
+import { type Status, STATUS_NAMES, STATUSES } from './status.ts';
+
+// The statuses of the words in element, in text order. Words that page.ts did not parse yet have none.
+export const wordStatuses = (element: Element): Status[] => [...element.querySelectorAll('.ml-word')]
+  .flatMap(span => STATUS_NAMES.filter(status => span.classList.contains(STATUSES[status].className)));
+
 // The large centered subtitle line over a video, on YouTube, on the player page, and on other sites.
 // The layer fills its positioned parent as a size container, so the text size follows the video in every view mode.
 const STYLE = `

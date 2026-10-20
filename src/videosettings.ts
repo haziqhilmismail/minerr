@@ -1,5 +1,5 @@
 // The settings of the subtitle overlay, for every video page.
-import { isGapMode } from './playback.ts';
+import { isGapMode, isPlayMode } from './playback.ts';
 import { setting } from './settings.ts';
 
 const isScale = (value: unknown): value is number => typeof value === 'number' && value >= 0.5 && value <= 3;
@@ -25,3 +25,17 @@ export const cleanSubs = setting('cleanSubs', isBoolean, false);
 
 // How the video crosses a long part with no line.
 export const gapMode = setting('gapMode', isGapMode, 'off');
+
+// When the video pauses on its own; see PLAY_MODES.
+export const playMode = setting('playMode', isPlayMode, 'normal');
+
+// Pause while the mouse is on the subtitle line or the popup of a subtitle word is open, and play again after.
+export const pauseOnHover = setting('pauseOnHover', isBoolean, true);
+
+// Seconds after a pause of the play mode before the video plays again; 'off' waits for the user.
+export const AUTO_RESUME = ['off', '3', '6', '10'] as const;
+export type AutoResume = (typeof AUTO_RESUME)[number];
+export const autoResume = setting('autoResume', (value: unknown): value is AutoResume => AUTO_RESUME.some(v => v === value), 'off');
+
+// Open the popup of the first unknown word of the line when the play mode pauses.
+export const autoLookup = setting('autoLookup', isBoolean, false);

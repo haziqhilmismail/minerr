@@ -34,6 +34,31 @@ export const cleanSegments = (segments: SubtitleSegment[]): SubtitleSegment[] =>
     return text ? [{ ...segment, text }] : [];
   });
 
+// The play modes. pause says when the video stops on its own: never, at the start of a line, or at its end.
+// only names the lines that pause; 'iPlusOne' lines have exactly one unknown word.
+export const PLAY_MODES = {
+  normal: { pause: 'never', only: 'all' },
+  before: { pause: 'start', only: 'all' },
+  after: { pause: 'end', only: 'all' },
+  iPlusOne: { pause: 'end', only: 'iPlusOne' },
+} as const;
+export type PlayMode = keyof typeof PLAY_MODES;
+export const isPlayMode = (value: unknown): value is PlayMode => typeof value === 'string' && Object.hasOwn(PLAY_MODES, value);
+
+// A step of playback from one frame to the next is short; a longer step is a seek, which pauses nothing.
+const MAX_STEP = 1;
+
+// The index of the line whose start or end (as the mode says) the video passed between the two times, or null.
+export function autoPause(segments: SubtitleSegment[], mode: PlayMode, from: number, to: number): number | null {
+  const { pause } = PLAY_MODES[mode];
+  if (pause === 'never' || to <= from || to - from > MAX_STEP) return null;
+  const index = segments.findIndex(segment => {
+    const edge = pause === 'start' ? segment.start : segment.end;
+    return from < edge && edge <= to;
+  });
+  return index < 0 ? null : index;
+}
+
 // How the video crosses a part with no line: at the normal speed, at a higher speed, or with a jump to the next line.
 export const GAP_MODES = { off: 1, x2: 2, x4: 4, skip: 'jump' } as const;
 export type GapMode = keyof typeof GAP_MODES;

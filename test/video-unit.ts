@@ -1,7 +1,7 @@
 // Unit tests of the pure video rules: line jumps, keys, play modes, gaps, text clean-up, and card lines.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted } from '../src/playback.ts';
+import { autoPause, cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted } from '../src/playback.ts';
 import { keyLabel, keyName, videoKey } from '../src/videokeys.ts';
 
 const LINES = [{ start: 1, end: 3, text: '一' }, { start: 3, end: 5, text: '二' }, { start: 8, end: 10, text: '三' }];
@@ -97,4 +97,12 @@ test('gapEnd is the next start inside a gap of 1.5 s or more, before its last 0.
   assert.deepEqual([0.5, 2, 3.5, 4, 5.4, 6, 7.6, 9].map(time => gapEnd(LINES, time)), [null, null, null, null, 8, 8, null, null]);
   assert.equal(gapEnd([{ start: 3, end: 4, text: '一' }], 1), 3, 'the part before the first line is a gap too');
   assert.equal(gapEnd([{ start: 1, end: 2, text: '一' }, { start: 3, end: 4, text: '二' }], 2.2), null, 'a 1 s gap does not count');
+});
+
+test('autoPause finds the line edge that a frame step passed, as the play mode says', () => {
+  assert.deepEqual([
+    autoPause(LINES, 'after', 2.99, 3.01), autoPause(LINES, 'after', 3.01, 3.03), autoPause(LINES, 'before', 7.99, 8.01),
+    autoPause(LINES, 'iPlusOne', 9.99, 10.01), autoPause(LINES, 'normal', 2.99, 3.01), autoPause(LINES, 'after', 2, 4.5),
+    autoPause(LINES, 'after', 3.5, 2.5),
+  ], [0, null, 2, 2, null, null, null]);
 });

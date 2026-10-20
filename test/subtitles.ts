@@ -302,7 +302,7 @@ try {
     return video.play();
   }, time);
   const pauseVideo = () => tab.evaluate(() => document.querySelector('video')?.pause());
-  await setStorage({ subObscured: true });
+  await setStorage({ subObscured: true, pauseOnHover: false });
   await tab.locator('.minerr-subs[data-obscure="blur"][data-paused]').waitFor();
   assert.equal((await lineStyle()).filter, 'none', 'a paused video shows the text');
   await playVideo(2.2);
