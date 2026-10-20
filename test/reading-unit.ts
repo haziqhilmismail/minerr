@@ -10,7 +10,7 @@ import { groupTokens, lookupCandidates, splitSegments, toHiragana } from '../src
 import { entryStars, highs, morae, pitchPattern, stars, toMeta, withMeta } from '../src/meta.ts';
 import { at, isStringList } from '../src/parse.ts';
 import { sentenceBounds } from '../src/sentence.ts';
-import { toggleSite } from '../src/site.ts';
+import { activeOf, toggleSite } from '../src/site.ts';
 import { readYomitan } from '../src/yomitan.ts';
 
 const here = import.meta.dirname;
@@ -95,9 +95,20 @@ test('chord names a key with Alt from the physical key, and Shift only with Alt'
     key('Escape', 'Escape'), key('Shift', 'ShiftLeft', true, true)], ['alt+shift+d', 'alt+s', 'n', '1', 'Escape', 'alt+shift+Shift']);
 });
 
-test('toggleSite adds a site that is on and removes a site that is off', () => {
+test('toggleSite adds a site that is off and removes a site that is on', () => {
   assert.deepEqual(toggleSite(['a.com'], 'b.org'), ['a.com', 'b.org']);
   assert.deepEqual(toggleSite(['a.com', 'b.org'], 'a.com'), ['b.org']);
+});
+
+test('activeOf: the page text only on a site that is on and on Minerr pages; the video everywhere while Minerr is on', () => {
+  const web = new URL('https://a.com/page');
+  const minerr = new URL('chrome-extension://abc/player.html');
+  assert.equal(activeOf(true, [], web), 'video');
+  assert.equal(activeOf(true, ['b.org'], web), 'video');
+  assert.equal(activeOf(true, ['a.com'], web), 'on');
+  assert.equal(activeOf(true, [], minerr), 'on');
+  assert.equal(activeOf(false, ['a.com'], web), 'off');
+  assert.equal(activeOf(false, [], minerr), 'off');
 });
 
 test('a word with kanji gets its reading in hiragana; kana words and unknown words get none; Alt+S tries the longest start first', async () => {

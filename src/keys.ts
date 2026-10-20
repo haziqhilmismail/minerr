@@ -3,7 +3,7 @@ import { chord, isEditable, statusTarget } from './chord.ts';
 import { toast } from './popup-view.ts';
 import { messageOf } from './rpc.ts';
 import { sentenceHighlight } from './sentence-hover.ts';
-import { toggleSiteOf, watchActive } from './site.ts';
+import { isMinerrPage, toggleSiteOf, watchActive } from './site.ts';
 import { setStatus, setStatuses, type Status, STATUS_NAMES, STATUSES, type WordId } from './status.ts';
 import { sameWord, wordOf } from './words.ts';
 
@@ -62,8 +62,12 @@ async function toggleSentenceHighlight(): Promise<void> {
 
 async function toggleSite(): Promise<void> {
   const host = location.hostname;
+  if (isMinerrPage(location)) {
+    toast('Minerr page text is always on in the pages of Minerr.');
+    return;
+  }
   const on = await toggleSiteOf(host);
-  toast(on ? `Minerr is on for ${host}.` : `Minerr is off for ${host}. Press Alt+Shift+D to turn it on.`);
+  toast(on ? `Minerr page text on for ${host}.` : `Minerr page text off for ${host}. Video subtitles stay on. Press Alt+Shift+D to turn the page text on.`);
 }
 
 // A key starts work that ends later; an error of it shows as a toast.
@@ -71,7 +75,7 @@ const report = (work: Promise<void>) => { work.catch((error: unknown) => toast(m
 
 export function installKeys(popup: PopupKeys): void {
   let active = false;
-  watchActive(value => { active = value; });
+  watchActive(value => { active = value !== 'off'; });
 
   const statusKey = (status: Status) => () => {
     const selected = selectedWords();
@@ -125,7 +129,7 @@ export function installKeys(popup: PopupKeys): void {
   window.addEventListener('keydown', event => {
     if (event.ctrlKey || event.metaKey || isEditable(event)) return;
     const name = chord(event);
-    // A site that is off still takes the key that turns it on.
+    // When Minerr is off, Alt+Shift+D still turns the page text of the site on or off.
     if ((!active && name !== 'alt+shift+d') || (popup.isEditing() && name !== 'Escape') || !bindings[name]?.(event)) return;
     event.preventDefault();
     event.stopImmediatePropagation();

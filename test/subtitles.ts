@@ -101,6 +101,7 @@ const WATCH = `<!doctype html><meta charset="utf-8"><title>Fake YouTube</title>
   .caption-window { position: absolute; left: 50%; bottom: 2%; transform: translateX(-50%); text-align: center; }
   .ytp-caption-segment { font-size: 20px; color: #fff; background: rgba(8, 8, 8, .75); }
 </style>
+<h1 id="title">猫の動画</h1>
 <div id="movie_player">
   <video src="data:video/webm;base64,${readFileSync(clip).toString('base64')}" muted></video>
   <div class="ytp-caption-window-container"><div class="caption-window"><span class="captions-text">
@@ -155,6 +156,7 @@ try {
   assert.ok(layout.fontSize > layout.nativeFontSize * 1.2, 'overlay text is larger than the YouTube caption text');
   assert.deepEqual(layout.native, { connected: true, opacity: '0', pointerEvents: 'none' });
   assert.equal(layout.nativeParsed, 0, 'the hidden YouTube captions are not parsed');
+  assert.equal(await tab.locator('#title .ml-word').count(), 0, 'the page text of YouTube is off; the overlay is on');
   await shot(tab, 'overlay-player.png');
 
   const words = await line.locator('.ml-word').evaluateAll(spans => spans.map(s => `${s.textContent}=${s.dataset.mlLemma}`));

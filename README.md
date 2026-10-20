@@ -6,7 +6,7 @@ Sentence mining is a method to learn vocabulary from real content. You read or w
 
 Minerr does these steps in the browser:
 
-1. It parses the Japanese text on each page into words, with the [kuromoji](https://github.com/takuyaa/kuromoji.js) tokenizer.
+1. It parses the Japanese text into words, with the [kuromoji](https://github.com/takuyaa/kuromoji.js) tokenizer. It reads the subtitles over a video on all sites, and the page text on the sites that you turn on.
 2. It underlines each word in the color of its status: unknown, learning, known, or ignored.
 3. When you move the mouse over a word, it shows the dictionary definitions with their tags, for example `n` (noun) and `⭐` (high priority).
 4. With one key, it makes an Anki card. The card has the word, the reading, the sentence, the definitions, and a screenshot of the tab.
@@ -19,7 +19,7 @@ The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedi
 
 ## Features
 
-- The extension parses the text on all pages, and also the text that appears later. Subtitles on YouTube and Netflix are page text, so Minerr parses them too.
+- The extension parses the text of a page, and also the text that appears later. The page text is off on each site until you turn it on with `Alt+Shift+D` or the toolbar menu. The Minerr subtitle overlay works on all sites. The subtitles of Netflix are page text, so turn on the page text for netflix.com to parse them.
 - It joins a verb or adjective with its inflections into one word. For example, 食べなかった is one word with the dictionary form 食べる.
 - It joins nouns into the longest word that the dictionary has. For example, 食肉目ネコ科ネコ属 is three words: 食肉目, ネコ科, and ネコ属.
 - All the spellings of one dictionary word share one status. For example, 猫, ねこ, and ネコ are one word.
@@ -102,7 +102,13 @@ On the options page, click **Check connection** in the **Anki** section. The pag
 
 ### Read and set statuses
 
-Open a page with Japanese text. Each word gets an underline:
+Minerr reads the page text only on the sites that you turn on:
+
+1. Open a page with Japanese text.
+2. Press `Alt+Shift+D`. Or click the Minerr button in the Chrome toolbar, then click the large **Page text on this site** switch.
+
+Each word of the page then gets an underline. The Minerr subtitle overlay and the pages of Minerr do not need the switch. See [Turn the page text on or off for a site](#turn-the-page-text-on-or-off-for-a-site).
+
 
 | Status | Underline | Meaning |
 | --- | --- | --- |
@@ -159,16 +165,27 @@ Minerr sets each word that the selection touches to that status. A short message
 - To turn Minerr off in all tabs, click the power button in the popup, or press `Alt+Shift+M`. The underlines and the popup stop at once.
 - To turn Minerr on again, press `Alt+Shift+M`, or click the Minerr button in the Chrome toolbar and turn on **Minerr on**.
 
-To turn Minerr off for one site only:
-
-- Press `Alt+Shift+D` on a page of the site. A short message at the bottom of the page confirms the change.
-- Or click the Minerr button in the Chrome toolbar, then click the **Minerr on this site** switch.
-
-Minerr stays off on all pages of that site, also after a restart of Chrome. To turn it on again, press `Alt+Shift+D` again or click the switch again. The other sites do not change.
-
 When Minerr is off, YouTube shows its own captions again, and the Minerr subtitle overlay is hidden.
 
 Use this when you want to compare Minerr with another dictionary extension, for example Yomitan. To change the shortcut, open `chrome://extensions/shortcuts`.
+
+### Turn the page text on or off for a site
+
+The page text is off on each site until you turn it on. When it is off, Minerr does not parse the page text, and it shows no underlines and no popup for it.
+
+These parts of Minerr do not need the switch. They work while **Minerr on** is on:
+
+- The Minerr subtitle overlay on YouTube and on other video sites, with its line list. Its words get underlines, the popup, the keys, the i+1 highlight, and cards.
+- The pages of Minerr: the player, the reader, the paste page, and the word browser.
+
+To turn the page text on for a site:
+
+- Press `Alt+Shift+D` on a page of the site. A short message at the bottom of the page confirms the change, for example `Minerr page text on for ja.wikipedia.org.`
+- Or click the Minerr button in the Chrome toolbar, then click the **Page text on this site** switch at the top of the menu. The switch fills with color and shows **On**.
+
+Minerr keeps the choice for all pages of that site, also after a restart of Chrome. The other sites do not change. To turn the page text off again, press `Alt+Shift+D` again or click the switch again. Minerr then removes its underlines from the page text at once.
+
+Earlier versions of Minerr were on for each site, and kept a list of the sites that were off. Minerr does not read that list now. Thus each site starts with the page text off.
 
 ### Mine a sentence
 
@@ -226,7 +243,7 @@ When you turn Minerr off, the highlight also goes away.
 
 The toolbar menu shows how much of the current tab you understand.
 
-1. Open a page with Japanese text, or a YouTube video.
+1. Open a page with Japanese text on a site with the page text on, or a YouTube video.
 2. Click the Minerr button in the Chrome toolbar.
 
 The **Comprehension** section shows these items:
@@ -853,7 +870,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/pitch-colors.ts` | The pitch colors of the words on a page. |
 | `src/sentence-hover.ts` | The highlight of the sentence of the word under the mouse. |
 | `src/sentence-text.ts` | The text of the sentence around a word on the page, for the highlight and the card. The walk stops at the sentence ends and at a `<br>`. |
-| `src/site.ts` | Minerr on or off for each site, and the state that says if Minerr shows on a page. |
+| `src/site.ts` | The page text on or off for each site, and the state of a page: Minerr off, the video subtitles only, or the page text too. |
 | `src/keys.ts`, `src/chord.ts` | The keys that work on a page without a popup, and the names of the keys. |
 | `src/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |
 | `src/subtitles.ts` | The subtitle overlay on YouTube. |

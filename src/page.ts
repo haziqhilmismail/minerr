@@ -5,14 +5,17 @@ import { onStatusChange, WORD_CSS } from './status.ts';
 import { parseWords, recolor, RUBY_TEXT, wordFragment } from './words.ts';
 import { installFurigana } from './furigana.ts';
 import { installPitchColors } from './pitch-colors.ts';
-import { watchActive } from './site.ts';
+import { VIDEO, watchActive } from './site.ts';
 
 // The YouTube caption window is hidden; src/subtitles.ts shows its text in an overlay.
 const SKIP = `script, style, noscript, textarea, input, select, svg, .ml-word, .ytp-caption-window-container, ${RUBY_TEXT}`;
 const BATCH = 100;
 
 // Plain text nodes we inserted between word spans; the observer sees them as additions and must not re-parse them.
-const created = new WeakSet<Node>();
+let created = new WeakSet<Node>();
+// The page text is off until the user turns it on for the site; the text of the subtitle overlay is always read.
+let pageOn = false;
+let started = false;
 // The first walk of the page finds its nodes in page order. The observer finds nodes in any order, so only they get sorted.
 let ordered: Text[] = [];
 const pending = new Set<Text>();
@@ -26,7 +29,7 @@ const isText = (node: Node): node is Text => node.nodeType === Node.TEXT_NODE;
 function wanted(node: Text): boolean {
   const parent = node.parentElement;
   return parent !== null && !created.has(node) && JAPANESE.test(node.data)
-    && !parent.isContentEditable && !parent.closest(SKIP);
+    && !parent.isContentEditable && !parent.closest(SKIP) && (pageOn || parent.closest(VIDEO) !== null);
 }
 
 function collect(root: Node, keep: (node: Text) => void = node => pending.add(node)): void {
@@ -81,7 +84,7 @@ async function wrap(runs: Text[][]): Promise<void> {
     if (!segments) return;
     // The page may have replaced or edited a node while the parse was in flight; the observer queued the new text,
     // and the other nodes of the run go again with it.
-    if (run.some((node, j) => !node.isConnected || node.data !== texts[i]?.[j])) {
+    if (run.some((node, j) => !node.isConnected || node.data !== texts[i]?.[j] || !wanted(node))) {
       for (const node of run) if (node.isConnected && wanted(node)) pending.add(node);
       schedule();
       return;
@@ -104,11 +107,24 @@ async function flush(): Promise<void> {
     await wrap(runs.slice(i, i + BATCH)).catch(error => console.warn('minerr parse failed', error));
   }
   timer = null;
-  if (pending.size) schedule();
+  if (pending.size || ordered.length) schedule();
 }
 
 function schedule(): void {
   timer ??= setTimeout(flush, 50);
+}
+
+// Gives the page its own text back when the page text goes off: no word spans stay outside the subtitle overlay.
+function unwrapPage(): void {
+  const parents = new Set<Node>();
+  for (const span of document.querySelectorAll('.ml-word')) {
+    if (!span.parentNode || span.closest(VIDEO)) continue;
+    parents.add(span.parentNode);
+    span.replaceWith(span.textContent ?? '');
+  }
+  for (const parent of parents) parent.normalize();
+  // The merged text nodes are page text again, for the next time the page text goes on.
+  created = new WeakSet();
 }
 
 new MutationObserver(records => {
@@ -126,9 +142,18 @@ new MutationObserver(records => {
 onStatusChange(changed => recolor(document, changed));
 
 document.head.append(Object.assign(document.createElement('style'), { textContent: WORD_CSS }));
-watchActive(active => document.documentElement.toggleAttribute('data-minerr-off', !active));
+watchActive(active => {
+  document.documentElement.toggleAttribute('data-minerr-off', active === 'off');
+  const was = pageOn;
+  pageOn = active === 'on';
+  // The first call also reads an overlay that was on the page before this module.
+  if (!started || (pageOn && !was)) {
+    started = true;
+    collect(document.body, node => ordered.push(node));
+    schedule();
+  }
+  if (active === 'video') unwrapPage();
+});
 installFurigana();
 installPitchColors();
 installSentenceHover();
-collect(document.body, node => ordered.push(node));
-schedule();

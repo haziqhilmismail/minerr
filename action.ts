@@ -5,7 +5,7 @@ import { STATUS_NAMES, STATUSES } from './src/status.ts';
 import type { Snapshot, Source } from './src/subtitles.ts';
 import { applyTheme } from './src/theme.ts';
 import { iPlusOne, minerrEnabled } from './src/settings.ts';
-import { disabledSites, toggleSiteOf } from './src/site.ts';
+import { enabledSites, toggleSiteOf } from './src/site.ts';
 import type { JobStatus } from './src/whisper.ts';
 
 applyTheme();
@@ -105,11 +105,17 @@ function sentenceItem(text: string, index: number, tabId: number | null): HTMLLI
   return item;
 }
 
+// The switch for the site of the tab. Only web pages get one: Minerr does not run on browser pages.
+const siteHost = /^https?:/.test(tab?.url ?? '') ? new URL(tab?.url ?? '').hostname : '';
+let pageTextOn = siteHost === '' || (await enabledSites.get()).includes(siteHost);
+
 function sourceText(stats: PageStats) {
   switch (stats.source) {
     case 'track': return { empty: 'The subtitles of this video have no Japanese words.', where: `in all ${stats.lines} subtitle lines of the video`, showable: false };
     case 'shown': return { empty: 'Play the video with Japanese subtitles. The score uses the subtitle lines that the overlay showed.', where: `in the ${stats.lines} subtitle lines that the overlay showed`, showable: false };
-    case 'page': return { empty: 'This page has no Japanese words.', where: 'on this page', showable: true };
+    case 'page': return {
+      empty: pageTextOn ? 'This page has no Japanese words.' : 'The page text is off. Turn it on to see the score of this page.', where: 'on this page', showable: true,
+    };
   }
 }
 
@@ -176,13 +182,18 @@ minerrEnabled.watch(on => { enabled.checked = on; });
 const plusOne = byId('iplusone', HTMLInputElement);
 plusOne.checked = await iPlusOne.get();
 plusOne.addEventListener('change', () => iPlusOne.set(plusOne.checked));
-// The switch for the site of the tab. Only web pages get one: Minerr does not run on browser pages.
-const siteHost = /^https?:/.test(tab?.url ?? '') ? new URL(tab?.url ?? '').hostname : '';
 if (siteHost) {
   const siteSwitch = byId('site', HTMLInputElement);
-  byId('site-name', HTMLElement).textContent = `Alt+Shift+D on ${siteHost}`;
-  siteSwitch.checked = !(await disabledSites.get()).includes(siteHost);
-  siteSwitch.addEventListener('change', async () => { siteSwitch.checked = await toggleSiteOf(siteHost); });
+  const show = () => {
+    siteSwitch.checked = pageTextOn;
+    byId('site-state', HTMLElement).textContent = pageTextOn ? 'On' : 'Off';
+  };
+  byId('site-name', HTMLElement).textContent = `Alt+Shift+D on ${siteHost}. Video subtitles work without it.`;
+  show();
+  siteSwitch.addEventListener('change', async () => {
+    pageTextOn = await toggleSiteOf(siteHost);
+    show();
+  });
   byId('site-toggle', HTMLElement).hidden = false;
 }
 const PAGES = { player: 'player.html', reader: 'reader.html', paste: 'reader.html?paste', words: 'words.html' };

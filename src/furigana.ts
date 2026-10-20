@@ -1,6 +1,6 @@
 // The reading of words with kanji over the word. The reading is a CSS pseudo-element, so the text of the page stays as it is
 // for the sentence of a card. An inline-block word with top padding makes its line taller, so the reading never covers
-// the line above. :root[data-minerr-off] (Minerr off, or off for the site) hides the readings.
+// the line above. :root[data-minerr-off] (Minerr off) hides the readings.
 import { setting } from './settings.ts';
 
 export const FURIGANA_MODES = ['off', 'unknown', 'all', 'hover'] as const;
