@@ -105,9 +105,13 @@ function sentenceItem(text: string, index: number, tabId: number | null): HTMLLI
   return item;
 }
 
-const sourceText = (stats: PageStats) => (stats.source === 'video'
-  ? { empty: 'Play the video with Japanese subtitles. The score uses the subtitle lines that the overlay showed.', where: `in ${stats.lines} subtitle lines`, showable: false }
-  : { empty: 'This page has no Japanese words.', where: 'on this page', showable: true });
+function sourceText(stats: PageStats) {
+  switch (stats.source) {
+    case 'track': return { empty: 'The subtitles of this video have no Japanese words.', where: `in all ${stats.lines} subtitle lines of the video`, showable: false };
+    case 'shown': return { empty: 'Play the video with Japanese subtitles. The score uses the subtitle lines that the overlay showed.', where: `in the ${stats.lines} subtitle lines that the overlay showed`, showable: false };
+    case 'page': return { empty: 'This page has no Japanese words.', where: 'on this page', showable: true };
+  }
+}
 
 function showStats(stats: PageStats, tabId: number): void {
   const { score, sentences } = stats;

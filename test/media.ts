@@ -177,6 +177,13 @@ try {
   await youtube.locator('.minerr-subs-line .ml-word[data-ml-lemma="雨"]').waitFor({ timeout: 20000 });
   await waitHighlighted(youtube, ['猫が魚を食べなかった']);
   console.log('i+1 highlight in the YouTube overlay:', await highlighted(youtube));
+  const youtubeTab = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, youtube.url());
+  const youtubeMenu = await context.newPage();
+  await youtubeMenu.goto(`chrome-extension://${extensionId}/action.html?tab=${youtubeTab}`);
+  await youtubeMenu.locator('#score').waitFor();
+  assert.match(await youtubeMenu.innerText('#score-basis'), /^5 words in the 1 subtitle lines that the overlay showed\./);
+  await youtubeMenu.close();
+  console.log('toolbar menu on mirrored YouTube captions: the score of the lines that showed');
   await shot(youtube, 'iplusone-youtube.png');
   await youtube.close();
 

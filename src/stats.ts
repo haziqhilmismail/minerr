@@ -1,15 +1,18 @@
 // The comprehension score of the tab and its i+1 sentences, for the toolbar popup.
-// On a page with the subtitle overlay (YouTube), the score covers the subtitle lines that the tab showed; elsewhere, the page text.
+// With timed subtitles (src/video.ts), the score covers every line of the track. With only the mirrored captions of the site,
+// it covers the lines that the overlay showed. Elsewhere, it covers the page text.
+import type { SubtitleSegment } from './captions.ts';
 import { iPlusOneRanges, statusOf } from './iplusone.ts';
-import { serve } from './rpc.ts';
+import { call, serve } from './rpc.ts';
 import { comprehension, type Comprehension, iPlusOneTexts, type Word } from './score.ts';
 import type { Piece } from './sentence.ts';
 import { getStatuses, type WordId } from './status.ts';
-import { wordOf } from './words.ts';
+import { segmentWord, wordOf } from './words.ts';
 
 // sentences are the i+1 sentences, each one time, in text order. pageStatsShow scrolls to a page sentence;
-// a subtitle line is not on the page now. lines is the number of subtitle lines in the score.
-export type PageStats = { score: Comprehension | null; sentences: string[] } & ({ source: 'page' } | { source: 'video'; lines: number });
+// a subtitle line is not on the page now. lines is the number of subtitle lines in the score:
+// every line of the track ('track'), or the lines that the overlay showed ('shown').
+export type PageStats = { score: Comprehension | null; sentences: string[] } & ({ source: 'page' } | { source: 'track' | 'shown'; lines: number });
 
 // A part of a subtitle line: a word, or plain text with word null.
 interface Token {
@@ -41,7 +44,7 @@ function pageStats(): PageStats {
 }
 
 // The subtitle lines of the current video that the overlay showed, by their text.
-const lines = new Map<string, Token[]>();
+const shownLines = new Map<string, Token[]>();
 let lineVideo = '';
 
 function recordLine(): void {
@@ -49,26 +52,45 @@ function recordLine(): void {
   const video = new URLSearchParams(location.search).get('v') ?? location.pathname;
   if (video !== lineVideo) {
     lineVideo = video;
-    lines.clear();
+    shownLines.clear();
   }
   // page.ts replaces the text of the line with word spans after the parse; record the line once it has them.
   const text = line?.textContent ?? '';
-  if (!line || !text || lines.has(text) || !line.querySelector('.ml-word')) return;
-  lines.set(text, [...line.childNodes].map(node => ({
+  if (!line || !text || shownLines.has(text) || !line.querySelector('.ml-word')) return;
+  shownLines.set(text, [...line.childNodes].map(node => ({
     text: node.textContent ?? '',
     word: node instanceof HTMLElement && node.classList.contains('ml-word') ? wordOf(node) : null,
   })));
 }
 
-async function videoStats(): Promise<PageStats> {
-  recordLine();
-  const tokens = [...lines.values()];
+// The timed lines of the video, and the parse of the last track, by the text of its lines.
+let track: SubtitleSegment[] | null = null;
+let parsedTrack: { key: string; lines: Promise<Token[][]> } | null = null;
+
+export function setTrack(segments: SubtitleSegment[]): void {
+  track = segments.length ? segments : null;
+}
+
+function trackLines(segments: SubtitleSegment[]): Promise<Token[][]> {
+  const texts = segments.map(segment => segment.text);
+  const key = texts.join('\n');
+  if (parsedTrack?.key === key) return parsedTrack.lines;
+  const parsed = call({ type: 'parse', texts }).then(
+    reply => reply.map(line => line.map(segment => ({ text: segment.text, word: segment.lemma ? segmentWord(segment) : null }))),
+    error => {
+      if (parsedTrack?.lines === parsed) parsedTrack = null;
+      throw error;
+    });
+  parsedTrack = { key, lines: parsed };
+  return parsed;
+}
+
+async function lineStats(tokens: Token[][]): Promise<Pick<PageStats, 'score' | 'sentences'>> {
   const statuses = await getStatuses(tokens.flat().flatMap(token => (token.word ? [token.word] : [])));
   const statusOfWord = ({ key }: WordId) => statuses.get(key) ?? 'unknown';
   const pieces = tokens.map(line => line.map(({ text, word }): Piece => ({ text, status: word ? statusOfWord(word) : null })));
   const words = tokens.flat().flatMap(({ word }) => (word ? [{ key: word.key, status: statusOfWord(word) }] : []));
-  shownRanges = [];
-  return { source: 'video', lines: lines.size, score: comprehension(words), sentences: [...new Set(pieces.flatMap(iPlusOneTexts))] };
+  return { score: comprehension(words), sentences: [...new Set(pieces.flatMap(iPlusOneTexts))] };
 }
 
 let focusTimer: ReturnType<typeof setTimeout> | undefined;
@@ -82,8 +104,17 @@ function show({ index }: { index: number }): void {
   focusTimer = setTimeout(() => CSS.highlights.delete(FOCUS), FOCUS_MS);
 }
 
-// ponytail: any page with the overlay layer counts as a video page, also a YouTube page without a video; a page score there needs a URL rule.
-const stats = (): PageStats | Promise<PageStats> => (document.querySelector('.minerr-subs') ? videoStats() : pageStats());
+async function stats(): Promise<PageStats> {
+  shownRanges = [];
+  if (track) {
+    const parsed = await trackLines(track);
+    return { source: 'track', lines: parsed.length, ...await lineStats(parsed) };
+  }
+  // ponytail: any page with the overlay layer counts as a video page, also a YouTube page without a video; a page score there needs a URL rule.
+  if (!document.querySelector('.minerr-subs')) return pageStats();
+  recordLine();
+  return { source: 'shown', lines: shownLines.size, ...await lineStats([...shownLines.values()]) };
+}
 
 serve({ pageStats: stats, pageStatsShow: show }, () => true);
 for (const type of ['timeupdate', 'seeked']) document.addEventListener(type, recordLine, true);
