@@ -12,7 +12,7 @@ applyTheme();
 
 const POLL_MS = 2000;
 const HINT: Record<Source, string> = {
-  youtube: 'Turn on CC in the YouTube player. Minerr shows its captions in large text.',
+  youtube: 'Minerr shows the Japanese captions of YouTube. If the overlay stays empty, turn on CC in the YouTube player.',
   whisperx: 'The subtitles come from the WhisperX server on this computer.',
 };
 const JOB_TEXT: Record<Exclude<JobStatus['state'], 'error'>, string> = {
