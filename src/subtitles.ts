@@ -14,7 +14,6 @@ const MAX_RETRY_MS = 60000;
 // The theater player is as high as the narrower page is wide, where YouTube makes it as high as the window is wide.
 // YouTube sizes the two columns from the window, wider than the narrower page, so the recommended videos hide and
 // the player column takes the width of the page.
-// The sidebar has the colors of YouTube's light or dark theme; :root makes them win over the colors of src/linelist.ts.
 const STYLE = `
   :root:not([data-minerr-off]) .ytp-caption-window-container { opacity: 0 !important; pointer-events: none !important; }
   :root[data-minerr-off] .minerr-subs { display: none; }
@@ -24,14 +23,6 @@ const STYLE = `
   }
   :root[data-minerr-side]:not([data-minerr-off]) ytd-watch-flexy #columns { min-width: 0 !important; }
   :root[data-minerr-side]:not([data-minerr-off]) ytd-watch-flexy #secondary { display: none !important; }
-  :root .minerr-lines {
-    color-scheme: light;
-    --minerr-side-bg: light-dark(#ffffff, #0f0f0f); --minerr-side-card: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.1));
-    --minerr-side-text: light-dark(#0f0f0f, #f1f1f1); --minerr-side-muted: light-dark(#606060, #aaaaaa);
-    --minerr-side-line: light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.2)); --minerr-side-accent: light-dark(#065fd4, #3ea6ff);
-    --minerr-side-on-accent: light-dark(#ffffff, #0f0f0f);
-  }
-  html[dark] .minerr-lines { color-scheme: dark; }
 `;
 
 // 'youtube' shows the YouTube subtitles: with times when the server downloaded them, else a mirror of YouTube's own captions.

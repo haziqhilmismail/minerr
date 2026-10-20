@@ -56,7 +56,7 @@ const STYLE = `
   .empty { margin: 0 0 8px; color: var(--muted); }
   .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin-top: 4px; font-size: 12px; color: var(--muted); }
   .group .meta { margin: 2px 0 0; }
-  .stars { color: #e8a200; font-size: 13px; letter-spacing: 1px; }
+  .stars { color: var(--star); font-size: 13px; letter-spacing: 1px; }
   .freq b { color: var(--text); font-weight: 600; }
   .pitch { display: inline-flex; align-items: baseline; gap: 6px; }
   .morae { font-size: 14px; color: var(--text); }

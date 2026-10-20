@@ -392,11 +392,17 @@ try {
   };
   await nothingCovered('default view');
   assert.equal(await related.isVisible(), false, 'the recommended videos hide while the sidebar is open');
-  await shot(tab, 'sidebar-youtube-dark.png');
-  assert.equal(await sidebar.evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(15, 15, 15)', 'the sidebar has the colors of the dark theme');
-  assert.ok(await sidebar.locator('.text').first().evaluate(node => parseFloat(getComputedStyle(node).fontSize)) >= 18, 'the line text is 18 px or larger');
+  const sidebarColor = () => sidebar.evaluate(node => getComputedStyle(node).backgroundColor);
+  await worker.evaluate(() => chrome.storage.local.set({ theme: 'dark' }));
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-lines')?.dataset.theme === 'dark');
   await tab.evaluate(() => document.documentElement.removeAttribute('dark'));
-  assert.equal(await sidebar.evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(255, 255, 255)', 'the sidebar has the colors of the light theme');
+  assert.equal(await sidebarColor(), 'rgb(15, 29, 36)', 'the Minerr theme Dark makes the sidebar dark on the light YouTube theme');
+  await shot(tab, 'sidebar-youtube-dark.png');
+  assert.ok(await sidebar.locator('.text').first().evaluate(node => parseFloat(getComputedStyle(node).fontSize)) >= 18, 'the line text is 18 px or larger');
+  await worker.evaluate(() => chrome.storage.local.set({ theme: 'light' }));
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-lines')?.dataset.theme === 'light');
+  await tab.evaluate(() => document.documentElement.setAttribute('dark', ''));
+  assert.equal(await sidebarColor(), 'rgb(242, 246, 247)', 'the Minerr theme Light makes the sidebar light on the dark YouTube theme');
   await shot(tab, 'sidebar-youtube-light.png');
   const theater = (on: boolean) => tab.evaluate(value => {
     const flexy = document.querySelector('ytd-watch-flexy');
@@ -410,8 +416,10 @@ try {
   assert.deepEqual(inTheater['#movie_player'] && [inTheater['#movie_player'].width, inTheater['#movie_player'].height], [960, 540],
     'in theater mode the player fills the width of the page beside the sidebar, at 16:9');
   await shot(tab, 'sidebar-youtube-theater-light.png');
-  await tab.evaluate(() => document.documentElement.setAttribute('dark', ''));
+  await worker.evaluate(() => chrome.storage.local.set({ theme: 'dark' }));
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-lines')?.dataset.theme === 'dark');
   await shot(tab, 'sidebar-youtube-theater-dark.png');
+  await worker.evaluate(() => chrome.storage.local.set({ theme: 'system' }));
   await theater(false);
 
   const currentCard = (time: string) => tab.waitForFunction(t => document.querySelector('.minerr-lines li[aria-current="true"] time')?.textContent === t, time);

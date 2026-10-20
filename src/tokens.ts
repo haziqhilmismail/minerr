@@ -10,6 +10,7 @@ export const TOKENS = `
   --accent: light-dark(#0f766e, #2dd4bf); --accent-fill: light-dark(#14b8a6, #2dd4bf); --on-accent: #042f2e;
   --accent-soft: color-mix(in srgb, var(--accent-fill) 16%, transparent);
   --brand: linear-gradient(135deg, #ff6f61, #ffb238); --on-brand: #2a1208;
+  --star: light-dark(#b26a00, #ffb238);
   --ok: light-dark(#1d7a36, #74d68f); --error: light-dark(#c22a2a, #ff8f8f); --warn: light-dark(#8f5600, #f2b65a);
   --shade: light-dark(#0f1d24, #000000);
   --shadow-1: 0 4px 5px color-mix(in srgb, var(--shade) 10%, transparent), 0 -0.5px 2px color-mix(in srgb, var(--shade) 6%, transparent);

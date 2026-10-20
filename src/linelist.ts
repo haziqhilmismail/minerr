@@ -8,63 +8,66 @@ import { statusOf } from './iplusone.ts';
 import { choices, FILTER_NAMES, LINE_FILTERS, type LineFilter, type LineWord, shownLines } from './linefilter.ts';
 import { addWordCard } from './popup.ts';
 import { STATUSES } from './status.ts';
+import { applyTheme } from './theme.ts';
+import { TOKENS } from './tokens.ts';
 import { wordOf } from './words.ts';
 
 // The list does not follow the video under the mouse, or while the user selects a target word.
 const PAUSED = ':hover, :has(.pick)';
 
-// The colors come from the light-dark() pairs of theme.css, so they follow the color scheme of the host page.
-// A host can set the --minerr-side-* properties to match its own palette.
+// The panel declares the tokens of docs/design.md and follows the Minerr theme (src/theme.ts), not the colors of the page.
 const STYLE = `
   :root { --minerr-side-width: min(400px, 40vw); }
   :root[data-minerr-side]:not([data-minerr-off]) { position: relative !important; margin-right: var(--minerr-side-width) !important; }
-  .minerr-lines {
-    --minerr-side-bg: light-dark(#ffffff, #1f2027); --minerr-side-card: light-dark(#f4f5f8, #2b2c35);
-    --minerr-side-text: light-dark(#1c1d24, #ecedf2); --minerr-side-muted: light-dark(#5f6270, #a3a5b3);
-    --minerr-side-line: light-dark(#dcdee6, #353642); --minerr-side-accent: light-dark(#2c4bb8, #7c93f2);
-    --minerr-side-on-accent: light-dark(#ffffff, #10173a);
+  .minerr-lines { ${TOKENS} color-scheme: light dark;
     position: fixed; top: 0; right: 0; bottom: 0; z-index: 2147483646; width: var(--minerr-side-width);
     box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden;
-    border-left: 1px solid var(--minerr-side-line); background: var(--minerr-side-bg); color: var(--minerr-side-text);
-    font: 16px/1.5 "Hiragino Sans", "Yu Gothic UI", "Meiryo", "Noto Sans JP", system-ui, sans-serif; text-align: left;
+    border-left: 1px solid var(--line); background: var(--bg); color: var(--text); box-shadow: var(--shadow-2);
+    font: 16px/1.5 var(--font-ui); text-align: left;
   }
+  .minerr-lines[data-theme="light"] { color-scheme: light; }
+  .minerr-lines[data-theme="dark"] { color-scheme: dark; }
   .minerr-lines[hidden], :root[data-minerr-off] .minerr-lines { display: none; }
-  .minerr-lines button, .minerr-lines select, .minerr-lines input { box-sizing: border-box; border: 1px solid var(--minerr-side-line);
-    border-radius: 6px; background: transparent; color: inherit; font: 600 14px/1.6 system-ui, sans-serif; cursor: pointer; }
-  .minerr-lines select { padding: 4px 8px; background: var(--minerr-side-bg); }
-  .minerr-lines button:hover, .minerr-lines input:hover { border-color: var(--minerr-side-muted); }
-  .minerr-lines :focus-visible { outline: 2px solid var(--minerr-side-accent); outline-offset: 1px; }
+  .minerr-lines button, .minerr-lines select, .minerr-lines input { box-sizing: border-box; margin: 0; border: 1px solid var(--line);
+    border-radius: var(--radius-pill); background: transparent; color: inherit; font: 600 14px/1.6 var(--font-ui); cursor: pointer; }
+  .minerr-lines button:hover, .minerr-lines input:hover { background: var(--raised); }
+  .minerr-lines select { width: 100%; padding: 6px 10px; border-radius: var(--radius-s); background: var(--field); }
+  .minerr-lines :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .minerr-lines-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 0 16px; }
-  .minerr-lines-head strong { font: 700 17px/1.4 system-ui, sans-serif; }
-  .minerr-lines-head span { color: var(--minerr-side-muted); font: 14px/1.4 system-ui, sans-serif; }
-  .minerr-lines-head .paused { display: none; padding: 1px 8px; border-radius: 99px; background: var(--minerr-side-card); font-weight: 600; }
+  .minerr-lines-head strong { font-size: 17px; font-weight: 800; }
+  .minerr-lines-head span { color: var(--muted); font-size: 14px; }
+  .minerr-lines-head .paused { display: none; padding: 1px 10px; border-radius: var(--radius-pill); background: var(--accent-soft);
+    color: var(--accent); font-size: 12px; font-weight: 700; }
   .minerr-lines:is(${PAUSED}) .minerr-lines-head .paused { display: inline; }
-  .minerr-lines-head button { width: 34px; height: 34px; margin-left: auto; border-color: transparent; font-size: 20px; line-height: 1; }
-  .minerr-lines-bar { padding: 10px 12px 12px 16px; border-bottom: 1px solid var(--minerr-side-line); }
-  .minerr-lines ol { position: relative; flex: 1; min-height: 0; margin: 0; padding: 10px; overflow: auto; overscroll-behavior: contain; list-style: none; }
-  .minerr-lines li { margin: 0 0 8px; padding: 6px 10px 10px 12px; border-left: 3px solid transparent; border-radius: 8px;
-    background: var(--minerr-side-card); cursor: pointer; }
+  .minerr-lines-head button { width: 34px; height: 34px; margin-left: auto; padding: 0; border: 0; border-radius: 50%;
+    color: var(--muted); font-size: 20px; line-height: 1; }
+  .minerr-lines-head button:hover { color: var(--text); }
+  .minerr-lines-bar { padding: 10px 12px 12px 16px; border-bottom: 1px solid var(--line); }
+  .minerr-lines ol { position: relative; flex: 1; min-height: 0; margin: 0; padding: 10px 12px; overflow: auto; overscroll-behavior: contain; list-style: none; }
+  .minerr-lines li { margin: 0 0 8px; padding: 6px 10px 10px 14px; border-radius: var(--radius-m); background: var(--card);
+    box-shadow: var(--shadow-1); cursor: pointer; }
   .minerr-lines li[hidden] { display: none; }
-  .minerr-lines li:hover { box-shadow: inset 0 0 0 1px var(--minerr-side-line); }
-  .minerr-lines li[aria-current="true"] { border-left-color: var(--minerr-side-accent);
-    background: color-mix(in srgb, var(--minerr-side-accent) 16%, var(--minerr-side-card)); }
+  .minerr-lines li:hover { box-shadow: inset 0 0 0 1px var(--line), var(--shadow-1); }
+  .minerr-lines li[aria-current="true"] { background: color-mix(in srgb, var(--accent-fill) 14%, var(--card));
+    box-shadow: inset 0 0 0 2px var(--accent), var(--shadow-1); }
   .minerr-lines .card-head { display: flex; align-items: center; gap: 2px; }
-  .minerr-lines time { margin-right: auto; color: var(--minerr-side-muted); font: 14px/1.5 ui-monospace, monospace; }
-  .minerr-lines li[aria-current="true"] time { color: var(--minerr-side-accent); font-weight: 700; }
-  .minerr-lines .card-head button { width: 34px; height: 32px; padding: 0; border-color: transparent; color: var(--minerr-side-muted); font-size: 17px; line-height: 1; }
-  .minerr-lines .card-head button:hover { border-color: var(--minerr-side-line); color: var(--minerr-side-text); }
-  .minerr-lines .card-head .add { font-size: 22px; }
-  .minerr-lines li[data-bookmark] .mark { color: #e0a800; }
-  .minerr-lines .text { margin: 2px 0 0; font-size: 19px; line-height: 1.65; white-space: pre-line; overflow-wrap: anywhere; }
+  .minerr-lines time { margin-right: auto; color: var(--muted); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .minerr-lines li[aria-current="true"] time { color: var(--accent); font-weight: 800; }
+  .minerr-lines .card-head button { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; color: var(--muted); font-size: 16px; line-height: 1; }
+  .minerr-lines .card-head button:hover { color: var(--text); }
+  .minerr-lines .card-head .add { color: var(--accent); font-size: 22px; }
+  .minerr-lines li[data-bookmark] .mark { color: var(--star); }
+  .minerr-lines .text { margin: 2px 0 0; font: 19px/1.65 var(--font-jp); white-space: pre-line; overflow-wrap: anywhere; }
   .minerr-lines .pick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px;
-    border-top: 1px solid var(--minerr-side-line); cursor: default; }
-  .minerr-lines .pick span { flex-basis: 100%; color: var(--minerr-side-muted); font: 600 14px/1.4 system-ui, sans-serif; }
-  .minerr-lines .pick input { padding: 3px 10px; font: 17px/1.5 "Hiragino Sans", "Yu Gothic UI", "Meiryo", "Noto Sans JP", system-ui, sans-serif; }
-  .minerr-lines .pick .unknown { border-color: ${STATUSES.unknown.color}; }
-  .minerr-lines .pick button { padding: 3px 10px; color: var(--minerr-side-muted); }
-  .minerr-lines-empty { padding: 16px; color: var(--minerr-side-muted); }
+    border-top: 1px solid var(--line); cursor: default; }
+  .minerr-lines .pick span { flex-basis: 100%; color: var(--muted); font-size: 13px; font-weight: 600; }
+  .minerr-lines .pick input { padding: 3px 12px; background: var(--field); font: 17px/1.5 var(--font-jp); }
+  .minerr-lines .pick .unknown { border-color: ${STATUSES.unknown.color}; box-shadow: inset 0 0 0 1px ${STATUSES.unknown.color}; }
+  .minerr-lines .pick button, .minerr-lines-empty button { padding: 3px 14px; border-color: transparent; background: var(--raised); }
+  .minerr-lines .pick button { color: var(--muted); }
+  .minerr-lines .pick button:hover, .minerr-lines-empty button:hover { background: var(--accent-soft); color: var(--text); }
+  .minerr-lines-empty { padding: 16px; color: var(--muted); }
   .minerr-lines-empty p { margin: 0 0 10px; }
-  .minerr-lines-empty button { padding: 4px 12px; }
 `;
 
 const ADD_LABEL = 'Add a card for a word of the line';
@@ -135,6 +138,7 @@ function lineWords(text: HTMLElement): SpanWord[] {
 export function createLineList(actions: LineActions): LineList {
   document.head.append(Object.assign(document.createElement('style'), { textContent: STYLE }));
   const panel = Object.assign(document.createElement('section'), { className: 'minerr-lines', hidden: true, ariaLabel: 'Subtitle sidebar' });
+  applyTheme(panel);
   const count = document.createElement('span');
   const paused = Object.assign(document.createElement('span'), { className: 'paused', textContent: 'Scroll paused' });
   const close = button('close', '×', 'Close the subtitle sidebar (G)');

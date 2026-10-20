@@ -1,6 +1,6 @@
 # Minerr design: teal and coral
 
-Minerr uses the design rules of Migaku with its own colors. `src/tokens.ts` holds the one list of tokens. `npm run build` writes it to `dist/theme.css` for the extension pages. The word popup declares it on its shadow host. The subtitle layer `.minerr-subs` declares it with `color-scheme: dark`. To use the tokens on a new surface, such as the subtitle sidebar, put `${TOKENS}` in the CSS rule of its root element. Then set `color-scheme` on that root, or let it inherit the `color-scheme` of the host (the theme on the player page, `html[dark]` on YouTube). Each value is `light-dark(light, dark)`. The `color-scheme` of the element selects the value.
+Minerr uses the design rules of Migaku with its own colors. `src/tokens.ts` holds the one list of tokens. `npm run build` writes it to `dist/theme.css` for the extension pages. The word popup declares it on its shadow host. The subtitle layer `.minerr-subs` declares it with `color-scheme: dark`. The subtitle sidebar `.minerr-lines` declares it on its panel and follows the Minerr theme, not the theme of the host page. To use the tokens on a new surface, put `${TOKENS}` in the CSS rule of its root element. Then call `applyTheme(root)` (`src/theme.ts`) and set `color-scheme` from its `data-theme`, as the popup and the sidebar do. Each value is `light-dark(light, dark)`. The `color-scheme` of the element selects the value.
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
@@ -17,6 +17,7 @@ Minerr uses the design rules of Migaku with its own colors. `src/tokens.ts` hold
 | `--accent-soft` | `--accent-fill` at 16% | same | Icon wells, hover fills, the current line. |
 | `--brand` | coral `#ff6f61` to amber `#ffb238`, 135deg | same | The primary button: Add to Anki, Send, Generate. |
 | `--on-brand` | `#2a1208` | same | Text on `--brand` (6.5:1 or more). |
+| `--star` | `#b26a00` | `#ffb238` | The bookmark star in the subtitle sidebar and the frequency stars in the popup. |
 | `--ok`, `--warn`, `--error` | `#1d7a36`, `#8f5600`, `#c22a2a` | `#74d68f`, `#f2b65a`, `#ff8f8f` | Status messages and the score. |
 | `--shadow-1`, `-2`, `-3` | slate `#0f1d24` at 10/14/17% | black | Cards; menus and toasts; the popup. |
 | `--radius-s`, `-m`, `-l`, `-pill` | 8px, 16px, 24px, 999px | same | Inputs; cards; large cards; buttons. |
