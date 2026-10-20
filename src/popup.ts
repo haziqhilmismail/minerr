@@ -19,10 +19,28 @@ import { parseWords, recolor, sameWord, wordFragment, wordOf, wordParts } from '
 // A word in a popup opens a popup over it with Shift + hover, up to this many popups.
 const MAX_LAYERS = 4;
 
+// The text of a subtitle line: the line of the overlay, or a row of the subtitle list.
+const SUBTITLE_LINE = '.minerr-subs-line, .minerr-lines .text';
+
+// A word in a subtitle line gets the whole line as its sentence, as in asbplayer and Migaku: no guess where the sentence ends.
+function subtitleHtml(line: Element, word: Range): string {
+  const side = (start: boolean) => {
+    const range = new Range();
+    range.selectNodeContents(line);
+    if (start) range.setEnd(word.startContainer, word.startOffset);
+    else range.setStart(word.endContainer, word.endOffset);
+    return escapeHtml(range.toString().replace(/\s*\n\s*/g, ' '));
+  };
+  return `${side(true)}<b>${escapeHtml(word.toString())}</b>${side(false)}`;
+}
+
 // The sentence around the anchor, with the word in <b>. A word with parts is one word.
 function sentenceHtml(anchor: Anchor): string {
   const parts = anchor.kind === 'word' ? wordParts(anchor.span) : [];
-  const { text, from, to } = sentenceText(anchor.kind === 'word' ? wordRange(parts[0] ?? anchor.span, parts.at(-1) ?? anchor.span) : anchor.range);
+  const range = anchor.kind === 'word' ? wordRange(parts[0] ?? anchor.span, parts.at(-1) ?? anchor.span) : anchor.range;
+  const line = anchor.kind === 'word' ? anchor.span.closest(SUBTITLE_LINE) : null;
+  if (line) return subtitleHtml(line, range);
+  const { text, from, to } = sentenceText(range);
   const before = text.slice(0, from);
   const inside = text.slice(from, to);
   const after = text.slice(to);

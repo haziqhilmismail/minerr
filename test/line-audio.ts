@@ -105,9 +105,9 @@ try {
   assert.equal(await line.innerText(), 'だけ登山口こっちだ。さあ、気をつけよう。おはよう');
 
   const mirrored = await add(0, 'a');
-  assert.deepEqual([at(mirrored, 'Sentence'), at(mirrored, 'SentenceAudio')], ['だけ<b>登山口</b>こっちだ。', '']);
+  assert.deepEqual([at(mirrored, 'Sentence'), at(mirrored, 'SentenceAudio')], ['だけ<b>登山口</b>こっちだ。さあ、気をつけよう。おはよう', ''], 'the card sentence is the whole subtitle line on the screen');
   assert.match(String(at(mirrored, 'ExpressionAudio')), /^\[sound:minerr-word-[0-9a-f]+\.mp3\]$/, 'a card with no line audio gets the word audio');
-  console.log('server down when the video opened: the joined YouTube caption rows give the whole sentence, without audio', mirrored);
+  console.log('server down when the video opened: the card gets the whole line of the joined YouTube caption rows, without audio', mirrored);
 
   await listen(whisper, 8766);
   await tab.waitForFunction(text => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === text, TEXT, { timeout: 15000 });
