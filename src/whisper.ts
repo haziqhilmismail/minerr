@@ -90,11 +90,13 @@ export async function startJob(url: string): Promise<{ id: string }> {
 
 // Sends the file to the server, which transcribes it in a job. fetch streams the file from the disk.
 // The header must be ISO-8859-1 text, so the file name is URL-encoded.
-export async function uploadFile(file: File): Promise<{ id: string }> {
+export async function uploadFile(file: File): Promise<{ id: string; sha256: string }> {
   const headers = { 'Content-Type': 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) };
-  const id = at(await request('/files', { method: 'POST', headers, body: file }), 'id');
-  if (typeof id !== 'string') unexpected();
-  return { id };
+  const reply = await request('/files', { method: 'POST', headers, body: file });
+  const id = at(reply, 'id');
+  const sha256 = at(reply, 'sha256');
+  if (typeof id !== 'string' || typeof sha256 !== 'string') unexpected();
+  return { id, sha256 };
 }
 
 export async function getJob(id: string): Promise<Job | null> {

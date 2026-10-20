@@ -272,6 +272,19 @@ Keep the player tab open while the server works. If you close the tab, open the 
 
 Click **Save subtitles** to download the WhisperX subtitles as an `.srt` file. The file gets the name of the video, for example `lesson.srt` for `lesson.mp4`. Keep the `.srt` file in the same folder as the video. Next time, open the video and the `.srt` file together. Then you do not need the server. Most video players also show an `.srt` file that has the name of the video.
 
+## Sentence audio
+
+When you add a card for a word in the subtitle overlay, the card also gets the audio of the subtitle line. The audio starts 0.5 seconds before the line and stops 0.5 seconds after it. To change this time, open the options page and change **Sentence audio padding** in **Video**.
+
+The audio comes from one of these sources:
+
+1. The Minerr server cuts the line from its copy of the audio, as an MP3 file. This works for a YouTube video, and for a file that you sent to the server with **Generate with WhisperX**. The first card of a YouTube video takes longer, because the server downloads the audio of the video.
+2. If the server is off or has no audio of the video, Minerr records the line in the tab. The video goes back to the start of the line and plays it again. Then the video goes back to where it was. The recording is a WebM file.
+
+The sentence audio needs subtitles with times. A card from the YouTube captions that Minerr copies from the player has no sentence audio.
+
+Anki on a computer plays MP3 and WebM files. If a phone app does not play a WebM file, start the server before you add the card. Then the card gets an MP3 file.
+
 ## Video keys
 
 These keys work on a video with the Minerr subtitle overlay: on YouTube, in the video player, and on other sites. They do not work when the focus is in a text field.
@@ -314,6 +327,7 @@ The note type is `Minerr`. It has these fields:
 | `Sentence` | The sentence from the page. The word is in `<b>`. |
 | `Definition` | The tags of the word, then the definitions as a numbered list with their tags and the dictionary name. It contains only the definitions for the reading in `Reading`. |
 | `Image` | The screenshot of the tab. |
+| `SentenceAudio` | The audio of the subtitle line, for a word in video subtitles. See [Sentence audio](#sentence-audio). |
 
 The note type has one card type, `Recognition`:
 
@@ -326,7 +340,9 @@ The card has a light theme and a night mode theme. It also fits phone screens. I
 | --- | --- |
 | ![Card front](docs/card-front.png) | ![Card back](docs/card-back.png) |
 
-Minerr keeps the note type up to date. Each time its background service worker starts, the first card that you add sets the templates and the CSS to the current version. If you change the templates or the CSS in Anki, Minerr replaces your changes. Minerr does not change the fields. If you want your own design, make a copy of the note type in Anki and edit the copy.
+Minerr keeps the note type up to date. Each time its background service worker starts, the first card that you add sets the templates and the CSS to the current version. If you change the templates or the CSS in Anki, Minerr replaces your changes. If the note type does not have a field of the current version, Minerr adds the field. For example, a note type from an earlier version gets the `SentenceAudio` field. Minerr does not remove or rename a field. If you want your own design, make a copy of the note type in Anki and edit the copy.
+
+If an Anki window to add, browse, or edit cards is open, AnkiConnect cannot change the note type. Then the popup tells you to close the window.
 
 ## Use your own note type
 
@@ -348,6 +364,7 @@ Minerr replaces each marker when it adds a card:
 | `{sentence}` | The sentence from the page. The word is in `<b>`. |
 | `{definition}` | The tags and the definitions, as in the `Definition` field of the built-in note type. |
 | `{image}` | The screenshot of the tab, as `<img src="...">`. Minerr stores the file in the media folder of Anki. |
+| `{audio}` | The audio of the subtitle line, as `[sound:...]`. It is empty for a word that is not in video subtitles. |
 | `{url}` | The address of the page. |
 | `{title}` | The title of the page. |
 
@@ -442,6 +459,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/tags.ts` | The colors of the dictionary tags, for the popup and the card. |
 | `src/anki.ts` | The AnkiConnect client and the note type. |
 | `src/whisper.ts` | The client for the WhisperX server. |
+| `src/lineaudio.ts`, `src/record.ts` | The sentence audio of a card: the server cuts it, or the tab records the line. |
 | `src/db.ts` | The dictionary storage in IndexedDB. |
 | `src/group.ts`, `src/sentence.ts`, `src/yomitan.ts`, `src/zip.ts` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
 | `src/theme.ts`, `theme.css` | The theme setting, and the palette of the extension pages. |

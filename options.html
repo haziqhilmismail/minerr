@@ -18,6 +18,8 @@
   section > .help:first-of-type { margin: -8px 0 16px; }
   .field { margin-bottom: 16px; }
   .field > label { display: block; margin-bottom: 4px; font-weight: 600; }
+  input[type="number"] { width: 8em; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--field); color: inherit; font: inherit; }
   input[type="text"] { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
     background: var(--field); color: inherit; font: inherit; }
   button { padding: 7px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--card);
@@ -152,6 +154,7 @@
         <dt>{sentence}</dt><dd>The sentence, with the word in bold</dd>
         <dt>{definition}</dt><dd>The definitions with their tags</dd>
         <dt>{image}</dt><dd>The screenshot of the tab</dd>
+        <dt>{audio}</dt><dd>The audio of the subtitle line, for a word in video subtitles</dd>
         <dt>{url}</dt><dd>The address of the page</dd>
         <dt>{title}</dt><dd>The title of the page</dd>
       </dl>
@@ -211,6 +214,16 @@
       <thead><tr><th scope="col">Key</th><th scope="col">Action</th><th scope="col">Note</th></tr></thead>
       <tbody id="video-keys"></tbody>
     </table>
+  </section>
+
+  <section aria-labelledby="video-heading">
+    <h2 id="video-heading">Video</h2>
+    <p class="help">The subtitle overlay on YouTube, in the video player, and on other sites.</p>
+    <div class="field">
+      <label for="audio-padding">Sentence audio padding (ms)</label>
+      <input id="audio-padding" type="number" min="0" max="3000" step="100" aria-describedby="audio-padding-help">
+      <p id="audio-padding-help" class="help">A card from a subtitle line gets the audio of the line, and this much audio before and after it.</p>
+    </div>
   </section>
 
   <section aria-labelledby="hover-heading">

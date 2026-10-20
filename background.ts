@@ -1,4 +1,5 @@
 import { addNote, fieldValues, getDeck, getNoteType, modelFieldNames, modelNames, version } from './src/anki.ts';
+import { lineAudio } from './src/lineaudio.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
 import { getStatuses, setStatus, setStatuses } from './src/status.ts';
 import { minerrEnabled } from './src/settings.ts';
@@ -39,8 +40,10 @@ async function capture(windowId: number): Promise<string> {
 async function addCard({ card }: Message<'addCard'>, sender: chrome.runtime.MessageSender): Promise<number> {
   if (!sender.tab) throw new Error('Add cards from a tab.');
   const image = await capture(sender.tab.windowId);
+  // After the screenshot, because the tab may play the line again to record it.
+  const audio = sender.tab.id === undefined ? null : await lineAudio(sender.tab.id);
   const { url = '', title = '' } = sender.tab;
-  const noteId = await addNote({ deck: await getDeck(), noteType: await getNoteType(), card, page: { url, title }, jpegDataUrl: image });
+  const noteId = await addNote({ deck: await getDeck(), noteType: await getNoteType(), card, page: { url, title }, jpegDataUrl: image, audio });
   const statuses = await getStatuses([card.word]);
   if (statuses.get(card.word) === 'unknown') await setStatus(card.word, 'learning');
   return noteId;

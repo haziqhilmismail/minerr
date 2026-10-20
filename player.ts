@@ -37,6 +37,8 @@ stage.append(layer);
 attach({ video: () => video });
 
 let file: File | null = null;
+// The SHA-256 of the file, after the WhisperX server got it: the server then has its audio for the sentence audio.
+let sha256: string | null = null;
 let playError = false;
 let subs: Subtitles = { state: 'none' };
 // Counts the opened videos, so that a job for an earlier video does not change the subtitles of the current one.
@@ -70,7 +72,9 @@ function render(): void {
   // WhisperX reports 0% until its first chunk is done, so 0 shows the moving bar of unknown progress too.
   if (subs.state === 'working' && subs.progress) progress.value = subs.progress;
   else progress.removeAttribute('value');
-  setLines(subs.state === 'ready' && file ? { kind: 'timed', id: `file:${file.name}:${file.size}`, segments: subs.segments } : { kind: 'none' });
+  setLines(subs.state === 'ready' && file
+    ? { kind: 'timed', id: `file:${file.name}:${file.size}`, segments: subs.segments, audio: sha256 ? { sha256 } : null }
+    : { kind: 'none' });
 }
 
 function setSubs(next: Subtitles): void {
@@ -84,6 +88,7 @@ function openVideo(next: File): void {
   if (file) subs = { state: 'none' };
   if (video.src) URL.revokeObjectURL(video.src);
   file = next;
+  sha256 = null;
   playError = false;
   video.src = URL.createObjectURL(next);
   document.title = `${next.name} - Minerr`;
@@ -115,7 +120,10 @@ async function generate(): Promise<void> {
   const stale = () => mine !== opened;
   setSubs({ state: 'working', text: 'Sending the video to the WhisperX server…', progress: null });
   try {
-    const { id } = await uploadFile(file);
+    const upload = await uploadFile(file);
+    const { id } = upload;
+    if (stale()) return;
+    ({ sha256 } = upload);
     for (;;) {
       const job = await getJob(id);
       if (stale()) return;

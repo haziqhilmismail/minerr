@@ -1,6 +1,7 @@
-import type { CardFields } from './anki.ts';
+import type { CardFields, MediaFile } from './anki.ts';
 import type { SubtitleSegment } from './captions.ts';
 import type { Segment } from './group.ts';
+import type { CardLine } from './lineaudio.ts';
 import { at } from './parse.ts';
 import type { Snapshot, Source } from './subtitles.ts';
 import type { Health, Job } from './whisper.ts';
@@ -9,6 +10,7 @@ import type { Group } from './yomitan.ts';
 // Every message type, with the fields that call() sends and the value that its handler replies with.
 // The service worker handles parse to siteCaptions; it passes parse and lookup on to the offscreen document.
 // The content scripts of a YouTube tab handle subsState, subsGenerate, and subsUse.
+// The page with the video overlay (a content script, or the player page) handles videoLine and videoRecord.
 interface Protocol {
   parse: { request: { texts: string[] }; reply: Segment[][] };
   lookup: { request: { lemma: string }; reply: Group[] };
@@ -25,6 +27,8 @@ interface Protocol {
   subsState: { request: {}; reply: Snapshot };
   subsGenerate: { request: {}; reply: Snapshot };
   subsUse: { request: { source: Source }; reply: Snapshot };
+  videoLine: { request: {}; reply: CardLine | null };
+  videoRecord: { request: { start: number; end: number }; reply: MediaFile | null };
 }
 
 type MessageType = keyof Protocol;

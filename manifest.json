@@ -10,7 +10,7 @@
     { "matches": ["<all_urls>"], "js": ["content.js"] }
   ],
   "web_accessible_resources": [
-    { "resources": ["src/anki.js", "src/captions.js", "src/dom.js", "src/hover.js", "src/iplusone.js", "src/overlay.js", "src/page.js", "src/parse.js", "src/popup.js", "src/rpc.js", "src/sentence.js", "src/settings.js", "src/status.js", "src/subtitles.js", "src/tags.js", "src/theme.js", "src/video.js", "src/playback.js", "src/videokeys.js", "src/videosettings.js"], "matches": ["<all_urls>"] }
+    { "resources": ["src/anki.js", "src/captions.js", "src/dom.js", "src/hover.js", "src/iplusone.js", "src/overlay.js", "src/page.js", "src/parse.js", "src/popup.js", "src/rpc.js", "src/sentence.js", "src/settings.js", "src/status.js", "src/subtitles.js", "src/tags.js", "src/theme.js", "src/video.js", "src/playback.js", "src/videokeys.js", "src/videosettings.js", "src/record.js"], "matches": ["<all_urls>"] }
   ],
   "action": { "default_title": "Minerr", "default_popup": "action.html" },
   "commands": {

@@ -1,17 +1,21 @@
 // One video element, its subtitle lines, and the overlay over it. YouTube, the player page, and other sites all use this module.
-import { segmentAt, type SubtitleSegment } from './captions.ts';
+import type { SubtitleSegment } from './captions.ts';
+import type { CardLine } from './lineaudio.ts';
 import { createOverlay } from './overlay.ts';
 import { jumpTarget } from './playback.ts';
+import { recordPart } from './record.ts';
+import { serve } from './rpc.ts';
 import { type VideoAction, videoKey } from './videokeys.ts';
 import { subScale } from './videosettings.ts';
+import type { AudioSource } from './whisper.ts';
 
 // What the overlay shows. 'timed' lines have times (WhisperX, a subtitle file, the subtitles of the site from the server).
 // 'mirror' is the text of the site's own caption window, which has no times.
-// id names the video, so a new video starts with no offset.
+// id names the video, so a new video starts with no offset. audio is the audio that the server can have of the video.
 export type Lines =
   | { kind: 'none' }
   | { kind: 'mirror'; text: string }
-  | { kind: 'timed'; id: string; segments: SubtitleSegment[] };
+  | { kind: 'timed'; id: string; segments: SubtitleSegment[]; audio: AudioSource | null };
 
 export interface Target {
   video: () => HTMLVideoElement | null;
@@ -32,6 +36,8 @@ let lines: Lines = { kind: 'none' };
 let offset = 0;
 let scale = 1;
 let hinted = false;
+// The index of the line on the screen in the timed lines, or -1.
+let shownIndex = -1;
 
 export { layer };
 
@@ -41,15 +47,16 @@ const isEditable = (node: EventTarget | null) => node instanceof HTMLElement
 const timed = () => (lines.kind === 'timed' && lines.segments.length ? lines : null);
 // The time of the video on the clock of the lines.
 const lineTime = () => (video()?.currentTime ?? 0) - offset;
-const current = (): SubtitleSegment | null => {
-  const found = timed();
-  return found ? segmentAt(found.segments, lineTime()) : null;
+const currentIndex = (): number => {
+  const time = lineTime();
+  return timed()?.segments.findIndex(s => s.start <= time && time < s.end) ?? -1;
 };
 
 function render(): void {
+  const found = timed();
+  shownIndex = found && !target.blocked?.() ? currentIndex() : -1;
   if (lines.kind === 'mirror') show(lines.text);
-  else if (timed() && !target.blocked?.()) show(current()?.text ?? '');
-  else show('');
+  else show(found?.segments[shownIndex]?.text ?? '');
 }
 
 let frame = 0;
@@ -149,6 +156,22 @@ window.addEventListener('keydown', event => {
   event.preventDefault();
   event.stopImmediatePropagation();
 }, true);
+
+// The line of the word that the popup shows, for the sentence audio of its card. A word elsewhere on the page has no line.
+function cardLine(): CardLine | null {
+  const found = timed();
+  const word = document.querySelector('.ml-word[data-ml-active]');
+  const segment = found?.segments[shownIndex];
+  if (!found || !segment || !word || !line.contains(word)) return null;
+  return { start: segment.start + offset, end: segment.end + offset, text: segment.text, audio: found.audio };
+}
+
+async function record({ start, end }: { start: number; end: number }) {
+  const playing = video();
+  return playing ? recordPart(playing, start, end) : null;
+}
+
+serve({ videoLine: cardLine, videoRecord: record }, target => target === undefined);
 
 subScale.watch(value => {
   scale = value;

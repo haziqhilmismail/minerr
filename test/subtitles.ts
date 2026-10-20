@@ -72,6 +72,10 @@ const whisper = createServer((req, res) => {
     if (req.method === 'POST' && req.url === '/jobs') return reply(200, { id: 'job1' });
     if (req.url === '/jobs/job1') return reply(200, JOB_STATES[Math.min(jobPolls++, JOB_STATES.length - 1)]);
     if (req.url === '/subs/testvideo' && cached) return reply(200, SEGMENTS);
+    if (req.method === 'POST' && req.url === '/clip') {
+      res.writeHead(200, { 'Content-Type': 'audio/mpeg' });
+      return res.end('ID3 clip');
+    }
     if (req.method === 'POST' && req.url === '/captions' && body.includes('timedvideo') && body.includes('"ja"')) return reply(200, { ext: 'json3', text: JSON3 });
     reply(404, { error: 'Not found.' });
   });
@@ -269,6 +273,17 @@ try {
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '今日は雨');
   assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 2);
   console.log('YouTube subtitles with times from the server: the overlay follows them, and ArrowRight goes to the next line');
+  await tab.hover('.minerr-subs-line .ml-word[data-ml-lemma="雨"]');
+  await popup.locator('.add').waitFor();
+  await tab.keyboard.press('a');
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+  assert.ok(whisperRequests.includes('POST /clip {"url":"https://www.youtube.com/watch?v=timedvideo","start":1.5,"end":6.5}'));
+  const lastNote = at(ankiRequests.filter(r => at(r, 'action') === 'addNote').at(-1), 'params', 'note');
+  assert.deepEqual(at(lastNote, 'audio', 0, 'data'), Buffer.from('ID3 clip').toString('base64'));
+  const firstNote = at(ankiRequests.find(r => at(r, 'action') === 'addNote'), 'params', 'note');
+  assert.equal(at(firstNote, 'audio'), undefined, 'a card from mirrored captions has no line audio');
+  console.log('YouTube card: the server cut the line audio from the video');
+  await tab.keyboard.press('Escape');
 
   await new Promise(resolve => whisper.close(resolve));
   whisper.closeAllConnections();

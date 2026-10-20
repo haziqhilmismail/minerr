@@ -51,6 +51,8 @@ const JOB_STATES = [{ state: 'queued' }, { state: 'transcribing', progress: 40 }
   { state: 'transcribing', progress: 40 }, { state: 'done', progress: 100, segments: SEGMENTS }];
 const uploads: { type: string | undefined; filename: string | undefined; sha256: string; size: number }[] = [];
 let jobPolls = 0;
+const clips: unknown[] = [];
+const CLIP = Buffer.from('ID3 fake mp3');
 const whisper = createServer((req, res) => {
   const chunks: Buffer[] = [];
   req.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -66,6 +68,11 @@ const whisper = createServer((req, res) => {
       return reply(200, { id: 'file1', sha256 });
     }
     if (req.url === '/jobs/file1') return reply(200, JOB_STATES[Math.min(jobPolls++, JOB_STATES.length - 1)]);
+    if (req.method === 'POST' && req.url === '/clip') {
+      clips.push(JSON.parse(Buffer.concat(chunks).toString()));
+      res.writeHead(200, { 'Content-Type': 'audio/mpeg' });
+      return res.end(CLIP);
+    }
     reply(404, { error: 'Not found.' });
   });
 });
@@ -175,6 +182,13 @@ try {
   const keyRows = await options.locator('#video-keys tr').evaluateAll(rows => rows.map(row => (row as HTMLElement).innerText.replace(/\s+/g, ' ').trim()));
   assert.equal(keyRows[0], '→ or D Go to the next line Needs subtitles with times');
   assert.ok(keyRows.includes('Alt+O Show the subtitles 0.1 seconds later Needs subtitles with times'), 'the options page lists the video keys');
+  assert.equal(await options.inputValue('#audio-padding'), '500');
+  await options.fill('#audio-padding', '250');
+  await options.press('#audio-padding', 'Tab');
+  await options.waitForFunction(async () => (await chrome.storage.local.get('audioPadding')).audioPadding === 250);
+  await options.fill('#audio-padding', '500');
+  await options.press('#audio-padding', 'Tab');
+  await options.waitForFunction(async () => (await chrome.storage.local.get('audioPadding')).audioPadding === 500);
   await options.close();
 
   const player = await context.newPage();
@@ -233,6 +247,18 @@ try {
   console.log('player card sentence:', at(note, 'fields', 'Sentence'), 'picture:', `${picture.length} base64 chars, saved to`, join(out, 'player-card.jpg'));
   assert.equal(at(note, 'fields', 'Sentence'), '猫が<b>魚</b>を食べた');
   assert.ok(picture.startsWith('/9j/'), 'picture is base64 JPEG');
+  const recorded = at(note, 'audio', 0);
+  console.log('player card audio without the server:', at(recorded, 'filename'), String(at(recorded, 'data')).length, 'base64 chars');
+  assert.match(String(at(recorded, 'filename')), /^minerr-\d+\.webm$/);
+  assert.ok(String(at(recorded, 'data')).startsWith('GkXf'), 'the recorded line audio is a WebM file');
+  assert.deepEqual(at(recorded, 'fields'), ['SentenceAudio']);
+  const webm = join(out, 'player-line.webm');
+  writeFileSync(webm, Buffer.from(String(at(recorded, 'data')), 'base64'));
+  const pcm = execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', webm, '-ac', '1', '-ar', '8000', '-f', 's16le', 'pipe:1']);
+  console.log('recorded line audio:', pcm.length / 16000, 's, saved to', webm);
+  assert.ok(Math.abs(pcm.length / 16000 - 3.5) < 0.4, 'the recording is the line (0 to 3 s) with 0.5 s after it');
+  assert.deepEqual(clips, [], 'the player has no server audio of a file that it did not send');
+  assert.equal(await player.evaluate(() => document.querySelector('video')?.currentTime), 1, 'the video goes back after the recording');
   await player.keyboard.press('Escape');
   await player.mouse.move(0, 0);
 
@@ -296,6 +322,17 @@ try {
   await line.locator('.ml-word[data-ml-lemma="雨"]').waitFor();
   assert.equal(await line.innerText(), '今日は雨が降っている。');
   console.log('WhisperX overlay at 4 s:', await line.innerText());
+  await line.locator('.ml-word[data-ml-lemma="雨"]').hover();
+  await popup.locator('.add').waitFor();
+  await player.keyboard.press('a');
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+  const clipNote = at(ankiRequests.filter(r => at(r, 'action') === 'addNote').at(-1), 'params', 'note');
+  assert.deepEqual(clips, [{ sha256: uploads[0]?.sha256, start: 2.5, end: 7 }], 'the server cuts the line with 0.5 s on each side');
+  assert.match(String(at(clipNote, 'audio', 0, 'filename')), /^minerr-\d+\.mp3$/);
+  assert.equal(at(clipNote, 'audio', 0, 'data'), CLIP.toString('base64'));
+  console.log('player card audio from the server:', clips);
+  await player.keyboard.press('Escape');
+  await player.mouse.move(0, 0);
 
   const [download] = await Promise.all([player.waitForEvent('download'), player.click('#save')]);
   const saved = readFileSync(await download.path(), 'utf8');

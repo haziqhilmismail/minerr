@@ -50,7 +50,7 @@ attach({ video, blocked: () => player?.classList.contains('ad-showing') ?? false
 function render(): void {
   const segments = state.source === 'whisperx' ? state.segments : state.youtube;
   setLines(segments
-    ? { kind: 'timed', id: `youtube:${state.videoId}`, segments }
+    ? { kind: 'timed', id: `youtube:${state.videoId}`, segments, audio: { url: `https://www.youtube.com/watch?v=${state.videoId}` } }
     : { kind: 'mirror', text: captionText([...(player?.querySelectorAll('.caption-visual-line') ?? [])].map(l => l.textContent ?? '')) });
 }
 
