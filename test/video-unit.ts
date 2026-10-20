@@ -26,7 +26,9 @@ test('keyName names keys as the key table writes them, with Alt from the code', 
     press('=', 'Equal', true), press('–', 'Minus', true), press('.', 'Period'), press('>', 'Period', false, true), press('W', 'KeyW', false, true),
   ], ['d', 'shift+d', 'ArrowLeft', 'alt+o', 'alt+=', 'alt+-', '.', '>', 'shift+w']);
   assert.equal(videoKey({ key: 'ArrowRight', code: 'ArrowRight', altKey: false, shiftKey: false })?.action, 'next');
-  assert.equal(videoKey({ key: 'a', code: 'KeyA', altKey: false, shiftKey: false }), null, 'A stays the add key of the popup');
+  const action = (key: string, code: string, shiftKey = false) => videoKey({ key, code, altKey: false, shiftKey })?.action;
+  assert.deepEqual([action('a', 'KeyA'), action('s', 'KeyS'), action('d', 'KeyD'), action('ArrowUp', 'ArrowUp'), action('ArrowUp', 'ArrowUp', true)],
+    ['previous', 'replay', 'next', 'obscure', 'second'], 'the Migaku keys: A, S, D, and the up arrow');
   assert.equal(videoKey({ key: 'a', code: 'KeyA', altKey: true, shiftKey: false })?.action, 'back5');
 });
 

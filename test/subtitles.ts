@@ -131,7 +131,7 @@ try {
   await tab.goto('https://www.youtube.com/watch?v=testvideo');
   const line = tab.locator('#movie_player .minerr-subs-line');
   await line.locator('.ml-word[data-ml-lemma="食べる"]').waitFor({ timeout: 20000 });
-  assert.equal(await line.innerText(), '猫が魚を食べなかった\n今日は雨');
+  assert.equal(await line.innerText(), '猫が魚を食べなかった今日は雨');
 
   const layout = await tab.evaluate(() => {
     const playerElement = document.querySelector('#movie_player');
@@ -178,7 +178,7 @@ try {
     segment.textContent = '魚が好き';
   });
   await line.locator('.ml-word[data-ml-lemma="好き"]').waitFor();
-  assert.equal(await line.innerText(), '猫が魚を食べなかった\n魚が好き');
+  assert.equal(await line.innerText(), '猫が魚を食べなかった魚が好き');
   console.log('overlay after the caption changed:', JSON.stringify(await line.innerText()));
 
   const offState = () => tab.evaluate(() => {
@@ -202,7 +202,7 @@ try {
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
   const sentence = at(ankiRequests.find(r => at(r, 'action') === 'addNote'), 'params', 'note', 'fields', 'Sentence');
   console.log('card sentence from the overlay:', sentence);
-  assert.equal(sentence, '猫が魚を<b>食べなかった</b>今日は雨', 'the rows of mirrored captions are one sentence');
+  assert.equal(sentence, '猫が魚を<b>食べなかった</b>魚が好き', 'the rows of mirrored captions are one sentence');
   await tab.keyboard.press('Escape');
   await tab.mouse.move(0, 0);
 
@@ -257,7 +257,7 @@ try {
   assert.deepEqual(await tab.evaluate(() => Reflect.get(window, 'seen')), ['d'], 'with timed lines Minerr takes the key, not YouTube');
 
   await action.click('[data-source="youtube"]');
-  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べなかった\n魚が好き');
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べなかった魚が好き');
   console.log('switched back to the YouTube captions');
 
   cached = true;
@@ -268,7 +268,7 @@ try {
     history.pushState({}, '', '/watch?v=othervideo');
     document.dispatchEvent(new Event('yt-navigate-finish'));
   });
-  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べなかった\n今日は雨');
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べなかった今日は雨');
   for (let i = 0; i < 50 && !whisperRequests.includes('GET /subs/othervideo'); i++) await tab.waitForTimeout(100);
   assert.ok(whisperRequests.includes('GET /subs/othervideo'));
   console.log('after navigation to a video with no WhisperX subtitles: YouTube captions again');
@@ -285,6 +285,13 @@ try {
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '今日は雨');
   assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 2);
   console.log('YouTube subtitles with times from the server: the overlay follows them, and ArrowRight goes to the next line');
+  await tab.mouse.move(0, 0);
+  await tab.keyboard.press('a');
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べた');
+  assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 0);
+  await tab.keyboard.press('d');
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '今日は雨');
+  console.log('with no popup open, A goes to the previous line and D to the next');
   await tab.evaluate(() => {
     const keys: string[] = [];
     Object.assign(window, { pageKeys: keys });

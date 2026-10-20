@@ -5,6 +5,7 @@ import type { CardLine } from './lineaudio.ts';
 import { play } from './dom.ts';
 import { createLineList } from './linelist.ts';
 import { createOverlay, wordStatuses } from './overlay.ts';
+import { isPopupOpen } from './popup.ts';
 import { isEditable } from './chord.ts';
 import {
   autoPause, cleanSegments, cleanText, GAP_LEAD, GAP_MODES, gapEnd, type GapMode, jumpTarget, PLAY_MODES, type PlayMode,
@@ -288,7 +289,7 @@ const ACTIONS: Record<VideoAction, () => boolean | void> = {
 window.addEventListener('keydown', event => {
   if (event.ctrlKey || event.metaKey || isEditable(event) || !video()) return;
   const entry = videoKey(event);
-  if (!entry || lines.kind === 'none' || target.blocked?.()) return;
+  if (!entry || lines.kind === 'none' || target.blocked?.() || (event.key.toLowerCase() === 'a' && isPopupOpen())) return;
   if (entry.timed && !timed()) {
     if (lines.kind === 'mirror' && !hinted) toast(TIMED_HINT);
     hinted = true;
