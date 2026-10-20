@@ -1,7 +1,7 @@
 import { addNote, fieldValues, getDeck, getNoteType, modelFieldNames, modelNames, version } from './src/anki.ts';
 import { cardMedia, widenSentence } from './src/lineaudio.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
-import { getStatuses, setStatus, setStatuses } from './src/status.ts';
+import { getStatuses, setStatus, setStatuses, statusIn } from './src/status.ts';
 import { minerrEnabled } from './src/settings.ts';
 import { cachedSegments, getJob, health, siteCaptions, startJob } from './src/whisper.ts';
 
@@ -21,7 +21,7 @@ async function ensureOffscreen(): Promise<void> {
   await creating;
 }
 
-async function toOffscreen<K extends 'parse' | 'lookup' | 'pitch' | 'lookupText'>(message: Message<K>): Promise<Reply<K>> {
+async function toOffscreen<K extends 'parse' | 'lookup' | 'pitch' | 'lookupText' | 'wordKeys'>(message: Message<K>): Promise<Reply<K>> {
   await ensureOffscreen();
   return call({ ...message, target: 'offscreen' });
 }
@@ -37,7 +37,7 @@ async function capture(windowId: number): Promise<string> {
   return chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 80 });
 }
 
-async function addCard({ card }: Message<'addCard'>, sender: chrome.runtime.MessageSender): Promise<number> {
+async function addCard({ card, word }: Message<'addCard'>, sender: chrome.runtime.MessageSender): Promise<number> {
   if (!sender.tab) throw new Error('Add cards from a tab.');
   const image = await capture(sender.tab.windowId);
   // After the screenshot, because the tab may play the line again to record it.
@@ -45,14 +45,14 @@ async function addCard({ card }: Message<'addCard'>, sender: chrome.runtime.Mess
   const sentence = line?.combined ? widenSentence(line.text, card.sentence) : card.sentence;
   const { url = '', title = '' } = sender.tab;
   const noteId = await addNote({ deck: await getDeck(), noteType: await getNoteType(), card: { ...card, sentence, ...(audio ? { audio } : {}) }, page: { url, title }, jpegDataUrl: image });
-  const statuses = await getStatuses([card.word]);
-  if (statuses.get(card.word) === 'unknown') await setStatus(card.word, 'learning');
+  if (statusIn(await getStatuses([word]), word) === 'unknown') await setStatus(word, 'learning');
   return noteId;
 }
 
 async function importKnown({ query, field }: Message<'importKnown'>): Promise<number> {
   const words = await fieldValues(query, field);
-  await setStatuses(words, 'known');
+  const keys = await toOffscreen({ type: 'wordKeys', words });
+  await setStatuses(keys.map(key => ({ key })), 'known');
   return words.length;
 }
 
@@ -66,6 +66,7 @@ serve(
     lookup: toOffscreen,
     pitch: toOffscreen,
     lookupText: toOffscreen,
+    wordKeys: toOffscreen,
     addCard,
     importKnown,
     ankiVersion: version,

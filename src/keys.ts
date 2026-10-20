@@ -4,8 +4,8 @@ import { toast } from './popup-view.ts';
 import { messageOf } from './rpc.ts';
 import { sentenceHighlight } from './sentence-hover.ts';
 import { toggleSiteOf, watchActive } from './site.ts';
-import { setStatus, setStatuses, type Status, STATUS_NAMES, STATUSES } from './status.ts';
-import { sameWord } from './words.ts';
+import { setStatus, setStatuses, type Status, STATUS_NAMES, STATUSES, type WordId } from './status.ts';
+import { sameWord, wordOf } from './words.ts';
 
 // What the keys can do with the popup. popup.ts gives it to installKeys.
 export interface PopupKeys {
@@ -40,14 +40,14 @@ function selectedWords(): HTMLElement[] {
 const lineUnknowns = () => [...document.querySelectorAll<HTMLElement>('.minerr-subs-line:not([hidden]) .ml-word.ml-unknown:not([data-ml-cont])')];
 
 async function markSelection(spans: HTMLElement[], status: Status): Promise<void> {
-  const lemmas = [...new Set(spans.flatMap(span => span.dataset.mlLemma ?? []))];
-  await setStatuses(lemmas, status);
-  toast(`Marked ${plural(lemmas.length, 'word')} as ${STATUSES[status].label.toLowerCase()}.`);
+  const words = spans.map(wordOf);
+  await setStatuses(words, status);
+  toast(`Marked ${plural(new Set(words.map(word => word.key)).size, 'word')} as ${STATUSES[status].label.toLowerCase()}.`);
 }
 
-async function markLineWord(lemma: string, status: Status): Promise<void> {
-  await setStatus(lemma, status);
-  toast(`Marked ${lemma} as ${STATUSES[status].label.toLowerCase()}.`);
+async function markLineWord(word: WordId, status: Status): Promise<void> {
+  await setStatus(word, status);
+  toast(`Marked ${word.key} as ${STATUSES[status].label.toLowerCase()}.`);
 }
 
 async function toggleSentenceHighlight(): Promise<void> {
@@ -76,9 +76,9 @@ export function installKeys(popup: PopupKeys): void {
       case 'selection': report(markSelection(selected, status)); return true;
       case 'popup': popup.setStatus(status); return true;
       case 'line': {
-        const lemma = unknowns[0]?.dataset.mlLemma;
-        if (lemma) report(markLineWord(lemma, status));
-        return lemma !== undefined;
+        const [span] = unknowns;
+        if (span) report(markLineWord(wordOf(span), status));
+        return span !== undefined;
       }
       default: return false;
     }

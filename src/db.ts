@@ -1,3 +1,4 @@
+import type { EntryIndex, EntryRow } from './entry.ts';
 import { type DictMeta, type Entry, morae, pitchPattern, type PitchPattern, withMeta } from './meta.ts';
 import { at, isList, isStringList } from './parse.ts';
 import { type DictTag, type DictTerm, groupTerms, readYomitan } from './yomitan.ts';
@@ -5,12 +6,12 @@ import type { Bytes } from './zip.ts';
 
 // Stores: dicts {title, revision, count, tags, meta} (count is null while an import is unfinished; tags is true
 // for an import that stored tags; meta counts the meta rows), terms {dict, id, expression, reading, definitionTags, termTags,
-// glossary, score} keyed by [dict, id], tags {dict, name, category, notes} keyed by [dict, name], and meta (a TermMeta
+// glossary, score, sequence} keyed by [dict, id], tags {dict, name, category, notes} keyed by [dict, name], and meta (a TermMeta
 // with its dict) keyed by [dict, id].
 // The [dict, ...] keys let one key range delete a dictionary.
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('minerr', 3);
+    const request = indexedDB.open('minerr', 4);
     request.onupgradeneeded = event => {
       const db = request.result;
       if (event.oldVersion < 1) {
@@ -21,6 +22,8 @@ function open(): Promise<IDBDatabase> {
       }
       if (event.oldVersion < 2) db.createObjectStore('tags', { keyPath: ['dict', 'name'] });
       if (event.oldVersion < 3) db.createObjectStore('meta', { keyPath: ['dict', 'id'] }).createIndex('expression', 'expression');
+      // A term imported before version 4 has no sequence, so the index skips it.
+      if (event.oldVersion < 4) request.transaction?.objectStore('terms').createIndex('sequence', ['dict', 'sequence']);
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -59,6 +62,9 @@ const isDictionary = (row: unknown): row is Dictionary => hasString(row, 'title'
 const isDictTerm = (row: unknown): row is DictTerm => ['dict', 'expression', 'reading'].every(key => hasString(row, key))
   && typeof at(row, 'score') === 'number' && isStringList(at(row, 'glossary'))
   && hasTagNames(row, 'definitionTags') && hasTagNames(row, 'termTags');
+
+const isEntryRow = (row: unknown): row is EntryRow => ['dict', 'expression', 'reading'].every(key => hasString(row, key))
+  && typeof at(row, 'score') === 'number' && typeof at(row, 'sequence') === 'number';
 
 const isDictTag = (row: unknown): row is DictTag => ['dict', 'name', 'category', 'notes'].every(key => hasString(row, key));
 
@@ -135,6 +141,42 @@ export async function hasTerm(lemma: string): Promise<boolean> {
   const counts = await Promise.all([result(terms.index('expression').count(lemma)), result(terms.index('reading').count(lemma))]);
   return counts.some(count => count > 0);
 }
+
+// The reads of one task share one transaction, because a transaction for each of the thousands of reads of a page is slow.
+type Read = { start: (terms: IDBObjectStore) => IDBRequest; done: (value: unknown) => void; fail: (error: unknown) => void };
+let reads: Read[] = [];
+
+async function runReads(): Promise<void> {
+  const batch = reads;
+  reads = [];
+  try {
+    const terms = (await db()).transaction('terms').objectStore('terms');
+    for (const { start, done, fail } of batch) result(start(terms)).then(done, fail);
+  } catch (error) {
+    for (const { fail } of batch) fail(error);
+  }
+}
+
+const read = (start: Read['start']) => new Promise<unknown>((done, fail) => {
+  if (!reads.length) setTimeout(runReads);
+  reads.push({ start, done, fail });
+});
+
+async function entryRows(index: 'expression' | 'reading' | 'sequence', key: IDBValidKey): Promise<EntryRow[]> {
+  const rows = await read(terms => terms.index(index).getAll(key));
+  return isList(rows) ? rows.filter(isEntryRow) : [];
+}
+
+// The terms with a sequence, for the spelling resolver of src/entry.ts.
+export const entryIndex: EntryIndex = {
+  byExpression: text => entryRows('expression', text),
+  byReading: text => entryRows('reading', text),
+  bySequence: (dict, sequence) => entryRows('sequence', [dict, sequence]),
+  headwords: async texts => {
+    const counts = await Promise.all(texts.map(text => read(terms => terms.index('expression').count(text))));
+    return new Set(texts.filter((_, i) => Number(counts[i]) > 0));
+  },
+};
 
 // Returns groupTerms groups for the best `limit` rows, with their frequencies and pitch accents.
 // A row is one sense, so the limit fits all senses of a common word.

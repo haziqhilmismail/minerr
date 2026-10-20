@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { isPosition, pageMove, positionKey, textChapters, textParagraphs, turn, zipPath } from '../src/book.ts';
 import { comprehension, iPlusOneTexts, ratingOf } from '../src/score.ts';
-import { lemmasOf, listWords, wordsOfLines } from '../src/wordlist.ts';
+import { keysOf, listWords, wordsOfLines } from '../src/wordlist.ts';
 
 test('ratingOf gives the Migaku label for each score band', () => {
   assert.deepEqual([0, 59, 60, 69, 70, 79, 80, 89, 90, 94, 95, 98, 99, 100].map(percent => ratingOf(percent).label), [
@@ -13,8 +13,8 @@ test('ratingOf gives the Migaku label for each score band', () => {
 
 test('comprehension counts known and ignored words as understood, rounds down, and counts each lemma once', () => {
   const score = comprehension([
-    { lemma: '猫', status: 'known' }, { lemma: '猫', status: 'known' }, { lemma: '田中', status: 'ignored' },
-    { lemma: '魚', status: 'learning' }, { lemma: '食べる', status: 'known' }, { lemma: '雨', status: 'unknown' },
+    { key: '猫', status: 'known' }, { key: '猫', status: 'known' }, { key: '田中', status: 'ignored' },
+    { key: '魚', status: 'learning' }, { key: '食べる', status: 'known' }, { key: '雨', status: 'unknown' },
   ]);
   assert.deepEqual(score && { ...score, rating: score.rating.label }, {
     percent: 66, rating: 'Challenging', words: 6, unique: { unknown: 1, learning: 1, known: 2, ignored: 1 },
@@ -39,9 +39,11 @@ test('listWords filters by status and text, and sorts by word or by status then 
   assert.deepEqual(listWords(words, { search: '猫', filter: 'learning', sort: 'word' }), ['猫舌']);
 });
 
-test('wordsOfLines and lemmasOf give each word one time', () => {
+test('wordsOfLines and keysOf give each word one time, keysOf by the status key', () => {
   assert.deepEqual(wordsOfLines(' 猫\n\n魚\r\n猫\n　犬　\n'), ['猫', '魚', '犬']);
-  assert.deepEqual(lemmasOf([[{ text: '猫', lemma: '猫' }, { text: 'が' }], [{ text: '食べた', lemma: '食べる' }, { text: '猫', lemma: '猫' }]]), ['猫', '食べる']);
+  assert.deepEqual(keysOf([[{ text: '猫', lemma: '猫' }, { text: 'が' }], [{ text: '食べた', lemma: '食べる' }, { text: '猫', lemma: '猫' }]]), ['猫', '食べる']);
+  const cat = { key: '猫', headword: '猫', reading: 'ねこ' };
+  assert.deepEqual(keysOf([[{ text: 'ねこ', lemma: 'ねこ', entry: cat }, { text: 'ネコ', lemma: 'ネコ', entry: cat }]]), ['猫']);
 });
 
 test('textParagraphs drops the byte order mark and empty lines; textChapters splits long text at paragraph ends', () => {

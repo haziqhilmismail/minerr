@@ -12,8 +12,8 @@ import { call, messageOf } from './rpc.ts';
 import { sentenceAround } from './sentence.ts';
 import { setPopupWord } from './sentence-hover.ts';
 import { watchActive } from './site.ts';
-import { getStatuses, onStatusChange, setStatus, type Status, STATUSES } from './status.ts';
-import { parseWords, recolor, RUBY_TEXT, sameWord, wordFragment, wordParts } from './words.ts';
+import { getStatuses, onStatusChange, setStatus, type Status, STATUSES, statusIn } from './status.ts';
+import { parseWords, recolor, RUBY_TEXT, sameWord, wordFragment, wordOf, wordParts } from './words.ts';
 
 // A word in a popup opens a popup over it with Shift + hover, up to this many popups.
 const MAX_LAYERS = 4;
@@ -111,12 +111,14 @@ async function wrapWords(root: Element): Promise<void> {
   });
 }
 
-async function open(anchor: Anchor, lemma: string, depth: number, lookup: Promise<Entry[]>): Promise<void> {
-  const count = document.querySelectorAll(`.ml-word[data-ml-lemma="${CSS.escape(lemma)}"]:not([data-ml-cont])`).length;
-  const view: View = { anchor, lemma, status: 'unknown', groups: [], count };
+// The number of words on the page with the status key.
+const countOf = (key: string) => [...document.querySelectorAll<HTMLElement>('.ml-word:not([data-ml-cont])')].filter(span => wordOf(span).key === key).length;
+
+async function open(anchor: Anchor, { lemma, word, headword }: Pick<View, 'lemma' | 'word' | 'headword'>, depth: number, lookup: Promise<Entry[]>): Promise<void> {
+  const view: View = { anchor, lemma, word, headword, status: 'unknown', groups: [], count: countOf(word.key) };
   opening = view;
   try {
-    [view.groups, view.status] = await Promise.all([lookup, getStatuses([lemma]).then(statuses => statuses.get(lemma) ?? 'unknown')]);
+    [view.groups, view.status] = await Promise.all([lookup, getStatuses([word]).then(statuses => statusIn(statuses, word))]);
   } catch (error) {
     console.warn('minerr lookup failed', error);
   }
@@ -136,10 +138,11 @@ async function open(anchor: Anchor, lemma: string, depth: number, lookup: Promis
 
 // Opens the popup of a word span (a .ml-word with data-ml-lemma). The subtitle code calls it for keys that pick a word.
 export async function openWord(span: HTMLElement): Promise<void> {
-  const lemma = span.dataset.mlLemma;
+  const { mlLemma: lemma, mlHeadword: text, mlHeadwordReading: reading = '' } = span.dataset;
   const depth = depthOf(span);
   if (lemma === undefined || depth >= MAX_LAYERS) return;
-  await open({ kind: 'word', span }, lemma, depth, call({ type: 'lookup', lemma }));
+  const headword = text === undefined ? undefined : { text, reading };
+  await open({ kind: 'word', span }, { lemma, word: wordOf(span), headword }, depth, call({ type: 'lookup', lemma }));
 }
 
 // Alt+S: looks up the longest dictionary word at the start of the text selection on the page. False if no text is selected.
@@ -153,7 +156,10 @@ function lookupSelection(): boolean {
       toast(`No dictionary entry for ${text.slice(0, 10)}.`);
       return;
     }
-    open({ kind: 'text', range, text: text.slice(0, found.length) }, found.lemma, 0, Promise.resolve(found.entries));
+    const { lemma, entry } = found;
+    const word = entry ?? { key: lemma };
+    const headword = entry ? { text: entry.headword, reading: entry.reading } : undefined;
+    open({ kind: 'text', range, text: text.slice(0, found.length) }, { lemma, word, headword }, 0, Promise.resolve(found.entries));
   }).catch(error => toast(messageOf(error)));
   return true;
 }
@@ -176,7 +182,7 @@ async function addCard(): Promise<void> {
   await nextFrame();
   await nextFrame();
   try {
-    await call({ type: 'addCard', card });
+    await call({ type: 'addCard', card, word: view.word });
     if (layers.includes(layer)) showMessage(layer, 'Added to Anki.');
   } catch (error) {
     if (layers.includes(layer)) showMessage(layer, messageOf(error), true);
@@ -255,7 +261,7 @@ installKeys({
   isOpen: () => layers.length > 0,
   setStatus: (status: Status) => {
     const layer = top();
-    if (layer) setStatus(layer.view.lemma, status);
+    if (layer) setStatus(layer.view.word, status);
   },
   addCard,
   close: () => close(),
@@ -266,7 +272,7 @@ installKeys({
 
 onStatusChange(changed => {
   for (const layer of layers) {
-    const status = changed.get(layer.view.lemma);
+    const status = changed.get(layer.view.word.key);
     if (status) markStatus(layer, status);
   }
   for (const box of boxes) recolor(box, changed);

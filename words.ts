@@ -5,7 +5,7 @@ import {
   getAllStatuses, importStatuses, isStatus, isStoredStatus, mergeStatuses, onStatusChange, setStatuses, type Status, STATUS_NAMES, STATUSES, type StoredStatus,
 } from './src/status.ts';
 import { applyTheme } from './src/theme.ts';
-import { type Filter, lemmasOf, listWords, wordsOfLines } from './src/wordlist.ts';
+import { type Filter, keysOf, listWords, wordsOfLines } from './src/wordlist.ts';
 
 applyTheme();
 
@@ -44,7 +44,7 @@ function statusSelect(lemma: string, status: Status): HTMLSelectElement {
   const select = Object.assign(document.createElement('select'), { ariaLabel: `Status of ${lemma}` });
   for (const name of STATUS_NAMES) select.append(new Option(STATUSES[name].label, name, false, name === status));
   select.addEventListener('change', () => {
-    if (isStatus(select.value)) setStatuses([lemma], select.value);
+    if (isStatus(select.value)) setStatuses([{ key: lemma }], select.value);
   });
   return select;
 }
@@ -71,7 +71,7 @@ const bulkButtons = STATUS_NAMES.map(status => {
     const lemmas = [...selected];
     if (status === 'unknown' && !confirm(`Set ${lemmas.length} words to unknown? They go out of the list.`)) return;
     selected.clear();
-    await setStatuses(lemmas, status);
+    await setStatuses(lemmas.map(key => ({ key })), status);
     // No storage change event comes when no status changed, and the selection still needs to clear.
     render();
   });
@@ -146,7 +146,9 @@ function discardPreview(): void {
 async function pastedWords(): Promise<string[]> {
   const text = pasteText.value;
   const kind = document.querySelector<HTMLInputElement>('input[name="pasteKind"]:checked')?.value;
-  return kind === 'text' ? lemmasOf(await call({ type: 'parse', texts: text.split('\n') })) : wordsOfLines(text);
+  if (kind === 'text') return keysOf(await call({ type: 'parse', texts: text.split('\n') }));
+  const words = wordsOfLines(text);
+  return [...new Set(await call({ type: 'wordKeys', words }))];
 }
 
 byId('paste-preview-button', HTMLButtonElement).addEventListener('click', async () => {

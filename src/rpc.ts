@@ -1,15 +1,17 @@
 import type { CardFields, MediaFile } from './anki.ts';
 import type { SubtitleSegment } from './captions.ts';
+import type { WordEntry } from './entry.ts';
 import type { Segment } from './group.ts';
 import type { CardLine } from './lineaudio.ts';
 import { at } from './parse.ts';
 import type { PageStats } from './stats.ts';
+import type { WordId } from './status.ts';
 import type { Snapshot, Source } from './subtitles.ts';
 import type { Entry, PitchPattern } from './meta.ts';
 import type { Health, Job } from './whisper.ts';
 
 // Every message type, with the fields that call() sends and the value that its handler replies with.
-// The service worker handles parse to siteCaptions; it passes parse, lookup, pitch, and lookupText on to the offscreen document.
+// The service worker handles parse to siteCaptions; it passes parse, lookup, pitch, lookupText, and wordKeys on to the offscreen document.
 // The content scripts of a YouTube tab handle subsState, subsGenerate, and subsUse.
 // The page with the video overlay (a content script, or the player page) handles videoLine and videoRecord.
 // The content scripts of a page that is not YouTube handle videoAttach.
@@ -19,8 +21,10 @@ interface Protocol {
   lookup: { request: { lemma: string }; reply: Entry[] };
   pitch: { request: { words: { lemma: string; reading: string }[] }; reply: (PitchPattern | null)[] };
   // The longest dictionary word at the start of text, and the number of characters of text that it covers.
-  lookupText: { request: { text: string }; reply: { lemma: string; length: number; entries: Entry[] } | null };
-  addCard: { request: { card: CardFields }; reply: number };
+  lookupText: { request: { text: string }; reply: { lemma: string; length: number; entries: Entry[]; entry: WordEntry | null } | null };
+  // The status key of each word, from its dictionary entry; a word without one entry is its own key.
+  wordKeys: { request: { words: string[] }; reply: string[] };
+  addCard: { request: { card: CardFields; word: WordId }; reply: number };
   importKnown: { request: { query: string; field: string }; reply: number };
   ankiVersion: { request: {}; reply: number };
   ankiModels: { request: {}; reply: string[] };

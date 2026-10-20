@@ -1,4 +1,4 @@
-import { setStatus, type Status, STATUS_NAMES, STATUSES, WORD_CSS } from './status.ts';
+import { setStatus, type Status, STATUS_NAMES, STATUSES, WORD_CSS, type WordId } from './status.ts';
 import { minerrEnabled } from './settings.ts';
 import { TAG_CSS, tagClass } from './tags.ts';
 import { applyTheme } from './theme.ts';
@@ -138,10 +138,14 @@ export const anchorRect = (anchor: Anchor): DOMRect => (anchor.kind === 'word' ?
 // The word that a popup shows.
 export interface View {
   anchor: Anchor;
+  // The dictionary form, for the lookup and the card.
   lemma: string;
+  word: WordId;
+  // The headword and reading of the dictionary entry of the word, when one entry fits.
+  headword?: { text: string; reading: string } | undefined;
   status: Status;
   groups: Entry[];
-  // The number of words on the page with this lemma.
+  // The number of words on the page with this status key.
   count: number;
 }
 
@@ -214,12 +218,13 @@ export interface Actions {
 }
 
 export function render(box: HTMLDivElement, view: View, { addCard, close }: Actions): Layer {
-  const { lemma, groups } = view;
+  const { lemma, word, groups } = view;
   const [first, ...others] = groups;
-  const reading = first?.reading ?? '';
+  const title = view.headword?.text ?? lemma;
+  const reading = view.headword?.reading ?? first?.reading ?? '';
   const surface = anchorText(view.anchor);
   const notes = [
-    ...(surface !== lemma ? [`On the page: ${surface}`] : []),
+    ...(surface !== title ? [`On the page: ${surface}`] : []),
     ...(view.count ? [`Appears ${view.count} ${view.count === 1 ? 'time' : 'times'} on this page`] : []),
   ];
   const statusButtons = new Map<Status, HTMLButtonElement>();
@@ -228,7 +233,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, close }: Acti
       const { hotkey, label, color } = STATUSES[status];
       const dot = el('span', { className: 'dot' });
       dot.style.background = color;
-      const button = el('button', { onclick: () => setStatus(lemma, status) }, dot, `${label} `, el('kbd', { textContent: hotkey }));
+      const button = el('button', { onclick: () => setStatus(word, status) }, dot, `${label} `, el('kbd', { textContent: hotkey }));
       statusButtons.set(status, button);
       return button;
     }));
@@ -248,8 +253,8 @@ export function render(box: HTMLDivElement, view: View, { addCard, close }: Acti
   box.replaceChildren(
     el('header', {},
       el('div', { className: 'title' },
-        el('span', { className: 'lemma', textContent: lemma }),
-        reading !== lemma ? el('span', { className: 'reading', textContent: reading }) : '',
+        el('span', { className: 'lemma', textContent: title }),
+        reading !== title ? el('span', { className: 'reading', textContent: reading }) : '',
         first?.termTags.length ? el('span', { className: 'tags' }, ...chips(first.termTags)) : ''),
       first ? metaRow(first) : '',
       notes.length ? el('div', { className: 'surface', textContent: notes.join(' · ') }) : '',

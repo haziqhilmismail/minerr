@@ -1,3 +1,5 @@
+import type { WordEntry } from './entry.ts';
+
 const CONTENT_POS = new Set(['名詞', '動詞', '形容詞', '副詞', '連体詞', '感動詞', '接続詞']);
 const INFLECTING_POS = new Set(['動詞', '形容詞']);
 const CONJUNCTIVE = new Set(['て', 'で', 'ば']);
@@ -5,10 +7,12 @@ export const JAPANESE = /[぀-ヿ一-鿿]/;
 const KANJI = /[一-鿿々]/;
 
 // A piece of the parsed text. A content word also has its dictionary form, and a word with kanji has its reading in hiragana.
+// entry is the dictionary entry of the word (src/entry.ts), when one entry fits.
 export interface Segment {
   text: string;
   lemma?: string;
   reading?: string;
+  entry?: WordEntry;
 }
 
 export const toHiragana = (text: string) => text.replace(/[ァ-ヶ]/g, kana => String.fromCharCode(kana.charCodeAt(0) - 0x60));
@@ -79,7 +83,7 @@ export function splitSegments(segments: Segment[], lengths: number[]): NodeSegme
     }
     const split = segment.lemma !== undefined && parts.length > 1;
     parts.forEach((part, i) => nodes[part.node]?.push(split
-      ? { text: part.text, lemma: segment.lemma ?? '', part: i === 0 ? 'first' : 'rest' }
+      ? { text: part.text, lemma: segment.lemma ?? '', ...(segment.entry ? { entry: segment.entry } : {}), part: i === 0 ? 'first' : 'rest' }
       : { ...segment, text: part.text }));
     start = end;
   }

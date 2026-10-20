@@ -1,8 +1,10 @@
 // The word spans of parsed text. A word that crosses text nodes (<b>食</b>べた) is one span per part; the parts share
 // data-ml-word, and each part after the first has data-ml-cont, so counts take the word one time.
+// data-ml-lemma is the dictionary form for lookups. data-ml-key is the status key (src/entry.ts) when it is not the lemma,
+// data-ml-old-key is set as WordId says, and data-ml-headword and data-ml-headword-reading name the dictionary entry.
 import type { NodeSegment, Segment } from './group.ts';
 import { call } from './rpc.ts';
-import { getStatuses, type Status, STATUSES } from './status.ts';
+import { getStatuses, type Status, STATUSES, statusIn, type WordId } from './status.ts';
 
 const STATUS_CLASSES = Object.values(STATUSES).map(s => s.className);
 
@@ -14,17 +16,23 @@ export function setSpanStatus(span: HTMLElement, status: Status): void {
   span.classList.add(STATUSES[status].className);
 }
 
+// The status key of a word: the key of its dictionary entry, or else its lemma.
+const segmentWord = ({ lemma = '', entry }: Segment): WordId => entry ?? { key: lemma };
+
+// The word of a span, as wordFragment wrote it.
+export const wordOf = (span: HTMLElement): WordId => ({ key: span.dataset.mlKey ?? span.dataset.mlLemma ?? '', oldKey: span.dataset.mlOldKey });
+
 // Parses texts, and reads the statuses of their words.
 export async function parseWords(texts: string[]): Promise<{ parsed: Segment[][]; statuses: Map<string, Status> }> {
   const parsed = await call({ type: 'parse', texts });
-  const statuses = await getStatuses([...new Set(parsed.flat().flatMap(segment => segment.lemma ?? []))]);
+  const statuses = await getStatuses(parsed.flat().flatMap(segment => (segment.lemma ? [segmentWord(segment)] : [])));
   return { parsed, statuses };
 }
 
-// Gives the word spans under root the status that changed for their lemma.
+// Gives the word spans under root the status that changed for their key.
 export function recolor(root: ParentNode, changed: Map<string, Status>): void {
   for (const span of root.querySelectorAll<HTMLElement>('.ml-word')) {
-    const status = changed.get(span.dataset.mlLemma ?? '');
+    const status = changed.get(wordOf(span).key);
     if (status) setSpanStatus(span, status);
   }
 }
@@ -49,7 +57,8 @@ let words = 0;
 // from new page text. A word in page ruby gets no reading: the page shows one.
 export function wordFragment(segments: NodeSegment[], statuses: Map<string, Status>, inRuby: boolean, plain: (node: Text) => void = () => {}): DocumentFragment {
   const fragment = document.createDocumentFragment();
-  for (const { text, lemma, reading, part } of segments) {
+  for (const segment of segments) {
+    const { text, lemma, reading, entry, part } = segment;
     if (!lemma) {
       const node = document.createTextNode(text);
       plain(node);
@@ -59,12 +68,16 @@ export function wordFragment(segments: NodeSegment[], statuses: Map<string, Stat
     const span = document.createElement('span');
     span.className = 'ml-word';
     span.dataset.mlLemma = lemma;
+    const word = segmentWord(segment);
+    if (word.key !== lemma) span.dataset.mlKey = word.key;
+    if (word.oldKey) span.dataset.mlOldKey = word.oldKey;
+    if (entry) Object.assign(span.dataset, { mlHeadword: entry.headword, mlHeadwordReading: entry.reading });
     if (reading && !inRuby) span.dataset.mlReading = reading;
     if (part === 'first') words++;
     if (part) span.dataset.mlWord = String(words);
     if (part === 'rest') span.dataset.mlCont = '';
     span.textContent = text;
-    setSpanStatus(span, statuses.get(lemma) ?? 'unknown');
+    setSpanStatus(span, statusIn(statuses, word));
     fragment.append(span);
   }
   return fragment;
