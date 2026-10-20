@@ -167,7 +167,31 @@ Minerr sets each word that the selection touches to that status. A short message
 
 When Minerr is off, YouTube shows its own captions again, and the Minerr subtitle overlay is hidden.
 
-Use this when you want to compare Minerr with another dictionary extension, for example Yomitan. To change the shortcut, open `chrome://extensions/shortcuts`.
+Use this when you want to compare Minerr with another dictionary extension, for example Yomitan. To change the shortcut, see [Change a shortcut](#change-a-shortcut).
+
+### Browser shortcuts
+
+Chrome runs these keys for Minerr. Thus a page cannot take them. The table shows the default keys.
+
+| Key | Action |
+| --- | --- |
+| `Alt+Shift+M` | Turn Minerr on or off in all tabs. |
+| `Alt+S` | Look up the selected text. See [Look up selected text](#look-up-selected-text). |
+| `Alt+Shift+D` | Turn the page text of this site on or off. |
+| No key | Open the Minerr toolbar menu. |
+| No key | Turn the sentence highlight on or off. `Alt+Shift+S` on a page also does this. |
+
+If Chrome, the system, or another extension already uses a key, Minerr does not get that key. The options page shows the keys that Minerr has now, in **Colors and shortcuts**. A key that Minerr does not have shows **Not set**. The toolbar menu also shows the key of **Minerr on** and of the page text switch.
+
+#### Change a shortcut
+
+1. Open the options page.
+2. In **Colors and shortcuts**, click **Change the keys**. Or open `chrome://extensions/shortcuts` in a new tab.
+3. Find **Minerr** in the list.
+4. Click the pencil button of the action.
+5. Press the new key, for example `Alt+K`. The key must start with `Alt` or `Ctrl`.
+
+The new key works at once in all tabs.
 
 ### Turn the page text on or off for a site
 
@@ -893,7 +917,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/sentence-hover.ts` | The highlight of the sentence of the word under the mouse. |
 | `src/sentence-text.ts` | The text of the sentence around a word on the page, for the highlight and the card. The walk stops at the sentence ends and at a `<br>`. |
 | `src/site.ts` | The page text on or off for each site, and the state of a page: Minerr off, the video subtitles only, or the page text too. |
-| `src/keys.ts`, `src/chord.ts` | The keys that work on a page without a popup, and the names of the keys. |
+| `src/keys.ts`, `src/chord.ts` | The keys that work on a page without a popup, the browser shortcuts that the service worker sends to the tab, and the names of the keys. |
 | `src/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |
 | `src/subtitles.ts` | The subtitle overlay on YouTube. |
 | `src/status.ts` | The word statuses, their colors, and their storage. |

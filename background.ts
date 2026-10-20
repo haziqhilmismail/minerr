@@ -1,6 +1,7 @@
 import {
   addDraft, fieldValues, getDeck, getNoteType, installLapis, modelFieldNames, modelNames, type NoteDraft, noteDraft, usesWordAudio, version,
 } from './src/anki.ts';
+import { isPageCommand } from './src/chord.ts';
 import { listDictionaries } from './src/db.ts';
 import { cardMedia, widenSentence } from './src/lineaudio.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
@@ -76,9 +77,17 @@ async function importKnown({ query, field }: Message<'importKnown'>): Promise<nu
   return words.length;
 }
 
-chrome.commands.onCommand.addListener(async command => {
-  if (command === 'toggle-minerr') await minerrEnabled.set(!(await minerrEnabled.get()));
-});
+// The browser shortcuts of manifest.json. Each one but toggle-minerr goes to the page of the active tab.
+// The tests call it as globalThis.runCommand, because Playwright cannot press a browser shortcut.
+async function runCommand(command: string, tab?: chrome.tabs.Tab): Promise<void> {
+  if (command === 'toggle-minerr') return minerrEnabled.set(!(await minerrEnabled.get()));
+  if (!isPageCommand(command)) throw new Error(`manifest.json has the command ${command}, but Minerr has no handler for it`);
+  if (tab?.id === undefined) return;
+  // No frame answers in a browser page, in a tab that was open before Minerr started, or when no frame of the tab has the focus.
+  await call({ type: 'command', command }, tab.id).catch(error => console.warn(`minerr could not run ${command} in the tab`, error));
+}
+chrome.commands.onCommand.addListener(runCommand);
+Object.assign(globalThis, { runCommand });
 
 serve(
   {

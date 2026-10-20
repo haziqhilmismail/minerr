@@ -15,7 +15,10 @@
   ],
   "action": { "default_title": "Minerr", "default_popup": "action.html" },
   "commands": {
-    "toggle-minerr": { "suggested_key": { "default": "Alt+Shift+M" }, "description": "Turn Minerr on or off in all tabs" }
+    "toggle-minerr": { "suggested_key": { "default": "Alt+Shift+M" }, "description": "Turn Minerr on or off in all tabs" },
+    "lookup-selection": { "suggested_key": { "default": "Alt+S" }, "description": "Look up the selected text" },
+    "toggle-site": { "suggested_key": { "default": "Alt+Shift+D" }, "description": "Turn the page text of this site on or off" },
+    "toggle-sentence-highlight": { "description": "Turn the sentence highlight on or off. Alt+Shift+S on a page also does this." }
   },
   "options_page": "options.html"
 }

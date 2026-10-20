@@ -293,6 +293,19 @@ byId('legend', HTMLElement).prepend(...Object.values(STATUSES).map(({ hotkey, la
   el('td', {}, swatch(color), `Mark as ${label.toLowerCase()}`),
   el('td', { className: 'sample' }, el('span', { className: `ml-word ${className}`, textContent: '単語' })))));
 
+// The browser shortcuts (manifest.json commands), as Chrome has them now. The user can change them on the Chrome shortcuts page.
+async function showShortcuts(): Promise<void> {
+  const rows = (await chrome.commands.getAll()).map(({ name, shortcut, description }) => el('tr', {},
+    el('td', {}, el('kbd', { textContent: shortcut || 'Not set' })),
+    // Chrome gives the command of the toolbar button no description.
+    el('td', { textContent: name === '_execute_action' ? 'Open the Minerr toolbar menu' : description ?? '' }), el('td')));
+  byId('browser-keys', HTMLElement).replaceChildren(...rows);
+}
+showShortcuts();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) showShortcuts(); });
+// An extension page cannot open a chrome:// link, but it can open a tab with that URL.
+byId('shortcuts', HTMLButtonElement).onclick = () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+
 const statusCounts = byId('status-counts', HTMLElement);
 const statusMessage = byId('status-message', HTMLElement);
 const statusFileInput = byId('status-file', HTMLInputElement);

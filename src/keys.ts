@@ -1,7 +1,7 @@
 // The keys of a page and of the open popup. One table, so a key has one meaning at a time.
-import { chord, isEditable, statusTarget } from './chord.ts';
+import { chord, focused, isEditable, isField, type PageCommand, statusTarget } from './chord.ts';
 import { toast } from './popup-view.ts';
-import { messageOf } from './rpc.ts';
+import { messageOf, serve } from './rpc.ts';
 import { sentenceHighlight } from './sentence-hover.ts';
 import { isMinerrPage, siteOf, toggleSiteOf, watchActive } from './site.ts';
 import { setStatus, setStatuses, type Status, STATUS_NAMES, STATUSES, type WordId } from './status.ts';
@@ -68,7 +68,8 @@ async function toggleSite(): Promise<void> {
     return;
   }
   const on = await toggleSiteOf(host);
-  toast(on ? `Minerr page text on for ${site}.` : `Minerr page text off for ${site}. Video subtitles stay on. Press Alt+Shift+D to turn the page text on.`);
+  // The key can change (chrome://extensions/shortcuts), so the message names the toolbar menu, as the toolbar menu shows the key.
+  toast(on ? `Minerr page text on for ${site}.` : `Minerr page text off for ${site}. Video subtitles stay on. Turn the page text on again in the Minerr toolbar menu.`);
 }
 
 // A key starts work that ends later; an error of it shows as a toast.
@@ -114,14 +115,9 @@ export function installKeys(popup: PopupKeys): void {
     e: whenOpen(popup.editCard),
     // Shift+N is the next video on YouTube; only a popup that Shift opened takes it.
     n: event => (!event.shiftKey || popup.isOpen()) && nextUnknown(),
-    'alt+s': popup.lookupSelection,
     Escape: whenOpen(popup.close),
     'alt+shift+s': () => {
       report(toggleSentenceHighlight());
-      return true;
-    },
-    'alt+shift+d': () => {
-      report(toggleSite());
       return true;
     },
   };
@@ -130,9 +126,22 @@ export function installKeys(popup: PopupKeys): void {
   window.addEventListener('keydown', event => {
     if (event.ctrlKey || event.metaKey || isEditable(event)) return;
     const name = chord(event);
-    // When Minerr is off, Alt+Shift+D still turns the page text of the site on or off.
-    if ((!active && name !== 'alt+shift+d') || (popup.isEditing() && name !== 'Escape') || !bindings[name]?.(event)) return;
+    if (!active || (popup.isEditing() && name !== 'Escape') || !bindings[name]?.(event)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   }, true);
+
+  // The browser shortcuts that the service worker sends to the tab. The frame with the focus takes them, as it takes the keys.
+  const commands: Record<PageCommand, () => void> = {
+    'lookup-selection': () => { popup.lookupSelection(); },
+    'toggle-site': () => report(toggleSite()),
+    'toggle-sentence-highlight': () => report(toggleSentenceHighlight()),
+  };
+  serve({
+    command: ({ command }) => {
+      // When Minerr is off, toggle-site still turns the page text of the site on or off.
+      if ((!active && command !== 'toggle-site') || popup.isEditing() || isField(focused())) return;
+      commands[command]();
+    },
+  }, target => target === undefined && document.hasFocus());
 }

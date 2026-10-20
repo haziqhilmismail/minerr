@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { at } from '../src/parse.ts';
-import { launch, listen, makeDictionary, useCjkFonts } from './harness.ts';
+import { launch, listen, makeDictionary, runCommand, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-reading-'));
 useCjkFonts(work);
@@ -97,6 +97,13 @@ try {
     '0 terms, 3 frequency and pitch entries', '0 terms, 3 frequency and pitch entries',
   ]);
   console.log('import: version 2 dictionary kept and told to import again for entries, frequency and pitch dictionaries counted');
+  assert.deepEqual(await options.$$eval('#browser-keys tr', rows => rows.map(row => [...row.querySelectorAll('td')].map(cell => cell.textContent).join(' | '))), [
+    'Not set | Open the Minerr toolbar menu | ',
+    'Alt+S | Look up the selected text | ',
+    'Alt+Shift+M | Turn Minerr on or off in all tabs | ',
+    'Not set | Turn the sentence highlight on or off. Alt+Shift+S on a page also does this. | ',
+    'Alt+Shift+D | Turn the page text of this site on or off | ',
+  ], 'the options page shows the browser shortcuts that Chrome has now');
 
   const tab = await context.newPage();
   await tab.goto(pageUrl);
@@ -127,7 +134,7 @@ try {
   assert.equal(await fresh.locator('.ml-word').count(), 0, 'a site that the user did not turn on gets no word spans');
   await fresh.hover('#line');
   await fresh.evaluate(() => getSelection()?.selectAllChildren(document.querySelector('#line') ?? document.body));
-  await fresh.keyboard.press('Alt+S');
+  await runCommand(worker, fresh, 'lookup-selection');
   await fresh.waitForTimeout(500);
   assert.equal(await fresh.locator('minerr-popup .popup').isVisible(), false, 'page text that is off opens no popup');
   await fresh.close();
@@ -136,10 +143,9 @@ try {
   const other = await context.newPage();
   await other.goto(pageUrl);
   await other.waitForSelector('#line .ml-word[data-ml-lemma="猫"]');
-  await tab.bringToFront();
-  await tab.keyboard.press('Alt+Shift+D');
+  await runCommand(worker, tab, 'toggle-site');
   const toast = tab.locator('minerr-popup .toast');
-  await toast.filter({ hasText: 'Minerr page text off for 127.0.0.1. Video subtitles stay on. Press Alt+Shift+D to turn the page text on.' }).waitFor();
+  await toast.filter({ hasText: 'Minerr page text off for 127.0.0.1. Video subtitles stay on. Turn the page text on again in the Minerr toolbar menu.' }).waitFor();
   assert.deepEqual(await options.evaluate(() => chrome.storage.local.get('enabledSites')), { enabledSites: [] });
   await toast.waitFor({ state: 'hidden', timeout: 4000 });
   await other.waitForFunction(() => document.querySelectorAll('.ml-word').length === 0);
@@ -148,19 +154,19 @@ try {
   const tabId = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, pageUrl);
   const action = await context.newPage();
   await action.goto(`chrome-extension://${extensionId}/action.html?tab=${tabId}`);
-  assert.equal(await action.innerText('#site-toggle'), 'Page text on this site\nAlt+Shift+D on 127.0.0.1. Video subtitles work without it.\nOFF');
+  assert.equal(await action.innerText('#site-toggle'), 'Page text on this site\n127.0.0.1. Shortcut: Alt+Shift+D. Video subtitles work without it.\nOFF');
   assert.equal(await action.isChecked('#site'), false);
+  assert.equal(await action.innerText('#enabled-hint'), 'In all tabs. Shortcut: Alt+Shift+M.', 'the toolbar menu shows the key that Chrome has now');
   await action.click('#site-toggle');
   await tab.waitForSelector('#line .ml-word[data-ml-lemma="猫"]');
   await other.waitForSelector('#line .ml-word[data-ml-lemma="猫"]');
   assert.equal(await action.isChecked('#site'), true);
   assert.equal(await action.innerText('#site-state'), 'ON');
   assert.deepEqual(await options.evaluate(() => chrome.storage.local.get('enabledSites')), { enabledSites: ['127.0.0.1'] });
-  await tab.bringToFront();
-  await tab.keyboard.press('Alt+Shift+D');
+  await runCommand(worker, tab, 'toggle-site');
   await toast.filter({ hasText: 'Minerr page text off for 127.0.0.1.' }).waitFor();
   await tab.waitForFunction(() => document.querySelectorAll('.ml-word').length === 0);
-  await tab.keyboard.press('Alt+Shift+D');
+  await runCommand(worker, tab, 'toggle-site');
   await toast.filter({ hasText: 'Minerr page text on for 127.0.0.1.' }).waitFor();
   await tab.waitForSelector('#line .ml-word[data-ml-lemma="猫"]');
   const optionsTabId = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, options.url());
@@ -270,7 +276,7 @@ try {
   await tab.mouse.move(0, 0);
   await tab.hover('#line .ml-word[data-ml-lemma="猫"]');
   assert.deepEqual(await sentence(), []);
-  await tab.keyboard.press('Alt+Shift+S');
+  await runCommand(worker, tab, 'toggle-sentence-highlight');
   await toast.filter({ hasText: 'Sentence highlight on.' }).waitFor();
   await tab.waitForFunction(() => CSS.highlights.get('minerr-sentence')?.size === 1);
   assert.deepEqual(await sentence(), ['猫が魚を食べなかった。']);
@@ -434,7 +440,7 @@ try {
       getSelection()?.removeAllRanges();
       getSelection()?.addRange(range);
     }, [from, offset, length]);
-    await tab.keyboard.press('Alt+S');
+    await runCommand(worker, tab, 'lookup-selection');
   };
   await lookUp('#line .ml-word[data-ml-lemma="食べる"]', 0, 6);
   await popups.locator('.lemma', { hasText: '食べる' }).waitFor();
@@ -446,6 +452,9 @@ try {
   await tab.keyboard.press('Escape');
   await select('#line .ml-word[data-ml-lemma="猫"]', '#line .ml-word[data-ml-lemma="魚"]');
   await tab.keyboard.press('Alt+S');
+  await tab.waitForTimeout(500);
+  assert.deepEqual(await lemmas(), [], 'Alt+S on the page is not a page key now: only the browser shortcut looks up');
+  await runCommand(worker, tab, 'lookup-selection');
   await popups.locator('.lemma', { hasText: '猫' }).waitFor();
   assert.equal(await tab.evaluate(() => getSelection()?.toString()), '', 'Alt+S clears the selection when it opens the popup');
   await tab.keyboard.press('3');
@@ -471,7 +480,7 @@ try {
     getSelection()?.removeAllRanges();
     getSelection()?.addRange(range);
   });
-  await tab.keyboard.press('Alt+S');
+  await runCommand(worker, tab, 'lookup-selection');
   await toast.filter({ hasText: 'No dictionary entry for xyz.' }).waitFor();
   await tab.evaluate(() => getSelection()?.removeAllRanges());
   console.log('Alt+S: the longest dictionary word at the start of the selection, with the card sentence around it');
