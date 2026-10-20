@@ -8,6 +8,8 @@ export const wordStatuses = (element: Element): Status[] => [...element.querySel
 // The layer fills its positioned parent as a size container, so the text size follows the video in every view mode.
 const STYLE = `
   .minerr-subs { position: absolute; inset: 0; z-index: 60; container-type: size; pointer-events: none; --minerr-scale: 1; }
+  /* The YouTube player sets user-select: none, and the user copies text from the subtitles. */
+  .minerr-subs-stack, .minerr-lines { user-select: text; -webkit-user-select: text; }
   .minerr-subs-stack {
     position: absolute; left: 50%; bottom: max(64px, 11cqh); transform: translateX(-50%);
     display: flex; flex-direction: column; align-items: center; gap: 0.3em; width: max-content; max-width: 90cqw;

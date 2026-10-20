@@ -93,7 +93,7 @@ await listen(whisper, 8766);
 const WATCH = `<!doctype html><meta charset="utf-8"><title>Fake YouTube</title>
 <style>
   body { margin: 0; padding: 24px; background: #0f0f0f; color: #f1f1f1; font: 14px sans-serif; }
-  #movie_player { position: relative; width: 854px; height: 480px; overflow: hidden; background: #000; }
+  #movie_player { position: relative; width: 854px; height: 480px; overflow: hidden; background: #000; user-select: none; }
   .full body { padding: 0; } .full #movie_player { position: fixed; inset: 0; width: auto; height: auto; }
   video { width: 100%; height: 100%; }
   .ytp-chrome-bottom { position: absolute; left: 12px; right: 12px; bottom: 0; z-index: 59; height: 48px;
@@ -132,6 +132,16 @@ try {
   const line = tab.locator('#movie_player .minerr-subs-line');
   await line.locator('.ml-word[data-ml-lemma="食べる"]').waitFor({ timeout: 20000 });
   assert.equal(await line.innerText(), '猫が魚を食べなかった今日は雨');
+  const lineBox = await line.boundingBox();
+  assert.ok(lineBox, 'the overlay line has a box');
+  await tab.mouse.move(lineBox.x + 4, lineBox.y + lineBox.height / 2);
+  await tab.mouse.down();
+  await tab.mouse.move(lineBox.x + lineBox.width - 4, lineBox.y + lineBox.height / 2, { steps: 8 });
+  await tab.mouse.up();
+  assert.equal(await tab.evaluate(() => getSelection()?.toString()), '猫が魚を食べなかった今日は雨', 'the subtitle text is selectable in the YouTube player');
+  await tab.evaluate(() => getSelection()?.removeAllRanges());
+  await tab.mouse.move(0, 0);
+  console.log('the overlay text can be selected, also in a player with user-select: none');
 
   const layout = await tab.evaluate(() => {
     const playerElement = document.querySelector('#movie_player');
