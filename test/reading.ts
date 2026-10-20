@@ -356,6 +356,16 @@ try {
   await popups.locator('.surface', { hasText: 'On the page: 食べ ·' }).waitFor();
   assert.deepEqual(await lemmas(), ['食べる'], 'the longest dictionary word at the start of 食べなか is 食べ, the verb 食べる');
   await tab.keyboard.press('Escape');
+  await select('#line .ml-word[data-ml-lemma="猫"]', '#line .ml-word[data-ml-lemma="魚"]');
+  await tab.keyboard.press('Alt+S');
+  await popups.locator('.lemma', { hasText: '猫' }).waitFor();
+  assert.equal(await tab.evaluate(() => getSelection()?.toString()), '', 'Alt+S clears the selection when it opens the popup');
+  await tab.keyboard.press('3');
+  await popups.locator('button[aria-pressed="true"]', { hasText: 'Known' }).waitFor();
+  assert.deepEqual(await options.evaluate(() => chrome.storage.local.get(['w:猫', 'w:魚'])), { 'w:猫': 'known' },
+    'after Alt+S, a status key sets the popup word, not the words of the selection');
+  await options.evaluate(() => chrome.storage.local.remove('w:猫'));
+  await tab.keyboard.press('Escape');
   await lookUp('#line .ml-word[data-ml-lemma="魚"]', 0, 1);
   await popups.locator('.lemma', { hasText: '魚' }).waitFor();
   await tab.keyboard.press('a');

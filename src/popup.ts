@@ -153,6 +153,8 @@ function lookupSelection(): boolean {
       toast(`No dictionary entry for ${text.slice(0, 10)}.`);
       return;
     }
+    // A status key changes the words of a selection first, so the selection goes and the key changes the popup word.
+    selection.removeAllRanges();
     open({ kind: 'text', range, text: text.slice(0, found.length) }, found.lemma, 0, Promise.resolve(found.entries));
   }).catch(error => toast(messageOf(error)));
   return true;

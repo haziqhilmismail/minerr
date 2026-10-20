@@ -618,7 +618,7 @@ In all modes, `Shift` opens the popup at once. You can press `Shift` before or a
 
 ### Look up selected text
 
-Select text on the page, then press `Alt+S`. Minerr looks up the longest dictionary word at the start of the selection, also in its dictionary form. For example, if you select 食べなかった, the popup shows 食べる. Use this for a word that Minerr cuts in a different way, or for a word in text that Minerr does not underline. If no dictionary has a word at the start of the selection, a short message tells you.
+Select text on the page, then press `Alt+S`. Minerr looks up the longest dictionary word at the start of the selection, also in its dictionary form. For example, if you select 食べなかった, the popup shows 食べる. Use this for a word that Minerr cuts in a different way, or for a word in text that Minerr does not underline. If no dictionary has a word at the start of the selection, a short message tells you. When the popup opens, the selection goes away. Thus the status keys change the word of the popup.
 
 `A` in this popup adds a card with the sentence around the selected word.
 
