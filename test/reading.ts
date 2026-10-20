@@ -234,6 +234,39 @@ try {
   await tab.keyboard.press('Escape');
   console.log('sentence highlight: the sentence of the hovered or popup word; Alt+Shift+S turns it off and on; popup shows the count on the page; saved', join(work, 'sentence.png'));
 
+  await tab.evaluate(() => {
+    const big = document.body.appendChild(Object.assign(document.createElement('div'), { id: 'big' }));
+    for (let i = 0; i < 4000; i++) big.append('猫が魚を食べた。', document.createElement('br'));
+  });
+  await tab.waitForFunction(() => document.querySelectorAll('#big .ml-word').length >= 12000, null, { timeout: 60000 });
+  const hoverTimes = await tab.evaluate(() => {
+    const block = document.querySelector('#big');
+    const walker = document.createTreeWalker(block ?? document.body, NodeFilter.SHOW_TEXT);
+    let textNodes = 0;
+    while (walker.nextNode()) textNodes++;
+    const spans = [...document.querySelectorAll<HTMLElement>('#big .ml-word')].slice(-10);
+    const times = spans.map(span => {
+      const start = performance.now();
+      span.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      return performance.now() - start;
+    });
+    return { textNodes, times, sentence: [...(CSS.highlights.get('minerr-sentence') ?? [])].map(range => range.toString()) };
+  });
+  console.log('sentence highlight in a block of', hoverTimes.textNodes, 'text nodes: hover ms', hoverTimes.times.map(t => t.toFixed(2)).join(' '));
+  assert.ok(hoverTimes.textNodes >= 20000);
+  assert.deepEqual(hoverTimes.sentence, ['猫が魚を食べた。']);
+  const median = [...hoverTimes.times].sort((a, b) => a - b)[5] ?? Infinity;
+  assert.ok(median < 1, `a hover in a big block walks only its sentence: median ${median} ms`);
+  await tab.evaluate(() => document.querySelector('#big')?.remove());
+  await tab.mouse.move(0, 0);
+  await tab.evaluate(() => document.body.insertAdjacentHTML('beforeend', '<p id="ruby-line"><ruby>猫<rp>（</rp><rt>ねこ。</rt><rp>）</rp></ruby>が魚を食べた。</p>'));
+  await tab.hover('#ruby-line .ml-word[data-ml-lemma="魚"]');
+  assert.deepEqual(await sentence(), ['猫（ねこ。）が魚を食べた。'], 'the 。 of a reading in <rt> does not end the sentence');
+  await tab.mouse.move(0, 0);
+  await tab.keyboard.press('Escape');
+  await tab.evaluate(() => document.querySelector('#ruby-line')?.remove());
+  console.log('sentence highlight: the walk stays in the sentence of a big block, and skips ruby text');
+
   const select = (from: string, to: string) => tab.evaluate(([start, end]) => {
     const range = new Range();
     range.setStartBefore(document.querySelector(start ?? '') ?? document.body);

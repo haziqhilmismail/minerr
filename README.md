@@ -751,6 +751,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/furigana.ts` | The furigana setting, and the CSS that shows the reading over a word. |
 | `src/pitch-colors.ts` | The pitch colors of the words on a page. |
 | `src/sentence-hover.ts` | The highlight of the sentence of the word under the mouse. |
+| `src/sentence-text.ts` | The text of the sentence around a word on the page, for the highlight and the card. The walk stops at the sentence ends and at a `<br>`. |
 | `src/site.ts` | Minerr on or off for each site, and the state that says if Minerr shows on a page. |
 | `src/keys.ts`, `src/chord.ts` | The keys that work on a page without a popup, and the names of the keys. |
 | `src/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |

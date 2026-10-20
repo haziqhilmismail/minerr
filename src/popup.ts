@@ -1,5 +1,4 @@
 import { type CardFields, definitionHtml, escapeHtml } from './anki.ts';
-import { blockOf } from './dom.ts';
 import { JAPANESE } from './group.ts';
 import { type HoverMode, hoverDelay, hoverMode } from './hover.ts';
 import { installKeys } from './keys.ts';
@@ -10,48 +9,22 @@ import {
 } from './popup-view.ts';
 import { call, messageOf } from './rpc.ts';
 import { sentenceAround } from './sentence.ts';
+import { sentenceText, wordRange } from './sentence-text.ts';
 import { setPopupWord } from './sentence-hover.ts';
 import { watchActive } from './site.ts';
 import { getStatuses, onStatusChange, setStatus, type Status, STATUSES } from './status.ts';
-import { parseWords, recolor, RUBY_TEXT, sameWord, wordFragment, wordParts } from './words.ts';
+import { parseWords, recolor, sameWord, wordFragment, wordParts } from './words.ts';
 
 // A word in a popup opens a popup over it with Shift + hover, up to this many popups.
 const MAX_LAYERS = 4;
 
-const elementOf = (node: Node) => (node instanceof Element ? node : node.parentElement ?? document.body);
-
-// Where the boundary point (container, offset) falls in the text of node: 0 if the point is before node, its length if after.
-function cutAt(node: Text, container: Node, offset: number): number {
-  if (node === container) return offset;
-  const point = new Range();
-  point.setStart(container, offset);
-  return point.comparePoint(node, 0) > 0 ? 0 : node.length;
-}
-
-// The sentence around the anchor inside its nearest block ancestor, with the word in <b>. A word with parts is one word,
-// and ruby annotation text is not part of the sentence.
+// The sentence around the anchor, with the word in <b>. A word with parts is one word.
 function sentenceHtml(anchor: Anchor): string {
-  const range = new Range();
-  if (anchor.kind === 'word') {
-    const parts = wordParts(anchor.span);
-    range.setStartBefore(parts[0] ?? anchor.span);
-    range.setEndAfter(parts.at(-1) ?? anchor.span);
-  } else {
-    range.setStart(anchor.range.startContainer, anchor.range.startOffset);
-    range.setEnd(anchor.range.endContainer, anchor.range.endOffset);
-  }
-  let before = '';
-  let inside = '';
-  let after = '';
-  const walker = document.createTreeWalker(blockOf(elementOf(range.startContainer)), NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (!(node instanceof Text) || node.parentElement?.closest(RUBY_TEXT)) continue;
-    const start = cutAt(node, range.startContainer, range.startOffset);
-    const end = Math.max(start, cutAt(node, range.endContainer, range.endOffset));
-    before += node.data.slice(0, start);
-    inside += node.data.slice(start, end);
-    after += node.data.slice(end);
-  }
+  const parts = anchor.kind === 'word' ? wordParts(anchor.span) : [];
+  const { text, from, to } = sentenceText(anchor.kind === 'word' ? wordRange(parts[0] ?? anchor.span, parts.at(-1) ?? anchor.span) : anchor.range);
+  const before = text.slice(0, from);
+  const inside = text.slice(from, to);
+  const after = text.slice(to);
   // A selection can start with white space, and the word can be shorter than the selection.
   const word = anchor.kind === 'word' ? inside : anchor.text;
   const skip = Math.max(0, inside.indexOf(word));
