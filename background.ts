@@ -1,7 +1,7 @@
 import { addNote, fieldValues, getDeck, getNoteType, modelFieldNames, modelNames, version } from './src/anki.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
 import { getStatuses, setStatus, setStatuses } from './src/status.ts';
-import { isEnabled, setEnabled } from './src/switch.ts';
+import { minerrEnabled } from './src/settings.ts';
 import { cachedSegments, getJob, health, startJob } from './src/whisper.ts';
 
 let creating: Promise<void> | null = null;
@@ -53,7 +53,7 @@ async function importKnown({ query, field }: Message<'importKnown'>): Promise<nu
 }
 
 chrome.commands.onCommand.addListener(async command => {
-  if (command === 'toggle-minerr') await setEnabled(!(await isEnabled()));
+  if (command === 'toggle-minerr') await minerrEnabled.set(!(await minerrEnabled.get()));
 });
 
 serve(

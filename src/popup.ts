@@ -1,10 +1,10 @@
 import { type CardFields, definitionHtml, escapeHtml } from './anki.ts';
 import { blockOf } from './dom.ts';
-import { getHoverMode, type HoverMode, hoverDelay, onHoverModeChange } from './hover.ts';
+import { type HoverMode, hoverDelay, hoverMode } from './hover.ts';
 import { call, messageOf } from './rpc.ts';
 import { sentenceAround } from './sentence.ts';
 import { getStatuses, onStatusChange, setStatus, type Status, STATUS_NAMES, STATUSES } from './status.ts';
-import { isEnabled, onEnabledChange, setEnabled } from './switch.ts';
+import { minerrEnabled } from './settings.ts';
 import { TAG_CSS, tagClass } from './tags.ts';
 import { applyTheme } from './theme.ts';
 import type { Group, Sense, Tag } from './yomitan.ts';
@@ -188,7 +188,7 @@ function render(view: View): void {
       surface !== lemma ? el('div', { className: 'surface', textContent: `On the page: ${surface}` }) : '',
       statusRow,
       el('div', { className: 'corner' },
-        el('button', { className: 'off', innerHTML: POWER_ICON, title: 'Turn Minerr off in all tabs (Alt+Shift+M turns it on)', ariaLabel: 'Turn Minerr off', onclick: () => setEnabled(false) }),
+        el('button', { className: 'off', innerHTML: POWER_ICON, title: 'Turn Minerr off in all tabs (Alt+Shift+M turns it on)', ariaLabel: 'Turn Minerr off', onclick: () => minerrEnabled.set(false) }),
         el('button', { className: 'close', textContent: '✕', title: 'Close (Esc)', ariaLabel: 'Close', onclick: close }))),
     el('div', { className: 'definitions' }, ...definitions),
     el('footer', {}, addButton, message),
@@ -268,36 +268,42 @@ const HOTKEYS: Record<string, () => void> = {
 };
 
 let enabled = true;
-isEnabled().then(value => { enabled = value; });
-onEnabledChange(value => {
+minerrEnabled.watch(value => {
   enabled = value;
   if (!enabled) close();
 });
 
-let hoverMode: HoverMode = 'hover';
-getHoverMode().then(value => { hoverMode = value; });
-onHoverModeChange(value => { hoverMode = value; });
+let mode: HoverMode = 'hover';
+hoverMode.watch(value => { mode = value; });
 
-function consider(span: HTMLElement, shift: boolean, buttons: number): void {
+function consider(span: HTMLElement, shift: boolean, buttonDown: boolean): void {
   clearTimeout(timer);
   if (!enabled || span === current?.span) return;
   const delay = hoverDelay({
-    mode: hoverMode,
+    mode,
     shift,
     unknownWord: span.classList.contains(STATUSES.unknown.className),
     popupOpen: current !== null,
     textSelected: !(getSelection()?.isCollapsed ?? true),
-    buttonDown: buttons !== 0,
+    buttonDown,
   });
-  if (delay !== null) timer = setTimeout(() => open(span), delay);
+  // A YouTube subtitle line can change during the wait, so open only a word that is still on the page.
+  if (delay !== null) timer = setTimeout(() => { if (span.isConnected) open(span); }, delay);
 }
 
 document.addEventListener('mouseover', event => {
   const span = event.target instanceof Element ? event.target.closest<HTMLElement>('.ml-word') : null;
   if (span === hovered) return;
   hovered = span;
-  if (span) consider(span, event.shiftKey, event.buttons);
+  if (span) consider(span, event.shiftKey, event.buttons !== 0);
   else clearTimeout(timer);
+});
+
+// The mouse left the window, so no mouseover tells us it left the word.
+document.addEventListener('mouseout', event => {
+  if (event.relatedTarget) return;
+  hovered = null;
+  clearTimeout(timer);
 });
 
 document.addEventListener('mousedown', event => {
@@ -305,9 +311,10 @@ document.addEventListener('mousedown', event => {
   if (current && event.target !== host && !(event.target instanceof Element && event.target.closest('.ml-word'))) close();
 });
 
+// Capture, like the hotkeys below, so a page that stops keydown cannot block Shift.
 window.addEventListener('keydown', event => {
-  if (event.key === 'Shift' && !event.repeat && hovered) consider(hovered, true, 0);
-});
+  if (event.key === 'Shift' && !event.repeat && hovered) consider(hovered, true, false);
+}, true);
 
 // Capture on window so page shortcuts (YouTube uses 1-4 to seek) do not also fire.
 window.addEventListener('keydown', event => {

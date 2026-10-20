@@ -1,20 +1,11 @@
+import { setting } from './settings.ts';
+
 // When plain hover opens the word popup. Shift + hover opens it at once in every mode.
 export const HOVER_MODES = ['hover', 'unknown', 'shift'] as const;
 export type HoverMode = (typeof HOVER_MODES)[number];
 
-const KEY = 'hoverMode';
-
-export const isHoverMode = (value: unknown): value is HoverMode => HOVER_MODES.some(mode => mode === value);
-const storedHoverMode = (value: unknown): HoverMode => (isHoverMode(value) ? value : 'hover');
-
-export const getHoverMode = async (): Promise<HoverMode> => storedHoverMode((await chrome.storage.local.get(KEY))[KEY]);
-export const setHoverMode = (mode: HoverMode): Promise<void> => chrome.storage.local.set({ [KEY]: mode });
-
-export function onHoverModeChange(listener: (mode: HoverMode) => void): void {
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && KEY in changes) listener(storedHoverMode(changes[KEY]?.newValue));
-  });
-}
+const isHoverMode = (value: unknown): value is HoverMode => HOVER_MODES.some(mode => mode === value);
+export const hoverMode = setting('hoverMode', isHoverMode, 'hover');
 
 export interface Hover {
   mode: HoverMode;

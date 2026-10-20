@@ -2,7 +2,7 @@
 import { blockOf } from './dom.ts';
 import { iPlusOneSentences, type Piece } from './sentence.ts';
 import { type Status, STATUS_NAMES, STATUSES } from './status.ts';
-import { iPlusOne, isEnabled, onEnabledChange } from './switch.ts';
+import { iPlusOne, minerrEnabled } from './settings.ts';
 
 const NAME = 'minerr-i1';
 // A translucent yellow, like a highlighter pen: pale on a light page, olive on a dark page.
@@ -86,7 +86,7 @@ function update(): void {
 }
 
 document.head.append(Object.assign(document.createElement('style'), { textContent: STYLE }));
-[enabled, wanted] = await Promise.all([isEnabled(), iPlusOne.get()]);
+[enabled, wanted] = await Promise.all([minerrEnabled.get(), iPlusOne.get()]);
 update();
-onEnabledChange(on => { enabled = on; update(); });
+minerrEnabled.onChange(on => { enabled = on; update(); });
 iPlusOne.onChange(on => { wanted = on; update(); });

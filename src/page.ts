@@ -1,7 +1,7 @@
 import type { Segment } from './group.ts';
 import { call } from './rpc.ts';
 import { getStatuses, onStatusChange, type Status, STATUSES, WORD_CSS } from './status.ts';
-import { isEnabled, onEnabledChange } from './switch.ts';
+import { minerrEnabled } from './settings.ts';
 
 const JAPANESE = /[぀-ヿ一-鿿]/;
 // The YouTube caption window is hidden; src/subtitles.ts shows its text in an overlay.
@@ -104,7 +104,6 @@ onStatusChange(changed => {
 
 document.head.append(Object.assign(document.createElement('style'), { textContent: WORD_CSS }));
 const showEnabled = (enabled: boolean) => document.documentElement.toggleAttribute('data-minerr-off', !enabled);
-isEnabled().then(showEnabled);
-onEnabledChange(showEnabled);
+minerrEnabled.watch(showEnabled);
 collect(document.body);
 schedule();

@@ -4,13 +4,14 @@ import {
 } from './src/anki.ts';
 import { deleteDictionary, importDictionary, listDictionaries } from './src/db.ts';
 import { byId } from './src/dom.ts';
-import { getHoverMode, isHoverMode, setHoverMode } from './src/hover.ts';
+import { hoverMode } from './src/hover.ts';
+import type { Setting } from './src/settings.ts';
 import { call, messageOf } from './src/rpc.ts';
 import {
   getAllStatuses, importStatuses, onStatusChange, parseStatusFile, STATUS_NAMES, STATUSES, statusFile, WORD_CSS,
 } from './src/status.ts';
 import { TAG_CSS } from './src/tags.ts';
-import { applyTheme, getTheme, isTheme, setTheme } from './src/theme.ts';
+import { applyTheme, theme } from './src/theme.ts';
 
 applyTheme();
 
@@ -290,17 +291,17 @@ statusFileInput.onchange = async () => {
   }
 };
 
-function bindRadios<T extends string>(name: string, value: T, isValue: (value: unknown) => value is T, save: (value: T) => Promise<void>): void {
+async function bindRadios<T extends string>(name: string, { get, set, isValue }: Setting<T>): Promise<void> {
+  const value = await get();
   for (const input of document.querySelectorAll(`input[name="${name}"]`)) {
     if (!(input instanceof HTMLInputElement)) continue;
     input.checked = input.value === value;
     input.onchange = () => {
-      if (isValue(input.value)) save(input.value);
+      if (isValue(input.value)) set(input.value);
     };
   }
 }
 
-bindRadios('hoverMode', await getHoverMode(), isHoverMode, setHoverMode);
-bindRadios('theme', await getTheme(), isTheme, setTheme);
+await Promise.all([bindRadios('hoverMode', hoverMode), bindRadios('theme', theme)]);
 
 await Promise.all([showDictionaries(), showModels(), showCounts()]);
