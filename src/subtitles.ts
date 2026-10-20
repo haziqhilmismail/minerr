@@ -1,8 +1,8 @@
-import { captionText, segmentAt } from './captions.js';
-import { call, serve } from './rpc.js';
+import { captionText, segmentAt, type SubtitleSegment } from './captions.ts';
+import { call, type Message, messageOf, serve } from './rpc.ts';
+import type { Job, JobStatus } from './whisper.ts';
 
 const POLL_MS = 2000;
-const FINISHED = ['done', 'error'];
 
 // YouTube's caption window stays in the DOM (the overlay reads it), but it is invisible and takes no mouse events.
 // The layer fills the player as a size container, so the subtitle size follows the player in every view mode.
@@ -21,50 +21,71 @@ const STYLE = `
   .minerr-subs-line[hidden] { display: none; }
 `;
 
-// source is 'youtube' (mirror YouTube's own captions) or 'whisperx' (segments from the local server, when present).
-let state = { videoId: null, source: 'youtube', segments: null, job: null };
+// 'youtube' mirrors YouTube's own captions; 'whisperx' shows the segments from the local server.
+export type Source = 'youtube' | 'whisperx';
+
+// The overlay of a tab, as the toolbar popup shows it.
+export interface Snapshot {
+  videoId: string | null;
+  source: Source;
+  hasWhisperx: boolean;
+  job: JobStatus | null;
+}
+
+// A WhisperX job that this tab started. id is null when the start failed.
+interface TrackedJob {
+  id: string | null;
+  status: JobStatus;
+}
+
+// segments are the WhisperX subtitles of the video, when the server has them.
+type OverlayState = { videoId: string | null; job: TrackedJob | null }
+  & ({ source: 'youtube'; segments: SubtitleSegment[] | null } | { source: 'whisperx'; segments: SubtitleSegment[] });
+
+let state: OverlayState = { videoId: null, source: 'youtube', segments: null, job: null };
 
 const layer = Object.assign(document.createElement('div'), { className: 'minerr-subs' });
 const line = Object.assign(document.createElement('div'), { className: 'minerr-subs-line', hidden: true });
 layer.append(line);
 document.head.append(Object.assign(document.createElement('style'), { textContent: STYLE }));
 
-let player = null;
+let player: Element | null = null;
 let shown = '';
 
 const video = () => player?.querySelector('video');
 const currentVideoId = () => (location.pathname === '/watch' ? new URLSearchParams(location.search).get('v') : null);
 
 // Replace the text only when it changes: page.js swaps the text node for word spans, and that must stay.
-function show(text) {
+function show(text: string): void {
   if (text === shown) return;
   shown = text;
   line.textContent = text;
   line.hidden = !text;
 }
 
-function render() {
+function render(): void {
   if (state.source === 'whisperx') {
     // An ad plays in the same video element, and its time is not the time of the video.
     const ad = player?.classList.contains('ad-showing');
     show(ad ? '' : segmentAt(state.segments, video()?.currentTime ?? 0)?.text ?? '');
   } else {
-    show(captionText([...(player?.querySelectorAll('.caption-visual-line') ?? [])].map(l => l.textContent)));
+    show(captionText([...(player?.querySelectorAll('.caption-visual-line') ?? [])].map(l => l.textContent ?? '')));
   }
 }
 
 let frame = 0;
-function follow() {
+function follow(): void {
   cancelAnimationFrame(frame);
   render();
-  if (state.source === 'whisperx' && video() && !video().paused) frame = requestAnimationFrame(follow);
+  const playing = video();
+  if (state.source === 'whisperx' && playing && !playing.paused) frame = requestAnimationFrame(follow);
 }
 
 const captions = new MutationObserver(() => {
   if (state.source === 'youtube') render();
 });
 
-async function changeVideo(videoId) {
+async function changeVideo(videoId: string | null): Promise<void> {
   state = { videoId, source: 'youtube', segments: null, job: null };
   render();
   if (!videoId) return;
@@ -72,14 +93,13 @@ async function changeVideo(videoId) {
   if (segments && state.videoId === videoId) useSegments(segments);
 }
 
-function useSegments(segments) {
-  state.segments = segments;
-  state.source = 'whisperx';
+function useSegments(segments: SubtitleSegment[]): void {
+  state = { ...state, source: 'whisperx', segments };
   follow();
 }
 
 // The 1 s check covers the first load and every single-page navigation; yt-navigate-finish only makes it quicker.
-function sync() {
+function sync(): void {
   const found = document.querySelector('#movie_player');
   if (found !== player) {
     player = found;
@@ -91,46 +111,57 @@ function sync() {
   if (videoId !== state.videoId) changeVideo(videoId);
 }
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const finished = (status: JobStatus) => status.state === 'done' || status.state === 'error';
 
 // The tab polls the job it started, so the result arrives even when the toolbar popup is closed.
-async function poll(job) {
+async function poll(job: TrackedJob, id: string): Promise<void> {
   while (state.job === job) {
-    const reply = await call({ type: 'whisperJob', id: job.id })
-      .catch(error => ({ state: 'error', error: error.message }))
+    const reply: Job = await call({ type: 'whisperJob', id })
+      .catch((error: unknown): Job => ({ state: 'error', error: messageOf(error) }))
       ?? { state: 'error', error: 'The WhisperX server lost the job. Generate the subtitles again.' };
     if (state.job !== job) return;
-    Object.assign(job, { state: reply.state, progress: reply.progress, error: reply.error });
-    if (reply.state === 'done') useSegments(reply.segments);
-    if (FINISHED.includes(reply.state)) return;
+    if (reply.state === 'done') {
+      job.status = { state: 'done' };
+      useSegments(reply.segments);
+    } else {
+      job.status = reply;
+    }
+    if (finished(job.status)) return;
     await sleep(POLL_MS);
   }
 }
 
-const snapshot = () => ({
+const snapshot = (): Snapshot => ({
   videoId: state.videoId,
   source: state.source,
   hasWhisperx: Boolean(state.segments),
-  job: state.job && { state: state.job.state, progress: state.job.progress, error: state.job.error },
+  job: state.job?.status ?? null,
 });
 
-async function generate() {
+async function generate(): Promise<Snapshot> {
   const { videoId } = state;
   if (!videoId) throw new Error('Open a YouTube video first.');
-  if (state.job && !FINISHED.includes(state.job.state)) return snapshot();
+  if (state.job && !finished(state.job.status)) return snapshot();
   // A failed start is a job error too, so the popup keeps showing it on every refresh.
-  const job = await call({ type: 'whisperStart', url: location.href })
-    .then(({ id }) => ({ id, state: 'queued' }), error => ({ state: 'error', error: error.message }));
+  const job = await call({ type: 'whisperStart', url: location.href }).then(
+    ({ id }): TrackedJob => ({ id, status: { state: 'queued' } }),
+    (error: unknown): TrackedJob => ({ id: null, status: { state: 'error', error: messageOf(error) } }),
+  );
   if (state.videoId === videoId) {
     state.job = job;
-    if (job.id) poll(job);
+    if (job.id) poll(job, job.id);
   }
   return snapshot();
 }
 
-function use({ source }) {
-  if (source === 'whisperx' && !state.segments) throw new Error('No WhisperX subtitles for this video yet.');
-  state.source = source === 'whisperx' ? 'whisperx' : 'youtube';
+function use({ source }: Message<'subsUse'>): Snapshot {
+  if (source === 'whisperx') {
+    if (!state.segments) throw new Error('No WhisperX subtitles for this video yet.');
+    state = { ...state, source: 'whisperx', segments: state.segments };
+  } else {
+    state = { ...state, source: 'youtube' };
+  }
   follow();
   return snapshot();
 }

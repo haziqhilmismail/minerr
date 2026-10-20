@@ -1,8 +1,8 @@
-import { lookup } from './src/db.js';
-import { groupTokens } from './src/group.js';
-import { serve } from './src/rpc.js';
+import { lookup } from './src/db.ts';
+import { groupTokens } from './src/group.ts';
+import { serve } from './src/rpc.ts';
 
-const tokenizer = new Promise((resolve, reject) => {
+const tokenizer = new Promise<kuromoji.Tokenizer>((resolve, reject) => {
   globalThis.kuromoji.builder({ dicPath: 'vendor/kuromoji/dict/' })
     .build((error, built) => (error ? reject(error) : resolve(built)));
 });
@@ -15,5 +15,5 @@ serve(
     },
     lookup: ({ lemma }) => lookup(lemma),
   },
-  message => message.target === 'offscreen',
+  target => target === 'offscreen',
 );

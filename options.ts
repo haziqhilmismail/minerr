@@ -1,22 +1,25 @@
-import { DEFAULT_DECK, DEFAULT_KNOWN_FIELD, DEFAULT_KNOWN_QUERY } from './src/anki.js';
-import { deleteDictionary, importDictionary, listDictionaries } from './src/db.js';
-import { call } from './src/rpc.js';
-import { STATUSES, WORD_CSS } from './src/status.js';
+import { DEFAULT_DECK, DEFAULT_KNOWN_FIELD, DEFAULT_KNOWN_QUERY, getDeck } from './src/anki.ts';
+import { deleteDictionary, importDictionary, listDictionaries } from './src/db.ts';
+import { byId } from './src/dom.ts';
+import { call, messageOf } from './src/rpc.ts';
+import { STATUSES, WORD_CSS } from './src/status.ts';
 
-const $ = id => document.getElementById(id);
-
-function el(tag, props = {}, ...children) {
+function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, ...children: (Node | string)[]
+): HTMLElementTagNameMap[K] {
   const node = Object.assign(document.createElement(tag), props);
   node.append(...children);
   return node;
 }
 
-function showStatus(node, text, kind = '') {
+function showStatus(node: HTMLElement, text: string, kind = ''): void {
   node.textContent = text;
   node.className = `status ${kind}`;
 }
 
-async function showDictionaries() {
+const dictList = byId('dict-list', HTMLElement);
+
+async function showDictionaries(): Promise<void> {
   const dictionaries = await listDictionaries();
   const items = dictionaries.map(({ title, count, tags }) => {
     const remove = el('button', { type: 'button', className: 'delete', textContent: 'Delete' });
@@ -33,17 +36,17 @@ async function showDictionaries() {
       el('div', {}, el('span', { className: 'name', textContent: title }), el('span', { className: 'meta', textContent: meta })),
       remove);
   });
-  $('dict-list').replaceChildren(...(items.length ? items
+  dictList.replaceChildren(...(items.length ? items
     : [el('li', { className: 'empty', textContent: 'No dictionary installed. Import one to see definitions in the popup.' })]));
 }
 
-const fileInput = $('dict-file');
-const progress = $('dict-progress');
+const fileInput = byId('dict-file', HTMLInputElement);
+const progress = byId('dict-progress', HTMLProgressElement);
 
-async function importFile(file) {
-  const status = $('dict-status');
+async function importFile(file: File): Promise<void> {
+  const status = byId('dict-status', HTMLElement);
   fileInput.disabled = true;
-  $('dict-list').hidden = true;
+  dictList.hidden = true;
   progress.removeAttribute('value');
   progress.hidden = false;
   try {
@@ -55,18 +58,21 @@ async function importFile(file) {
     });
     showStatus(status, `Imported ${title}: ${count} terms`, 'ok');
   } catch (error) {
-    showStatus(status, `Import failed: ${error.message}`, 'error');
+    showStatus(status, `Import failed: ${messageOf(error)}`, 'error');
   } finally {
     fileInput.disabled = false;
     fileInput.value = '';
     progress.hidden = true;
     await showDictionaries();
-    $('dict-list').hidden = false;
+    dictList.hidden = false;
   }
 }
 
-fileInput.onchange = () => fileInput.files[0] && importFile(fileInput.files[0]);
-const drop = $('dict-drop');
+fileInput.onchange = () => {
+  const file = fileInput.files?.[0];
+  if (file) importFile(file);
+};
+const drop = byId('dict-drop', HTMLElement);
 drop.ondragover = event => {
   event.preventDefault();
   drop.classList.add('over');
@@ -75,49 +81,52 @@ drop.ondragleave = () => drop.classList.remove('over');
 drop.ondrop = event => {
   event.preventDefault();
   drop.classList.remove('over');
-  const [file] = event.dataTransfer.files;
+  const file = event.dataTransfer?.files[0];
   if (file && !fileInput.disabled) importFile(file);
 };
 
-const { deck } = await chrome.storage.local.get({ deck: DEFAULT_DECK });
-$('deck').value = deck;
-$('deck').oninput = () => showStatus($('deck-saved'), '');
-$('deck').onchange = async () => {
-  const value = $('deck').value.trim() || DEFAULT_DECK;
-  $('deck').value = value;
+const deck = byId('deck', HTMLInputElement);
+const deckSaved = byId('deck-saved', HTMLElement);
+deck.value = await getDeck();
+deck.oninput = () => showStatus(deckSaved, '');
+deck.onchange = async () => {
+  const value = deck.value.trim() || DEFAULT_DECK;
+  deck.value = value;
   await chrome.storage.local.set({ deck: value });
-  showStatus($('deck-saved'), 'Saved', 'ok');
+  showStatus(deckSaved, 'Saved', 'ok');
 };
 
-$('anki-check').onclick = async () => {
-  const button = $('anki-check');
-  const status = $('anki-status');
-  button.disabled = true;
+const ankiCheck = byId('anki-check', HTMLButtonElement);
+ankiCheck.onclick = async () => {
+  const status = byId('anki-status', HTMLElement);
+  ankiCheck.disabled = true;
   showStatus(status, 'Checking…');
   try {
     showStatus(status, `Connected (AnkiConnect version ${await call({ type: 'ankiVersion' })})`, 'ok');
   } catch (error) {
-    showStatus(status, error.message, 'error');
+    showStatus(status, messageOf(error), 'error');
   } finally {
-    button.disabled = false;
+    ankiCheck.disabled = false;
   }
 };
 
-$('known-query').value = DEFAULT_KNOWN_QUERY;
-$('known-field').value = DEFAULT_KNOWN_FIELD;
-$('known-import').onclick = async () => {
-  const status = $('known-status');
+const knownQuery = byId('known-query', HTMLInputElement);
+const knownField = byId('known-field', HTMLInputElement);
+knownQuery.value = DEFAULT_KNOWN_QUERY;
+knownField.value = DEFAULT_KNOWN_FIELD;
+byId('known-import', HTMLButtonElement).onclick = async () => {
+  const status = byId('known-status', HTMLElement);
   showStatus(status, 'Asking Anki…');
   try {
-    const count = await call({ type: 'importKnown', query: $('known-query').value, field: $('known-field').value });
+    const count = await call({ type: 'importKnown', query: knownQuery.value, field: knownField.value });
     showStatus(status, `Marked ${count} words as known.`, 'ok');
   } catch (error) {
-    showStatus(status, error.message, 'error');
+    showStatus(status, messageOf(error), 'error');
   }
 };
 
 document.head.append(el('style', { textContent: WORD_CSS }));
-$('legend').prepend(...Object.values(STATUSES).map(({ hotkey, label, className, color }) => {
+byId('legend', HTMLElement).prepend(...Object.values(STATUSES).map(({ hotkey, label, className, color }) => {
   const swatch = el('span', { className: 'swatch' });
   swatch.style.background = color;
   return el('tr', {},

@@ -6,5 +6,5 @@
     "outDir": "dist",
     "types": ["chrome"]
   },
-  "include": ["*.js", "*.ts", "src"]
+  "include": ["*.ts", "src"]
 }

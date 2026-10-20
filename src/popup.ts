@@ -1,9 +1,10 @@
-import { definitionHtml, escapeHtml } from './anki.js';
-import { call } from './rpc.js';
-import { sentenceAround } from './sentence.js';
-import { getStatuses, onStatusChange, setStatus, STATUSES } from './status.js';
-import { isEnabled, onEnabledChange, setEnabled } from './switch.js';
-import { TAG_CSS, tagClass } from './tags.js';
+import { type CardFields, definitionHtml, escapeHtml } from './anki.ts';
+import { call, messageOf } from './rpc.ts';
+import { sentenceAround } from './sentence.ts';
+import { getStatuses, onStatusChange, setStatus, type Status, STATUS_NAMES, STATUSES } from './status.ts';
+import { isEnabled, onEnabledChange, setEnabled } from './switch.ts';
+import { TAG_CSS, tagClass } from './tags.ts';
+import type { Group, Sense, Tag } from './yomitan.ts';
 
 const POWER_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>';
 
@@ -72,14 +73,16 @@ const STYLE = `
   .message.error { color: var(--error); }
 `;
 
-function el(tag, props = {}, ...children) {
+function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, ...children: (Node | string)[]
+): HTMLElementTagNameMap[K] {
   const node = Object.assign(document.createElement(tag), props);
   node.append(...children);
   return node;
 }
 
-function blockAncestor(node) {
-  let element = node.parentElement;
+function blockAncestor(node: Element): Element {
+  let element = node.parentElement ?? node;
   while (element.parentElement && /^(inline|contents)/.test(getComputedStyle(element).display)) {
     element = element.parentElement;
   }
@@ -87,7 +90,7 @@ function blockAncestor(node) {
 }
 
 // The sentence around the word inside its nearest block ancestor, with the word in <b>.
-function sentenceHtml(span) {
+function sentenceHtml(span: HTMLElement): string {
   const block = blockAncestor(span);
   const range = document.createRange();
   range.selectNodeContents(block);
@@ -95,7 +98,7 @@ function sentenceHtml(span) {
   const before = range.toString();
   range.selectNodeContents(block);
   range.setStartAfter(span);
-  const { start, word, end } = sentenceAround(before, span.textContent, range.toString());
+  const { start, word, end } = sentenceAround(before, span.textContent ?? '', range.toString());
   return `${escapeHtml(start)}<b>${escapeHtml(word)}</b>${escapeHtml(end)}`;
 }
 
@@ -105,30 +108,39 @@ const shadow = host.attachShadow({ mode: 'open' });
 const box = el('div', { className: 'popup', hidden: true });
 shadow.append(el('style', { textContent: STYLE }), box);
 
-let current = null;
-let message = null;
-let addButton = null;
-const statusButtons = new Map();
+// The word that the popup shows. groups is empty until the lookup is done.
+interface View {
+  span: HTMLElement;
+  lemma: string;
+  status: Status;
+  groups: Group[];
+}
 
-function showMessage(text, isError = false) {
+let current: View | null = null;
+let message: HTMLDivElement | null = null;
+let addButton: HTMLButtonElement | null = null;
+const statusButtons = new Map<Status, HTMLButtonElement>();
+
+function showMessage(text: string, isError = false): void {
+  if (!message) return;
   message.textContent = text;
   message.className = isError ? 'message error' : 'message';
 }
 
-function markStatus(status) {
+function markStatus(status: Status): void {
   for (const [name, button] of statusButtons) button.setAttribute('aria-pressed', String(name === status));
   box.style.setProperty('--status', STATUSES[status].color);
 }
 
 // Keeps the word highlighted while the mouse is on the popup, so the user sees which word it belongs to.
-function markActive(span) {
+function markActive(span: HTMLElement | null): void {
   document.querySelector('.ml-word[data-ml-active]')?.removeAttribute('data-ml-active');
   span?.setAttribute('data-ml-active', '');
 }
 
 const addLabel = () => ['Add to Anki ', el('kbd', { textContent: 'A' })];
 
-function position(span) {
+function position(span: HTMLElement): void {
   const rect = span.getBoundingClientRect();
   // Fit the popup on the roomier side of the word so it never covers the word; the definitions scroll instead.
   box.style.maxHeight = `min(60vh, 480px, ${Math.max(rect.top, innerHeight - rect.bottom) - 12}px)`;
@@ -139,20 +151,21 @@ function position(span) {
 }
 
 // Each chip is followed by a space, so the chips wrap like words.
-const chips = tags => tags.flatMap(({ name, category, notes }) => [el('span', { className: tagClass(category), title: notes, textContent: name }), ' ']);
+const chips = (tags: Tag[]) => tags.flatMap(({ name, category, notes }) => [el('span', { className: tagClass(category), title: notes, textContent: name }), ' ']);
 
 // One dictionary label closes each run of senses from the same dictionary.
-const senseList = senses => el('ol', {}, ...senses.map((sense, i) => el('li', {}, ...chips(sense.tags), sense.glossary.join('\n'),
+const senseList = (senses: Sense[]) => el('ol', {}, ...senses.map((sense, i) => el('li', {}, ...chips(sense.tags), sense.glossary.join('\n'),
   sense.dict === senses[i + 1]?.dict ? '' : el('div', { className: 'dict', textContent: sense.dict }))));
 
-function render(view) {
+function render(view: View): void {
   const { lemma, groups } = view;
   const [first, ...others] = groups;
   const reading = first?.reading ?? '';
   const surface = view.span.textContent;
   statusButtons.clear();
   const statusRow = el('div', { className: 'statuses', role: 'group', ariaLabel: 'Word status' },
-    ...Object.entries(STATUSES).map(([status, { hotkey, label, color }]) => {
+    ...STATUS_NAMES.map(status => {
+      const { hotkey, label, color } = STATUSES[status];
       const dot = el('span', { className: 'dot' });
       dot.style.background = color;
       const button = el('button', { onclick: () => setStatus(lemma, status) }, dot, `${label} `, el('kbd', { textContent: hotkey }));
@@ -188,14 +201,16 @@ function render(view) {
   markStatus(view.status);
 }
 
-async function open(span) {
-  const view = { span, lemma: span.dataset.mlLemma, status: 'unknown', groups: [] };
+async function open(span: HTMLElement): Promise<void> {
+  const lemma = span.dataset.mlLemma;
+  if (lemma === undefined) return;
+  const view: View = { span, lemma, status: 'unknown', groups: [] };
   current = view;
-  let groups;
+  let groups: Group[];
   try {
     [groups, view.status] = await Promise.all([
-      call({ type: 'lookup', lemma: view.lemma }),
-      getStatuses([view.lemma]).then(statuses => statuses.get(view.lemma)),
+      call({ type: 'lookup', lemma }),
+      getStatuses([lemma]).then(statuses => statuses.get(lemma) ?? 'unknown'),
     ]);
   } catch (error) {
     groups = [];
@@ -210,7 +225,7 @@ async function open(span) {
   markActive(span);
 }
 
-function close() {
+function close(): void {
   current = null;
   box.hidden = true;
   markActive(null);
@@ -218,11 +233,11 @@ function close() {
 
 const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
 
-async function addCard() {
+async function addCard(): Promise<void> {
   const view = current;
   const button = addButton;
-  if (!view || button.disabled) return;
-  const card = {
+  if (!view || !button || button.disabled) return;
+  const card: CardFields = {
     word: view.lemma,
     reading: view.groups[0]?.reading ?? '',
     sentence: sentenceHtml(view.span),
@@ -237,7 +252,7 @@ async function addCard() {
     await call({ type: 'addCard', card });
     if (current === view) showMessage('Added to Anki.');
   } catch (error) {
-    if (current === view) showMessage(error.message, true);
+    if (current === view) showMessage(messageOf(error), true);
   } finally {
     host.style.visibility = '';
     button.disabled = false;
@@ -245,11 +260,13 @@ async function addCard() {
   }
 }
 
-const isEditable = target => target instanceof HTMLElement
+const isEditable = (target: EventTarget | null) => target instanceof HTMLElement
   && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
 
-const HOTKEYS = {
-  ...Object.fromEntries(Object.entries(STATUSES).map(([status, { hotkey }]) => [hotkey, () => setStatus(current.lemma, status)])),
+const HOTKEYS: Record<string, () => void> = {
+  ...Object.fromEntries(STATUS_NAMES.map(status => [STATUSES[status].hotkey, () => {
+    if (current) setStatus(current.lemma, status);
+  }])),
   a: addCard,
   Escape: close,
 };
@@ -262,12 +279,12 @@ onEnabledChange(value => {
 });
 
 document.addEventListener('mouseover', event => {
-  const span = event.target.closest?.('.ml-word');
+  const span = event.target instanceof Element ? event.target.closest<HTMLElement>('.ml-word') : null;
   if (enabled && span && span !== current?.span) open(span);
 });
 
 document.addEventListener('mousedown', event => {
-  if (current && event.target !== host && !event.target.closest?.('.ml-word')) close();
+  if (current && event.target !== host && !(event.target instanceof Element && event.target.closest('.ml-word'))) close();
 });
 
 // Capture on window so page shortcuts (YouTube uses 1-4 to seek) do not also fire.
@@ -281,5 +298,6 @@ window.addEventListener('keydown', event => {
 }, true);
 
 onStatusChange(changed => {
-  if (current && changed.has(current.lemma)) markStatus(changed.get(current.lemma));
+  const status = current && changed.get(current.lemma);
+  if (status) markStatus(status);
 });

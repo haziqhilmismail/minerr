@@ -1,6 +1,7 @@
-import { call } from './rpc.js';
-import { getStatuses, onStatusChange, STATUSES, WORD_CSS } from './status.js';
-import { isEnabled, onEnabledChange } from './switch.js';
+import type { Segment } from './group.ts';
+import { call } from './rpc.ts';
+import { getStatuses, onStatusChange, type Status, STATUSES, WORD_CSS } from './status.ts';
+import { isEnabled, onEnabledChange } from './switch.ts';
 
 const JAPANESE = /[぀-ヿ一-鿿]/;
 // The YouTube caption window is hidden; src/subtitles.js shows its text in an overlay.
@@ -9,32 +10,34 @@ const BATCH = 100;
 const STATUS_CLASSES = Object.values(STATUSES).map(s => s.className);
 
 // Plain text nodes we inserted between word spans; the observer sees them as additions and must not re-parse them.
-const created = new WeakSet();
-const pending = new Set();
-let timer = null;
+const created = new WeakSet<Node>();
+const pending = new Set<Text>();
+let timer: ReturnType<typeof setTimeout> | null = null;
 
-function wanted(node) {
+const isText = (node: Node): node is Text => node.nodeType === Node.TEXT_NODE;
+
+function wanted(node: Text): boolean {
   const parent = node.parentElement;
-  return Boolean(parent) && !created.has(node) && JAPANESE.test(node.data)
+  return parent !== null && !created.has(node) && JAPANESE.test(node.data)
     && !parent.isContentEditable && !parent.closest(SKIP);
 }
 
-function collect(root) {
-  if (root.nodeType === Node.TEXT_NODE) {
+function collect(root: Node): void {
+  if (isText(root)) {
     if (wanted(root)) pending.add(root);
     return;
   }
   if (root.nodeType !== Node.ELEMENT_NODE) return;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) if (wanted(node)) pending.add(node);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) if (isText(node) && wanted(node)) pending.add(node);
 }
 
-function setSpanStatus(span, status) {
+function setSpanStatus(span: HTMLElement, status: Status): void {
   span.classList.remove(...STATUS_CLASSES);
   span.classList.add(STATUSES[status].className);
 }
 
-function render(segments, statuses) {
+function render(segments: Segment[], statuses: Map<string, Status>): DocumentFragment {
   const fragment = document.createDocumentFragment();
   for (const { text, lemma } of segments) {
     if (!lemma) {
@@ -47,25 +50,26 @@ function render(segments, statuses) {
     span.className = 'ml-word';
     span.dataset.mlLemma = lemma;
     span.textContent = text;
-    setSpanStatus(span, statuses.get(lemma));
+    setSpanStatus(span, statuses.get(lemma) ?? 'unknown');
     fragment.append(span);
   }
   return fragment;
 }
 
-async function wrap(nodes) {
+async function wrap(nodes: Text[]): Promise<void> {
   const texts = nodes.map(node => node.data);
   const parsed = await call({ type: 'parse', texts });
-  const lemmas = [...new Set(parsed.flat().filter(s => s.lemma).map(s => s.lemma))];
+  const lemmas = [...new Set(parsed.flat().flatMap(s => (s.lemma ? [s.lemma] : [])))];
   const statuses = await getStatuses(lemmas);
   nodes.forEach((node, i) => {
+    const segments = parsed[i];
     // The page may have replaced or edited the node while the parse was in flight; the observer queued the new text.
-    if (!node.isConnected || node.data !== texts[i] || !parsed[i].some(s => s.lemma)) return;
-    node.replaceWith(render(parsed[i], statuses));
+    if (!segments || !node.isConnected || node.data !== texts[i] || !segments.some(s => s.lemma)) return;
+    node.replaceWith(render(segments, statuses));
   });
 }
 
-async function flush() {
+async function flush(): Promise<void> {
   const nodes = [...pending];
   pending.clear();
   for (let i = 0; i < nodes.length; i += BATCH) {
@@ -75,7 +79,7 @@ async function flush() {
   if (pending.size) schedule();
 }
 
-function schedule() {
+function schedule(): void {
   timer ??= setTimeout(flush, 50);
 }
 
@@ -92,14 +96,14 @@ new MutationObserver(records => {
 }).observe(document.body, { childList: true, subtree: true, characterData: true });
 
 onStatusChange(changed => {
-  for (const span of document.querySelectorAll('.ml-word')) {
-    const status = changed.get(span.dataset.mlLemma);
+  for (const span of document.querySelectorAll<HTMLElement>('.ml-word')) {
+    const status = changed.get(span.dataset.mlLemma ?? '');
     if (status) setSpanStatus(span, status);
   }
 });
 
 document.head.append(Object.assign(document.createElement('style'), { textContent: WORD_CSS }));
-const showEnabled = enabled => document.documentElement.toggleAttribute('data-minerr-off', !enabled);
+const showEnabled = (enabled: boolean) => document.documentElement.toggleAttribute('data-minerr-off', !enabled);
 isEnabled().then(showEnabled);
 onEnabledChange(showEnabled);
 collect(document.body);

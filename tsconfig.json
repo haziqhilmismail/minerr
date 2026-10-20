@@ -13,9 +13,8 @@
     "rewriteRelativeImportExtensions": true,
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
-    "allowJs": true,
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["*.js", "*.ts", "src", "scripts", "test/*.ts"]
+  "include": ["*.ts", "src", "scripts", "test/*.ts"]
 }
