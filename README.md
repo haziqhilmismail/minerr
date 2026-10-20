@@ -89,7 +89,7 @@ AnkiConnect accepts requests from browser extensions by default. If the popup sh
 
 You can import other Yomitan term dictionaries in the same way. If you import a dictionary with the same title again, the new import replaces the old one.
 
-If you imported JMdict with an earlier version of Minerr, import it again. The new import keeps the entry number of each word, so the spellings of a word can share a status. See [Spellings of one word](#spellings-of-one-word).
+If you imported JMdict with an earlier version of Minerr, import it again. The new import keeps the entry number of each word, so the spellings of a word can share a status. Until you import it again, its row on the options page shows `Import again so that the spellings of a word share one status.` See [Spellings of one word](#spellings-of-one-word).
 
 Minerr shows the tags of all dictionaries. A dictionary that you imported with an earlier version of Minerr has no tags. Its row on the options page shows `Import again to show tags.` Import the zip file again to get the tags.
 

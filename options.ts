@@ -44,7 +44,7 @@ const metaText = (meta = 0) => (meta ? `, ${meta} frequency and pitch entries` :
 
 async function showDictionaries(): Promise<void> {
   const dictionaries = await listDictionaries();
-  const items = dictionaries.map(({ title, count, tags, meta: entries }) => {
+  const items = dictionaries.map(({ title, count, tags, meta: metaCount, entries }) => {
     const remove = el('button', { type: 'button', className: 'delete', textContent: 'Delete' });
     remove.onclick = async () => {
       if (!confirm(`Delete the dictionary "${title}"?`)) return;
@@ -52,10 +52,13 @@ async function showDictionaries(): Promise<void> {
       await deleteDictionary(title);
       await showDictionaries();
     };
-    // An import from before tags were stored has no tags flag.
+    // An import from before tags were stored has no tags flag, and one from before entries were counted has no entries count.
+    const noEntries = count !== null && count > 0 && entries === undefined;
     const meta = count === null ? 'Import not finished. Import it again.'
-      : tags ? `${count} terms${metaText(entries)}` : `${count} terms. Import again to show tags.`;
-    return el('li', { className: count === null || !tags ? 'warn' : '' },
+      : !tags ? `${count} terms. Import again to show tags.`
+      : noEntries ? `${count} terms${metaText(metaCount)}. Import again so that the spellings of a word share one status.`
+      : `${count} terms${metaText(metaCount)}`;
+    return el('li', { className: count === null || !tags || noEntries ? 'warn' : '' },
       el('div', {}, el('span', { className: 'name', textContent: title }), el('span', { className: 'meta', textContent: meta })),
       remove);
   });
