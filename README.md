@@ -399,6 +399,36 @@ You can choose when the word popup opens.
 
 In all modes, `Shift` opens the popup at once. You can press `Shift` before or after you move the mouse onto the word. If a popup is open, the popup of the next word opens after 0.05 seconds. A quick pass of the mouse over a word does not open a popup. The change applies at once in all tabs.
 
+## Word browser
+
+The word browser lists all words with the status learning, known, or ignored. A word that is not in the list is unknown.
+
+1. Click the Minerr button in the Chrome toolbar.
+2. Click **Word browser**. The page opens in a new tab.
+
+Use the page as follows:
+
+- To find a word, type a part of it in **Search**.
+- To show only one status, select it in **Status**.
+- To sort the list, select **Word** or **Status** in **Sort by**. The word order is the Japanese order of Chrome.
+- To change the status of one word, select the new status in its row.
+- To change the status of many words, select their check boxes, then click a status above the list. The check box in the table header selects all the words that match the search and the status.
+- To remove words, select them and click **Unknown (remove)**. A removed word is unknown again.
+
+The page shows 200 words at a time. Click **Next** and **Previous** to see the other words. A status change in a different tab updates the list at once.
+
+### Add words
+
+You can give a status to many words at once, for example the words that you already know.
+
+1. In **Add words**, paste the words or a text.
+2. Select **One word on each line**, or **Japanese text**. With **Japanese text**, Minerr finds the words in the text and uses their dictionary forms.
+3. Select the status. The default is **Known**.
+4. Click **Preview**. The page shows the number of new words, of words with a different status, and of words that already have this status.
+5. Click **Save**.
+
+Minerr does not change a status before you click **Save**.
+
 ## Theme
 
 The options page, the toolbar menu, and the word popup have a light theme and a dark theme.
@@ -438,6 +468,8 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 | `src/stats.ts` | The comprehension score and the recommended sentences of a tab, for the toolbar popup. |
 | `src/score.ts` | Pure functions for the score, its label, and the text of the i+1 sentences. |
+| `words.html`, `words.ts` | The word browser page. |
+| `src/wordlist.ts` | Pure functions for the search, the filter, and the sort of the word browser, and for the pasted words. |
 
 Node.js runs the `.ts` test files directly, without a build. To run the tests:
 
@@ -468,7 +500,7 @@ The WhisperX server has two endpoints for the player:
 
 `node test/media.ts` tests the i+1 highlight and the player, with a mock AnkiConnect and a mock WhisperX server. It uses port 8765 and port 8766. `npm test` runs it after `node test/subtitles.ts`.
 
-`node test/pages-unit.ts` tests the pure functions of the comprehension score. `node test/pages.ts` tests the comprehension score in the toolbar popup in Chromium. `npm test` runs both after `node test/media.ts`.
+`node test/pages-unit.ts` tests the pure functions of the comprehension score and the word browser. `node test/pages.ts` tests the comprehension score in the toolbar popup and the word browser in Chromium. `npm test` runs both after `node test/media.ts`.
 
 ## Third-party data
 

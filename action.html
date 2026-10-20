@@ -64,6 +64,8 @@
   #sentences { max-height: 168px; margin: 0; padding: 0; overflow: auto; list-style: none; }
   #sentences button { width: 100%; padding: 4px 6px; border: 0; border-radius: 6px; background: none; text-align: left; font-size: 13px; }
   #sentences button:hover { background: var(--raised); }
+  .links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .links .player { margin-top: 0; }
 </style>
 <header>
   <h1>Minerr</h1>
@@ -98,6 +100,9 @@
     <p id="job" role="status"></p>
   </div>
 </section>
-<button class="player" id="player">Play a local video<span>Mine a video file from this computer.</span></button>
+<div class="links">
+  <button class="player" id="player">Play a local video<span>Mine a video file from this computer.</span></button>
+  <button class="player" id="words">Word browser<span>Find and change the status of words.</span></button>
+</div>
 <p id="server">Checking the WhisperX server…</p>
 <script src="action.js" type="module"></script>
