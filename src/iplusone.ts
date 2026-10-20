@@ -89,5 +89,5 @@ function update(): void {
 
 document.head.append(Object.assign(document.createElement('style'), { textContent: STYLE }));
 wanted = await iPlusOne.get();
-await watchActive(on => { enabled = on; update(); });
+watchActive(on => { enabled = on; update(); });
 iPlusOne.onChange(on => { wanted = on; update(); });

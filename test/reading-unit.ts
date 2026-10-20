@@ -53,12 +53,12 @@ test('morae join small kana; the pitch patterns and the high morae follow the do
 test('withMeta gives each group the frequencies of its reading or of all readings, and the pitch of its reading', () => {
   const group = (reading: string) => ({ expression: '今日', reading, termTags: [], senses: [] });
   const [kyou, konnichi] = withMeta([group('きょう'), group('こんにち')], [
-    { dict: 'Rank', mode: 'freq', expression: '今日', reading: 'きょう', value: 90, display: '90' },
-    { dict: 'Rank', mode: 'freq', expression: '今日', reading: 'こんにち', value: 30000, display: '30000' },
-    { dict: 'Count', mode: 'freq', expression: '今日', reading: null, value: 5, display: '5' },
+    { dict: 'Rank', mode: 'freq', expression: '今日', reading: 'きょう', value: 90, display: '90', ranked: true },
+    { dict: 'Rank', mode: 'freq', expression: '今日', reading: 'こんにち', value: 30000, display: '30000', ranked: true },
+    { dict: 'Count', mode: 'freq', expression: '今日', reading: null, value: 5, display: '5', ranked: false },
     { dict: 'Pitch', mode: 'pitch', expression: '今日', reading: 'きょう', positions: [1] },
-    { dict: 'Rank', mode: 'freq', expression: '昨日', reading: null, value: 2, display: '2' },
-  ], new Set(['Rank']));
+    { dict: 'Rank', mode: 'freq', expression: '昨日', reading: null, value: 2, display: '2', ranked: true },
+  ]);
   assert.deepEqual(kyou?.frequencies, [{ dict: 'Rank', value: 90, display: '90', ranked: true }, { dict: 'Count', value: 5, display: '5', ranked: false }]);
   assert.deepEqual(kyou?.pitches, [{ dict: 'Pitch', positions: [1] }]);
   assert.deepEqual(konnichi?.frequencies, [{ dict: 'Rank', value: 30000, display: '30000', ranked: true }, { dict: 'Count', value: 5, display: '5', ranked: false }]);

@@ -15,11 +15,24 @@ export async function toggleSiteOf(host: string): Promise<boolean> {
   return !sites.includes(host);
 }
 
-// Calls listener with true when Minerr shows on this page, and again on each change.
-export async function watchActive(listener: (active: boolean) => void): Promise<void> {
+const listeners = new Set<(active: boolean) => void>();
+let active: boolean | null = null;
+
+// One read and one pair of storage listeners for all the modules of a page.
+async function start(): Promise<void> {
   let [enabled, sites] = await Promise.all([minerrEnabled.get(), disabledSites.get()]);
-  const update = () => listener(enabled && !sites.includes(location.hostname));
+  const update = () => {
+    active = enabled && !sites.includes(location.hostname);
+    for (const listener of listeners) listener(active);
+  };
   update();
   minerrEnabled.onChange(value => { enabled = value; update(); });
   disabledSites.onChange(value => { sites = value; update(); });
+}
+
+// Calls listener with true when Minerr shows on this page, and again on each change.
+export function watchActive(listener: (active: boolean) => void): void {
+  if (!listeners.size) start();
+  listeners.add(listener);
+  if (active !== null) listener(active);
 }

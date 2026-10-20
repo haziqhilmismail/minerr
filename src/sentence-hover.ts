@@ -1,10 +1,10 @@
 // Highlights the sentence of the word under the mouse, or of the word of the open popup, with the CSS Custom Highlight API.
 import { blockOf } from './dom.ts';
 import { sentenceBounds } from './sentence.ts';
-import { setting } from './settings.ts';
+import { isBoolean, setting } from './settings.ts';
 import { watchActive } from './site.ts';
 
-export const sentenceHighlight = setting('sentenceHighlight', (value: unknown): value is boolean => typeof value === 'boolean', true);
+export const sentenceHighlight = setting('sentenceHighlight', isBoolean, true);
 
 const NAME = 'minerr-sentence';
 const STYLE = `

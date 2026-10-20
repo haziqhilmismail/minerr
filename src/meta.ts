@@ -56,16 +56,16 @@ export interface Pitch {
 // A dictionary group with the frequencies and pitch accents of its expression and reading.
 export type Entry = Group & { frequencies: Frequency[]; pitches: Pitch[] };
 
-export type DictMeta = TermMeta & { dict: string };
+// A stored meta row. A freq row knows if its dictionary gives ranks: frequencyMode rank-based, the Yomitan default.
+export type DictMeta = { dict: string } & (Extract<TermMeta, { mode: 'freq' }> & { ranked: boolean } | Extract<TermMeta, { mode: 'pitch' }>);
 
-// rankedDicts: the dictionaries whose frequencyMode is rank-based, the Yomitan default.
-export function withMeta(groups: Group[], rows: DictMeta[], rankedDicts: Set<string>): Entry[] {
+export function withMeta(groups: Group[], rows: DictMeta[]): Entry[] {
   return groups.map(group => {
     const own = rows.filter(row => row.expression === group.expression);
     return {
       ...group,
       frequencies: own.flatMap(row => (row.mode === 'freq' && (row.reading === null || row.reading === group.reading)
-        ? [{ dict: row.dict, value: row.value, display: row.display, ranked: rankedDicts.has(row.dict) }] : [])),
+        ? [{ dict: row.dict, value: row.value, display: row.display, ranked: row.ranked }] : [])),
       pitches: own.flatMap(row => (row.mode === 'pitch' && row.reading === group.reading ? [{ dict: row.dict, positions: row.positions }] : [])),
     };
   });

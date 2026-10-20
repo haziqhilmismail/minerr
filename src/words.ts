@@ -1,7 +1,8 @@
 // The word spans of parsed text. A word that crosses text nodes (<b>食</b>べた) is one span per part; the parts share
 // data-ml-word, and each part after the first has data-ml-cont, so counts take the word one time.
-import type { NodeSegment } from './group.ts';
-import { type Status, STATUSES } from './status.ts';
+import type { NodeSegment, Segment } from './group.ts';
+import { call } from './rpc.ts';
+import { getStatuses, type Status, STATUSES } from './status.ts';
 
 const STATUS_CLASSES = Object.values(STATUSES).map(s => s.className);
 
@@ -11,6 +12,21 @@ export const RUBY_TEXT = 'rt, rp';
 export function setSpanStatus(span: HTMLElement, status: Status): void {
   span.classList.remove(...STATUS_CLASSES);
   span.classList.add(STATUSES[status].className);
+}
+
+// Parses texts, and reads the statuses of their words.
+export async function parseWords(texts: string[]): Promise<{ parsed: Segment[][]; statuses: Map<string, Status> }> {
+  const parsed = await call({ type: 'parse', texts });
+  const statuses = await getStatuses([...new Set(parsed.flat().flatMap(segment => segment.lemma ?? []))]);
+  return { parsed, statuses };
+}
+
+// Gives the word spans under root the status that changed for their lemma.
+export function recolor(root: ParentNode, changed: Map<string, Status>): void {
+  for (const span of root.querySelectorAll<HTMLElement>('.ml-word')) {
+    const status = changed.get(span.dataset.mlLemma ?? '');
+    if (status) setSpanStatus(span, status);
+  }
 }
 
 // All the parts of the word of span, in page order.

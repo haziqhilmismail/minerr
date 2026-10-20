@@ -1,4 +1,4 @@
-import { lookup, pitchPatterns } from './src/db.ts';
+import { hasTerm, lookup, pitchPatterns } from './src/db.ts';
 import { groupTokens, lookupCandidates } from './src/group.ts';
 import { serve } from './src/rpc.ts';
 
@@ -18,8 +18,7 @@ serve(
     lookupText: async ({ text }) => {
       const parser = await tokenizer;
       for (const { lemma, length } of lookupCandidates(text, start => groupTokens(parser.tokenize(start)))) {
-        const entries = await lookup(lemma);
-        if (entries.length) return { lemma, length, entries };
+        if (await hasTerm(lemma)) return { lemma, length, entries: await lookup(lemma) };
       }
       return null;
     },

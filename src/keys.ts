@@ -1,9 +1,11 @@
 // The keys of a page and of the open popup. One table, so a key has one meaning at a time.
 import { chord, isEditable, statusTarget } from './chord.ts';
 import { toast } from './popup-view.ts';
+import { messageOf } from './rpc.ts';
 import { sentenceHighlight } from './sentence-hover.ts';
 import { toggleSiteOf, watchActive } from './site.ts';
 import { setStatus, setStatuses, type Status, STATUS_NAMES, STATUSES } from './status.ts';
+import { sameWord } from './words.ts';
 
 // What the keys can do with the popup. popup.ts gives it to installKeys.
 export interface PopupKeys {
@@ -60,6 +62,9 @@ async function toggleSite(): Promise<void> {
   toast(on ? `Minerr is on for ${host}.` : `Minerr is off for ${host}. Press Alt+Shift+D to turn it on.`);
 }
 
+// A key starts work that ends later; an error of it shows as a toast.
+const report = (work: Promise<void>) => { work.catch((error: unknown) => toast(messageOf(error))); };
+
 export function installKeys(popup: PopupKeys): void {
   let active = false;
   watchActive(value => { active = value; });
@@ -68,11 +73,11 @@ export function installKeys(popup: PopupKeys): void {
     const selected = selectedWords();
     const unknowns = lineUnknowns();
     switch (statusTarget({ selectedWords: selected.length, popupOpen: popup.isOpen(), lineUnknowns: unknowns.length })) {
-      case 'selection': markSelection(selected, status); return true;
+      case 'selection': report(markSelection(selected, status)); return true;
       case 'popup': popup.setStatus(status); return true;
       case 'line': {
         const lemma = unknowns[0]?.dataset.mlLemma;
-        if (lemma) markLineWord(lemma, status);
+        if (lemma) report(markLineWord(lemma, status));
         return lemma !== undefined;
       }
       default: return false;
@@ -81,8 +86,9 @@ export function installKeys(popup: PopupKeys): void {
   // Opens the popup of the next unknown word of the subtitle line, after the word of the open popup.
   const nextUnknown = () => {
     const unknowns = lineUnknowns();
+    if (!unknowns.length) return false;
     const word = popup.word();
-    const next = unknowns[(unknowns.findIndex(span => span === word) + 1) % unknowns.length];
+    const next = unknowns[(unknowns.findIndex(span => sameWord(span, word)) + 1) % unknowns.length];
     if (!next) return false;
     popup.openWord(next);
     return true;
@@ -100,11 +106,11 @@ export function installKeys(popup: PopupKeys): void {
     'alt+s': popup.lookupSelection,
     Escape: whenOpen(popup.close),
     'alt+shift+s': () => {
-      toggleSentenceHighlight();
+      report(toggleSentenceHighlight());
       return true;
     },
     'alt+shift+d': () => {
-      toggleSite();
+      report(toggleSite());
       return true;
     },
   };

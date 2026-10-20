@@ -10,10 +10,10 @@ import {
 } from './popup-view.ts';
 import { call, messageOf } from './rpc.ts';
 import { sentenceAround } from './sentence.ts';
-import { installSentenceHover, setPopupWord } from './sentence-hover.ts';
+import { setPopupWord } from './sentence-hover.ts';
 import { watchActive } from './site.ts';
 import { getStatuses, onStatusChange, setStatus, type Status, STATUSES } from './status.ts';
-import { RUBY_TEXT, sameWord, setSpanStatus, wordFragment, wordParts } from './words.ts';
+import { parseWords, recolor, RUBY_TEXT, sameWord, wordFragment, wordParts } from './words.ts';
 
 // A word in a popup opens a popup over it with Shift + hover, up to this many popups.
 const MAX_LAYERS = 4;
@@ -89,16 +89,11 @@ function closeFrom(depth: number): void {
   markActive();
 }
 
-function close(): void {
+// Closes the top popup, or every popup from depth; a hover or lookup that still waits does not open one after it.
+function close(depth = Math.max(0, layers.length - 1)): void {
   clearTimeout(timer);
   opening = null;
-  closeFrom(Math.max(0, layers.length - 1));
-}
-
-function closeAll(): void {
-  clearTimeout(timer);
-  opening = null;
-  closeFrom(0);
+  closeFrom(depth);
 }
 
 // Wraps the Japanese text of the definitions in word spans, so Shift + hover can open a popup over a word.
@@ -109,8 +104,7 @@ async function wrapWords(root: Element): Promise<void> {
     if (node instanceof Text && JAPANESE.test(node.data) && !node.parentElement?.closest('.tag, .dict, .ml-word')) nodes.push(node);
   }
   if (!nodes.length) return;
-  const parsed = await call({ type: 'parse', texts: nodes.map(node => node.data) });
-  const statuses = await getStatuses([...new Set(parsed.flat().flatMap(segment => segment.lemma ?? []))]);
+  const { parsed, statuses } = await parseWords(nodes.map(node => node.data));
   nodes.forEach((node, i) => {
     const segments = parsed[i];
     if (segments && node.isConnected) node.replaceWith(wordFragment(segments, statuses, false));
@@ -133,7 +127,7 @@ async function open(anchor: Anchor, lemma: string, depth: number, lookup: Promis
   const box = (boxes[depth] ??= createBox());
   mount();
   showBox(box);
-  layers.push(render(box, view, { addCard, close }));
+  layers.push(render(box, view, { addCard, close: () => close() }));
   position(box, anchorRect(anchor));
   markActive();
   const definitions = box.querySelector('.definitions');
@@ -193,12 +187,10 @@ async function addCard(): Promise<void> {
   }
 }
 
-installSentenceHover();
-
 let enabled = true;
 watchActive(value => {
   enabled = value;
-  if (!enabled) closeAll();
+  if (!enabled) close(0);
 });
 
 let mode: HoverMode = 'hover';
@@ -251,7 +243,7 @@ document.addEventListener('mousedown', event => {
   const path = event.composedPath();
   const inside = layers.findIndex(layer => path.includes(layer.box));
   if (inside >= 0) closeFrom(inside + 1);
-  else if (layers.length && !isPopup(event.target) && !wordAt(event)) closeAll();
+  else if (layers.length && !isPopup(event.target) && !wordAt(event)) close(0);
 });
 
 // Capture, like the keys, so a page that stops keydown cannot block Shift.
@@ -266,7 +258,7 @@ installKeys({
     if (layer) setStatus(layer.view.lemma, status);
   },
   addCard,
-  close,
+  close: () => close(),
   word: () => spanOf(layers[0]),
   openWord,
   lookupSelection,
@@ -277,10 +269,5 @@ onStatusChange(changed => {
     const status = changed.get(layer.view.lemma);
     if (status) markStatus(layer, status);
   }
-  for (const box of boxes) {
-    for (const span of box.querySelectorAll<HTMLElement>('.ml-word')) {
-      const status = changed.get(span.dataset.mlLemma ?? '');
-      if (status) setSpanStatus(span, status);
-    }
-  }
+  for (const box of boxes) recolor(box, changed);
 });

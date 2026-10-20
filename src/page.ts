@@ -1,8 +1,8 @@
 import { blockOf, isInline } from './dom.ts';
 import { JAPANESE, splitSegments } from './group.ts';
-import { call } from './rpc.ts';
-import { getStatuses, onStatusChange, WORD_CSS } from './status.ts';
-import { RUBY_TEXT, setSpanStatus, wordFragment } from './words.ts';
+import { installSentenceHover } from './sentence-hover.ts';
+import { onStatusChange, WORD_CSS } from './status.ts';
+import { parseWords, recolor, RUBY_TEXT, wordFragment } from './words.ts';
 import { installFurigana } from './furigana.ts';
 import { installPitchColors } from './pitch-colors.ts';
 import { watchActive } from './site.ts';
@@ -63,9 +63,7 @@ function runsOf(nodes: Text[]): Text[][] {
 // Parses each run as one text, so a word that crosses nodes is one word, and puts the parts of the segments into the nodes.
 async function wrap(runs: Text[][]): Promise<void> {
   const texts = runs.map(run => run.map(node => node.data));
-  const parsed = await call({ type: 'parse', texts: texts.map(parts => parts.join('')) });
-  const lemmas = [...new Set(parsed.flat().flatMap(s => (s.lemma ? [s.lemma] : [])))];
-  const statuses = await getStatuses(lemmas);
+  const { parsed, statuses } = await parseWords(texts.map(parts => parts.join('')));
   runs.forEach((run, i) => {
     const segments = parsed[i];
     if (!segments) return;
@@ -110,16 +108,12 @@ new MutationObserver(records => {
   if (pending.size) schedule();
 }).observe(document.body, { childList: true, subtree: true, characterData: true });
 
-onStatusChange(changed => {
-  for (const span of document.querySelectorAll<HTMLElement>('.ml-word')) {
-    const status = changed.get(span.dataset.mlLemma ?? '');
-    if (status) setSpanStatus(span, status);
-  }
-});
+onStatusChange(changed => recolor(document, changed));
 
 document.head.append(Object.assign(document.createElement('style'), { textContent: WORD_CSS }));
 watchActive(active => document.documentElement.toggleAttribute('data-minerr-off', !active));
 installFurigana();
 installPitchColors();
+installSentenceHover();
 collect(document.body);
 schedule();

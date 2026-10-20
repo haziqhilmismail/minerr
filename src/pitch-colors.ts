@@ -2,14 +2,13 @@
 import { toHiragana } from './group.ts';
 import { PITCH } from './meta.ts';
 import { call } from './rpc.ts';
-import { setting } from './settings.ts';
-import { watchActive } from './site.ts';
+import { isBoolean, setting } from './settings.ts';
 
-export const pitchColors = setting('pitchColors', (value: unknown): value is boolean => typeof value === 'boolean', false);
+export const pitchColors = setting('pitchColors', isBoolean, false);
 
 const BATCH = 200;
 const STYLE = Object.entries(PITCH)
-  .map(([pattern, { color }]) => `:root[data-ml-pitch-colors] .ml-word[data-ml-pitch="${pattern}"] { color: ${color}; }`).join('\n');
+  .map(([pattern, { color }]) => `:root[data-ml-pitch-colors]:not([data-minerr-off]) .ml-word[data-ml-pitch="${pattern}"] { color: ${color}; }`).join('\n');
 
 // Each word span gets data-ml-pitch: a pattern of PITCH, or "none" when no dictionary has its pitch accent.
 export function installPitchColors(): void {
@@ -31,6 +30,8 @@ export function installPitchColors(): void {
       batch.forEach((span, j) => { span.dataset.mlPitch = patterns[j] ?? 'none'; });
     }
     timer = null;
+    // Words that came during the lookups.
+    if (pending.size) timer = setTimeout(flush, 100);
   }
 
   const collect = (node: Node) => {
@@ -43,13 +44,9 @@ export function installPitchColors(): void {
   new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(collect)))
     .observe(document.body, { childList: true, subtree: true });
 
-  let active = false;
-  let wanted = false;
-  const update = () => {
-    shown = active && wanted;
+  pitchColors.watch(value => {
+    shown = value;
     document.documentElement.toggleAttribute('data-ml-pitch-colors', shown);
     collect(document.body);
-  };
-  pitchColors.watch(value => { wanted = value; update(); });
-  watchActive(value => { active = value; update(); });
+  });
 }

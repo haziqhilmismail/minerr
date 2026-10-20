@@ -3,7 +3,7 @@ import { at, isList, isStringList } from './parse.ts';
 import { type DictTag, type DictTerm, groupTerms, readYomitan } from './yomitan.ts';
 import type { Bytes } from './zip.ts';
 
-// Stores: dicts {title, revision, count, tags, meta, frequencyMode} (count is null while an import is unfinished; tags is true
+// Stores: dicts {title, revision, count, tags, meta} (count is null while an import is unfinished; tags is true
 // for an import that stored tags; meta counts the meta rows), terms {dict, id, expression, reading, definitionTags, termTags,
 // glossary, score} keyed by [dict, id], tags {dict, name, category, notes} keyed by [dict, name], and meta (a TermMeta
 // with its dict) keyed by [dict, id].
@@ -45,7 +45,6 @@ export interface Dictionary {
   count: number | null;
   tags?: boolean;
   meta?: number;
-  frequencyMode?: 'rank-based' | 'occurrence-based';
 }
 
 // Earlier versions of Minerr wrote some of the rows, so the rows are checked as they are read.
@@ -64,7 +63,7 @@ const isDictTerm = (row: unknown): row is DictTerm => ['dict', 'expression', 're
 const isDictTag = (row: unknown): row is DictTag => ['dict', 'name', 'category', 'notes'].every(key => hasString(row, key));
 
 const isDictMeta = (row: unknown): row is DictMeta => hasString(row, 'dict') && hasString(row, 'expression')
-  && ((at(row, 'mode') === 'freq' && typeof at(row, 'value') === 'number' && hasString(row, 'display'))
+  && ((at(row, 'mode') === 'freq' && typeof at(row, 'value') === 'number' && hasString(row, 'display') && typeof at(row, 'ranked') === 'boolean')
     || (at(row, 'mode') === 'pitch' && hasString(row, 'reading') && isList(at(row, 'positions'))));
 
 export async function listDictionaries(): Promise<Dictionary[]> {
@@ -115,11 +114,12 @@ export async function importDictionary(bytes: Bytes, onProgress: (progress: Impo
   for (const [index, load] of metaBanks.entries()) {
     const rows = await load();
     const tx = (await db()).transaction('meta', 'readwrite');
-    for (const row of rows) tx.objectStore('meta').put({ ...row, dict: title, id: meta++ });
+    const ranked = frequencyMode === 'rank-based';
+    for (const row of rows) tx.objectStore('meta').put({ ...row, ...(row.mode === 'freq' ? { ranked } : {}), dict: title, id: meta++ });
     await finished(tx);
     onProgress({ bank: banks.length + index + 1, banks: banks.length + metaBanks.length, count });
   }
-  await putDictionary({ title, revision, count, tags: true, meta, frequencyMode });
+  await putDictionary({ title, revision, count, tags: true, meta });
   return { title, count, meta };
 }
 
@@ -129,10 +129,17 @@ async function metaOf(tx: IDBTransaction, expressions: string[]): Promise<DictMe
   return rows.flat().filter(isDictMeta);
 }
 
+// True if a term dictionary has lemma as an expression or a reading. Cheaper than lookup, for the many tries of Alt+S.
+export async function hasTerm(lemma: string): Promise<boolean> {
+  const terms = (await db()).transaction('terms').objectStore('terms');
+  const counts = await Promise.all([result(terms.index('expression').count(lemma)), result(terms.index('reading').count(lemma))]);
+  return counts.some(count => count > 0);
+}
+
 // Returns groupTerms groups for the best `limit` rows, with their frequencies and pitch accents.
 // A row is one sense, so the limit fits all senses of a common word.
 export async function lookup(lemma: string, limit = 40): Promise<Entry[]> {
-  const tx = (await db()).transaction(['terms', 'tags', 'meta', 'dicts']);
+  const tx = (await db()).transaction(['terms', 'tags', 'meta']);
   const terms = tx.objectStore('terms');
   let found: unknown[] = await result(terms.index('expression').getAll(lemma));
   if (!found.length) found = await result(terms.index('reading').getAll(lemma));
@@ -140,11 +147,7 @@ export async function lookup(lemma: string, limit = 40): Promise<Entry[]> {
   const dicts = [...new Set(rows.map(row => row.dict))];
   const tags: unknown[][] = await Promise.all(dicts.map(dict => result(tx.objectStore('tags').getAll(keysOf(dict)))));
   const groups = groupTerms(rows, tags.flat().filter(isDictTag));
-  const [meta, installed] = await Promise.all([
-    metaOf(tx, [...new Set(groups.map(group => group.expression))]),
-    result(tx.objectStore('dicts').getAll()).then((all: unknown[]) => all.filter(isDictionary)),
-  ]);
-  return withMeta(groups, meta, new Set(installed.filter(dict => dict.frequencyMode !== 'occurrence-based').map(dict => dict.title)));
+  return withMeta(groups, await metaOf(tx, [...new Set(groups.map(group => group.expression))]));
 }
 
 // The pitch pattern of each word on a page, for the pitch colors. reading is the reading on the page, in hiragana.
