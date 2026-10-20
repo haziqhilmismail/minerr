@@ -155,6 +155,8 @@ installKeys({
   setStatus: status => { if (current) setStatus(current.view.lemma, status); },
   addCard,
   close,
+  word: () => current?.view.span ?? null,
+  openWord,
 });
 
 onStatusChange(changed => {

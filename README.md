@@ -191,6 +191,13 @@ If the captions are off, the overlay shows nothing. When a caption has two lines
 
 The overlay text is page text. Minerr underlines its words, and the popup and the keys work on it. Pause the video, then move the mouse over a word. If you press `A`, the `Sentence` field gets the overlay line that contains the word.
 
+You can also use the keyboard on the subtitle line:
+
+- Press `N` to open the popup of the first unknown word of the line. Press `N` again to go to the next unknown word. After the last unknown word, `N` goes back to the first one.
+- If the line has exactly one unknown word, press a status key, `1` to `4`, to set that word. You do not need to open the popup. A short message shows the change.
+
+These keys work in the Minerr video player too. If the line has no unknown word, the page gets the key, so YouTube keys still work.
+
 ## Generate subtitles with WhisperX
 
 Some videos have no Japanese captions, or captions of low quality. For these videos, Minerr can make subtitles from the audio with [WhisperX](https://github.com/m-bain/whisperX). WhisperX runs in a small server on your computer.

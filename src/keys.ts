@@ -3,7 +3,7 @@ import { chord, isEditable, statusTarget } from './chord.ts';
 import { toast } from './popup-view.ts';
 import { sentenceHighlight } from './sentence-hover.ts';
 import { toggleSiteOf, watchActive } from './site.ts';
-import { setStatuses, type Status, STATUS_NAMES, STATUSES } from './status.ts';
+import { setStatus, setStatuses, type Status, STATUS_NAMES, STATUSES } from './status.ts';
 
 // What the keys can do with the popup. popup.ts gives it to installKeys.
 export interface PopupKeys {
@@ -13,6 +13,9 @@ export interface PopupKeys {
   addCard: () => void;
   // Closes the top popup.
   close: () => void;
+  // The word span of the first popup, if it is open.
+  word: () => HTMLElement | null;
+  openWord: (span: HTMLElement) => Promise<void>;
 }
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
@@ -29,10 +32,18 @@ function selectedWords(): HTMLElement[] {
   return words.filter(span => range.intersectsNode(span));
 }
 
+// The unknown words of the subtitle lines that show now, on YouTube and in the player.
+const lineUnknowns = () => [...document.querySelectorAll<HTMLElement>('.minerr-subs-line:not([hidden]) .ml-word.ml-unknown')];
+
 async function markSelection(spans: HTMLElement[], status: Status): Promise<void> {
   const lemmas = [...new Set(spans.flatMap(span => span.dataset.mlLemma ?? []))];
   await setStatuses(lemmas, status);
   toast(`Marked ${plural(lemmas.length, 'word')} as ${STATUSES[status].label.toLowerCase()}.`);
+}
+
+async function markLineWord(lemma: string, status: Status): Promise<void> {
+  await setStatus(lemma, status);
+  toast(`Marked ${lemma} as ${STATUSES[status].label.toLowerCase()}.`);
 }
 
 async function toggleSentenceHighlight(): Promise<void> {
@@ -53,11 +64,26 @@ export function installKeys(popup: PopupKeys): void {
 
   const statusKey = (status: Status) => () => {
     const selected = selectedWords();
-    switch (statusTarget({ selectedWords: selected.length, popupOpen: popup.isOpen(), lineUnknowns: 0 })) {
+    const unknowns = lineUnknowns();
+    switch (statusTarget({ selectedWords: selected.length, popupOpen: popup.isOpen(), lineUnknowns: unknowns.length })) {
       case 'selection': markSelection(selected, status); return true;
       case 'popup': popup.setStatus(status); return true;
+      case 'line': {
+        const lemma = unknowns[0]?.dataset.mlLemma;
+        if (lemma) markLineWord(lemma, status);
+        return lemma !== undefined;
+      }
       default: return false;
     }
+  };
+  // Opens the popup of the next unknown word of the subtitle line, after the word of the open popup.
+  const nextUnknown = () => {
+    const unknowns = lineUnknowns();
+    const word = popup.word();
+    const next = unknowns[(unknowns.findIndex(span => span === word) + 1) % unknowns.length];
+    if (!next) return false;
+    popup.openWord(next);
+    return true;
   };
   const whenOpen = (action: () => void) => () => {
     if (!popup.isOpen()) return false;
@@ -68,6 +94,7 @@ export function installKeys(popup: PopupKeys): void {
   const bindings: Record<string, () => boolean> = {
     ...Object.fromEntries(STATUS_NAMES.map(status => [STATUSES[status].hotkey, statusKey(status)])),
     a: whenOpen(popup.addCard),
+    n: nextUnknown,
     Escape: whenOpen(popup.close),
     'alt+shift+s': () => {
       toggleSentenceHighlight();

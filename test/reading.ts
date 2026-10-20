@@ -241,6 +241,32 @@ try {
   await tab.evaluate(() => getSelection()?.removeAllRanges());
   console.log('bulk status: a status key sets every word of the selection, with a short confirmation');
 
+  await tab.evaluate(() => document.body.append(Object.assign(document.createElement('div'), { className: 'minerr-subs-line', textContent: '猫が魚を食べた' })));
+  await tab.waitForSelector('.minerr-subs-line .ml-word[data-ml-lemma="食べる"]');
+  const lemma = popup.locator('.lemma');
+  for (const word of ['猫', '魚', '食べる', '猫']) {
+    await tab.keyboard.press('n');
+    await lemma.filter({ hasText: word }).waitFor();
+    assert.equal(await tab.$eval('.ml-word[data-ml-active]', span => span.closest('.minerr-subs-line') !== null), true);
+  }
+  console.log('N: the popup cycles through the unknown words of the subtitle line');
+  await tab.keyboard.press('Escape');
+  await tab.keyboard.press('2');
+  await tab.waitForTimeout(200);
+  assert.deepEqual(await options.evaluate(() => chrome.storage.local.get(['w:猫', 'w:魚', 'w:食べる'])), {},
+    'with three unknown words in the line, a status key does nothing');
+  await options.evaluate(() => chrome.storage.local.set({ 'w:猫': 'known', 'w:魚': 'known' }));
+  await tab.waitForSelector('.minerr-subs-line .ml-word.ml-known[data-ml-lemma="魚"]');
+  await tab.keyboard.press('2');
+  await toast.filter({ hasText: 'Marked 食べる as learning.' }).waitFor();
+  await tab.waitForSelector('.minerr-subs-line .ml-word.ml-learning[data-ml-lemma="食べる"]');
+  assert.equal(await popup.isVisible(), false);
+  await tab.keyboard.press('n');
+  await tab.waitForTimeout(300);
+  assert.equal(await popup.isVisible(), false, 'N with no unknown word in the line opens no popup');
+  await options.evaluate(() => chrome.storage.local.remove(['w:猫', 'w:魚', 'w:食べる']));
+  console.log('subtitle line with one unknown word: a status key sets it with no popup');
+
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('READING E2E PASS');
 } finally {
