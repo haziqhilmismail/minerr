@@ -219,6 +219,12 @@ async function addCard(): Promise<void> {
   if (layer && !layer.addButton.disabled) await send(layer, cardOf(layer.view), true);
 }
 
+// Opens the popup of a word span and adds its card, as the + of a line in the subtitle sidebar does.
+export async function addWordCard(span: HTMLElement): Promise<void> {
+  await openWord(span);
+  if (spanOf(layers[0]) === span) await addCard();
+}
+
 // E: the card form, with the fields that the service worker made for the note type, the screenshot, and the audio.
 async function editCard(): Promise<void> {
   const layer = top();
