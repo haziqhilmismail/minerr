@@ -76,6 +76,34 @@ class FetchCaptions(unittest.TestCase):
         self.assertEqual(calls, [('-J', '--', 'https://www.youtube.com/watch?v=KfQPZZ5JmXw')], 'the second language uses the info of the first')
 
 
+class AudioCache(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.saved = media.AUDIO, media.yt_dlp
+        media.AUDIO = Path(self.folder.name)
+
+    def tearDown(self):
+        media.AUDIO, media.yt_dlp = self.saved
+        self.folder.cleanup()
+
+    def test_partial_and_temp_files_of_yt_dlp_are_not_audio(self):
+        for name in ('k.webm.part', 'k.webm.part-Frag3', 'k.temp.m4a', 'k.webm.ytdl', 'kk.webm'):
+            (media.AUDIO / name).write_bytes(b'x')
+        self.assertIsNone(media.cached_audio('k'))
+        (media.AUDIO / 'k.webm').write_bytes(b'x')
+        self.assertEqual(media.cached_audio('k'), media.AUDIO / 'k.webm')
+
+    def test_download_keeps_partial_files_in_a_temp_folder_and_takes_one_audio_format(self):
+        calls = []
+        def fake_yt_dlp(*args, timeout):
+            calls.append(args)
+            (media.AUDIO / 'k.m4a').write_bytes(b'x')
+        media.yt_dlp = fake_yt_dlp
+        self.assertEqual(media.download_audio('https://videos.example/ep/1', 'k'), media.AUDIO / 'k.m4a')
+        self.assertEqual(calls, [('-f', 'bestaudio/best[height<=480]/worst', '--playlist-items', '1', '-P', str(media.AUDIO),
+                                  '-P', f'temp:{media.AUDIO / ".tmp"}', '-o', 'k.%(ext)s', '--', 'https://videos.example/ep/1')])
+
+
 class SplitSegment(unittest.TestCase):
     def test_short_segment_stays_whole(self):
         self.assertEqual(split_segment({'start': 1.0, 'end': 3.0, 'text': ' 猫が魚を食べた。犬も。 '}),

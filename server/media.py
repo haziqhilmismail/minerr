@@ -64,10 +64,11 @@ def yt_dlp(*args, timeout):
 
 
 def cached_audio(key):
-    """The finished audio file of key in AUDIO, or None. yt-dlp writes .part and .ytdl files while it downloads."""
+    """The finished audio file of key in AUDIO, or None. Only <key>.<ext> is finished: yt-dlp also writes names such as
+    <key>.webm.part-Frag3 and <key>.temp.m4a, and a killed download leaves them."""
     if not AUDIO.is_dir():
         return None
-    return next((path for path in AUDIO.glob(f'{key}.*') if path.suffix not in ('.part', '.ytdl')), None)
+    return next((path for path in AUDIO.glob(f'{key}.*') if path.stem == key and path.suffix not in ('.part', '.ytdl')), None)
 
 
 # One lock for each key, so a WhisperX job and a clip never download the same audio at the same time.
@@ -84,7 +85,10 @@ def download_audio(url, key):
         if found:
             return found
         AUDIO.mkdir(parents=True, exist_ok=True)
-        yt_dlp('-f', 'bestaudio/best', '-o', str(AUDIO / f'{key}.%(ext)s'), '--', page_url(key, url), timeout=1800)
+        # The partial files stay in .tmp until yt-dlp moves the finished file to AUDIO, so /clip never reads one.
+        # A site without an audio-only format gets a small video, and a page with many videos gets its first.
+        yt_dlp('-f', 'bestaudio/best[height<=480]/worst', '--playlist-items', '1', '-P', str(AUDIO), '-P', f'temp:{AUDIO / ".tmp"}',
+               '-o', f'{key}.%(ext)s', '--', page_url(key, url), timeout=1800)
         found = cached_audio(key)
         if not found:
             raise RuntimeError('yt-dlp wrote no audio file.')
