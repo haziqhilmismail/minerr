@@ -279,6 +279,8 @@ The captions that Minerr copies from the YouTube player have no times. Thus the 
 2. Open a YouTube video.
 3. Wait some seconds. The server downloads the subtitles with `yt-dlp`.
 
+If you start the server after you open the video, the tab finds the server in some seconds. You do not need to reload the page.
+
 The server uses the subtitles of the uploader first. If the video has none, it uses the automatic subtitles of YouTube. The overlay then shows the subtitles at the times of the video, also when the YouTube captions are off. If the video has no Japanese subtitles, the overlay copies the YouTube captions as before.
 
 The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.captions.ja.json`. The file of a video with no Japanese subtitles contains `{}`. After one day, the server asks YouTube again, because YouTube can add automatic subtitles some hours after the upload. To download the subtitles again at once, delete the file.
@@ -892,7 +894,7 @@ Node.js runs the `.ts` test files directly, without a build. To run the tests:
 4. Run `node test/unit.ts`, `node test/entry-unit.ts`, `node test/card-unit.ts`, and `node test/video-unit.ts`.
 5. Close Anki, because the next test uses port 8765.
 6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect. Then run `node test/spelling.ts`, which tests the shared status of the spellings of a word, and `node test/card.ts`. It tests the Lapis note type, the word audio, and the card form, with a mock AnkiConnect and a mock JapanesePod101.
-7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/media.ts`, `node test/player.ts`, and `node test/sites.ts`, which use the same ports.
+7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/line-audio.ts`, `node test/media.ts`, `node test/player.ts`, and `node test/sites.ts`, which use the same ports. `node test/line-audio.ts` tests the sentence and the sentence audio of a card from a long YouTube line.
 8. Run `python3 -I -B -m unittest discover -s server` to test the WhisperX server. This test does not need WhisperX.
 
 `npm test` does steps 3 to 7 in one command, after a type check.
