@@ -48,6 +48,8 @@ NONE_SECONDS = 24 * 3600
 # Whisper ends a Japanese sentence with 。！？ or, when it omits the punctuation, with a space.
 SENTENCE = re.compile(r'.+?(?:[。！？!?]+[」』）)]*|\s+|$)', re.S)
 MAX_CHARS = 40
+# WhisperX cuts the audio into parts of at most this many seconds at pauses, and each part is one subtitle: 8 s is 1-2 lines.
+CHUNK_SECONDS = 8
 
 
 def split_segment(segment, max_chars=MAX_CHARS):
@@ -94,16 +96,19 @@ def receive(stream, length, filename):
 
 class Transcriber:
     def __init__(self, model, threads, batch_size):
-        self.name, self.threads, self.batch_size = model, threads, batch_size
+        self.model_name, self.threads, self.batch_size = model, threads, batch_size
+        # The name keys the cache, so the long subtitles of the 30 s parts of earlier versions do not come back.
+        self.name = f'{model}.{CHUNK_SECONDS}s'
         self.model = None
 
     def __call__(self, audio_path, on_progress):
         import whisperx
         if self.model is None:
-            self.model = whisperx.load_model(self.name, 'cpu', compute_type='int8', language='ja', threads=self.threads)
+            self.model = whisperx.load_model(self.model_name, 'cpu', compute_type='int8', language='ja', threads=self.threads,
+                                             vad_options={'chunk_size': CHUNK_SECONDS})
         # load_audio runs ffmpeg, so audio_path can also be a video file: ffmpeg takes out its audio.
         audio = whisperx.load_audio(str(audio_path))
-        result = self.model.transcribe(audio, batch_size=self.batch_size, language='ja',
+        result = self.model.transcribe(audio, batch_size=self.batch_size, language='ja', chunk_size=CHUNK_SECONDS,
                                        progress_callback=lambda percent: on_progress(round(percent)))
         return subtitle_segments(result['segments'])
 

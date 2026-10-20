@@ -139,6 +139,32 @@ class AudioCache(unittest.TestCase):
                                   '-P', f'temp:{media.AUDIO / ".tmp"}', '-o', 'k.%(ext)s', '--', 'https://videos.example/ep/1')])
 
 
+class TranscriberChunks(unittest.TestCase):
+    def test_whisperx_cuts_the_audio_into_8_second_parts_and_the_cache_name_says_so(self):
+        import sys
+        import types
+        calls = {}
+
+        class Model:
+            def transcribe(self, audio, **options):
+                calls['transcribe'] = options
+                return {'segments': [{'start': 0.0, 'end': 2.0, 'text': '猫'}]}
+
+        fake = types.ModuleType('whisperx')
+        fake.load_model = lambda name, device, **options: calls.setdefault('load', (name, options)) and Model()
+        fake.load_audio = lambda path: path
+        sys.modules['whisperx'] = fake
+        try:
+            transcriber = whisper_server.Transcriber('large-v3-turbo', 2, 4)
+            self.assertEqual(transcriber(Path('a.mka'), lambda percent: None), [{'start': 0.0, 'end': 2.0, 'text': '猫'}])
+        finally:
+            del sys.modules['whisperx']
+        name, options = calls['load']
+        self.assertEqual((name, options['vad_options']), ('large-v3-turbo', {'chunk_size': 8}))
+        self.assertEqual(calls['transcribe']['chunk_size'], 8)
+        self.assertEqual(transcriber.name, 'large-v3-turbo.8s')
+
+
 class SplitSegment(unittest.TestCase):
     def test_short_segment_stays_whole(self):
         self.assertEqual(split_segment({'start': 1.0, 'end': 3.0, 'text': ' 猫が魚を食べた。犬も。 '}),
