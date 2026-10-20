@@ -727,7 +727,7 @@ Japanese text in the definitions of a popup is also cut into words. Hold `Shift`
 
 When you move the mouse onto a word, Minerr gives the sentence of the word a light blue background. While the popup is open, the sentence of its word keeps the background. Minerr cuts the sentence with the same rule as the card sentence.
 
-To turn the sentence highlight off or on, press `Alt+Shift+S` on a page. Or, on the options page, use **Highlight the sentence of the word under the mouse** in **Word popup**. The highlight is on by default.
+To turn the sentence highlight off or on, press `Alt+Shift+S` on a page. Or, on the options page, use **Highlight the sentence of the word under the mouse** in **Word popup**. The highlight is off by default.
 
 ### Count on the page
 

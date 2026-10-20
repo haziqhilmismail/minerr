@@ -4,7 +4,7 @@ import { sentenceText, wordRange } from './sentence-text.ts';
 import { isBoolean, setting } from './settings.ts';
 import { watchActive } from './site.ts';
 
-export const sentenceHighlight = setting('sentenceHighlight', isBoolean, true);
+export const sentenceHighlight = setting('sentenceHighlight', isBoolean, false);
 
 const NAME = 'minerr-sentence';
 const STYLE = `

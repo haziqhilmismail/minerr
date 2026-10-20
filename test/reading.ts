@@ -153,6 +153,14 @@ try {
   await action.close();
   console.log('per site: Alt+Shift+D turns this site off in all its tabs; the toolbar switch turns it on');
 
+  assert.equal(await options.isChecked('#sentence-highlight'), false, 'the sentence highlight is off by default');
+  await tab.mouse.move(0, 0);
+  await tab.hover('#line .ml-word[data-ml-lemma="魚"]');
+  await popup.locator('.lemma', { hasText: '魚' }).waitFor();
+  assert.equal(await tab.evaluate(() => CSS.highlights.get('minerr-sentence')?.size ?? 0), 0);
+  await tab.keyboard.press('Escape');
+  await options.check('#sentence-highlight');
+
   const furigana = async (mode: string) => {
     await options.click(`label:has(input[name="furigana"][value="${mode}"])`);
     await tab.waitForFunction(value => (document.documentElement.dataset.mlFurigana ?? 'off') === value, mode);
