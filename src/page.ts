@@ -35,13 +35,14 @@ function collect(root: Node): void {
 }
 
 // True if text node b follows text node a in the text flow: no other text (ruby annotation aside), no line break,
-// and no block between them.
+// image, or button, and no block between them.
+const BREAKS = /^(BR|IMG|BUTTON)$/;
 function follows(a: Text, b: Text, cache: Map<Element, Element>): boolean {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
   walker.currentNode = a;
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     if (node === b) return a.parentElement !== null && b.parentElement !== null && blockOf(a.parentElement, cache) === blockOf(b.parentElement, cache);
-    if (node instanceof Element ? node.tagName === 'BR' || !(isInline(node) || node.closest(RUBY_TEXT)) : !node.parentElement?.closest(RUBY_TEXT)) return false;
+    if (node instanceof Element ? BREAKS.test(node.tagName) || !(isInline(node) || node.closest(RUBY_TEXT)) : !node.parentElement?.closest(RUBY_TEXT)) return false;
   }
   return false;
 }

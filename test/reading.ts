@@ -267,6 +267,18 @@ try {
   await tab.evaluate(() => document.querySelector('#ruby-line')?.remove());
   console.log('sentence highlight: the walk stays in the sentence of a big block, and skips ruby text');
 
+  await tab.evaluate(() => document.body.insertAdjacentHTML('beforeend', '<p id="badges"><span style="display: inline-block">食</span>'
+    + '<span style="display: inline-block">べた</span></p><p id="image">食<img alt="">べた</p>'
+    + '<p id="buttons"><button style="display: inline">食</button><button style="display: inline">べた</button></p><p id="inline"><b>食</b>べた</p>'));
+  await tab.waitForSelector('#inline .ml-word');
+  const words = (selector: string) => tab.$$eval(`${selector} .ml-word`, spans => spans.map(span => `${span.textContent}${span.hasAttribute('data-ml-cont') ? ' cont' : ''}`));
+  assert.deepEqual(await words('#inline'), ['食', 'べた cont'], 'an inline element joins its text with the next');
+  for (const id of ['#badges', '#image', '#buttons']) {
+    assert.equal((await words(id)).filter(word => word.endsWith(' cont')).length, 0, `${id}: no word crosses an inline-block, an <img>, or a <button>`);
+  }
+  await tab.evaluate(() => { for (const id of ['badges', 'image', 'buttons', 'inline']) document.getElementById(id)?.remove(); });
+  console.log('words: text joins across inline elements only, not across inline-block boxes, images, or buttons');
+
   const select = (from: string, to: string) => tab.evaluate(([start, end]) => {
     const range = new Range();
     range.setStartBefore(document.querySelector(start ?? '') ?? document.body);
