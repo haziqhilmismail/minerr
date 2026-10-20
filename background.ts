@@ -1,4 +1,6 @@
-import { addNote, fieldValues, getDeck, getNoteType, modelFieldNames, modelNames, version } from './src/anki.ts';
+import {
+  addDraft, type CardFields, fieldValues, getDeck, getNoteType, installLapis, modelFieldNames, modelNames, type NoteDraft, noteDraft, version,
+} from './src/anki.ts';
 import { cardMedia, widenSentence } from './src/lineaudio.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
 import { getStatuses, setStatus, setStatuses } from './src/status.ts';
@@ -37,14 +39,19 @@ async function capture(windowId: number): Promise<string> {
   return chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 80 });
 }
 
-async function addCard({ card }: Message<'addCard'>, sender: chrome.runtime.MessageSender): Promise<number> {
+// The note of a card with its media: the screenshot of the tab and the audio of the subtitle line.
+async function cardDraft(card: CardFields, sender: chrome.runtime.MessageSender): Promise<NoteDraft> {
   if (!sender.tab) throw new Error('Add cards from a tab.');
   const image = await capture(sender.tab.windowId);
   // After the screenshot, because the tab may play the line again to record it.
   const { line, audio } = await cardMedia(sender.tab.id);
   const sentence = line?.combined ? widenSentence(line.text, card.sentence) : card.sentence;
   const { url = '', title = '' } = sender.tab;
-  const noteId = await addNote({ deck: await getDeck(), noteType: await getNoteType(), card: { ...card, sentence, ...(audio ? { audio } : {}) }, page: { url, title }, jpegDataUrl: image });
+  return noteDraft(await getNoteType(), { ...card, sentence, ...(audio ? { audio } : {}) }, { url, title }, image);
+}
+
+async function addCard({ card }: Message<'addCard'>, sender: chrome.runtime.MessageSender): Promise<number> {
+  const noteId = await addDraft(await getDeck(), await cardDraft(card, sender));
   const statuses = await getStatuses([card.word]);
   if (statuses.get(card.word) === 'unknown') await setStatus(card.word, 'learning');
   return noteId;
@@ -68,6 +75,7 @@ serve(
     lookupText: toOffscreen,
     addCard,
     importKnown,
+    ankiInstallLapis: installLapis,
     ankiVersion: version,
     ankiModels: modelNames,
     ankiModelFields: ({ model }) => modelFieldNames(model),

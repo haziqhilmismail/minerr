@@ -47,40 +47,45 @@ test('parseCaptions reads YouTube json3: rolling lines end where the next starts
 });
 
 test('addNote adds a missing SentenceAudio field to an old Minerr note type and sends the line audio', async () => {
-  const { addNote, BUILTIN, NOTE_TYPE, RECOGNITION } = await import('../src/anki.ts');
+  const { addDraft, BUILTIN, noteDraft, NOTE_TYPE, RECOGNITION } = await import('../src/anki.ts');
   const requests: { action: string; params: Record<string, unknown> }[] = [];
   const replies: Record<string, unknown> = {
     createDeck: 1, modelNames: ['Minerr'], modelFieldNames: ['Word', 'Reading', 'Sentence', 'Definition', 'Image'],
     modelTemplates: { Recognition: { Front: RECOGNITION.Front, Back: 'old back' } }, modelStyling: { css: NOTE_TYPE.css },
-    modelFieldAdd: null, updateModelTemplates: null, addNote: 42, storeMediaFile: 'minerr-1.mp3',
+    modelFieldAdd: null, updateModelTemplates: null, addNote: 42,
   };
   const saved = globalThis.fetch;
   globalThis.fetch = async (_url, init) => {
     const request = JSON.parse(String(init?.body));
     requests.push(request);
-    return new Response(JSON.stringify({ result: replies[request.action], error: null }));
+    const result = request.action === 'storeMediaFile' ? `stored-${request.params.filename}` : replies[request.action];
+    return new Response(JSON.stringify({ result, error: null }));
   };
   try {
     const audio = { filename: 'minerr-1.mp3', data: 'SUQz' };
-    const plain = { word: '猫', reading: 'ねこ', sentence: '<b>猫</b>だ', definition: 'cat' };
+    const plain = { word: '猫', reading: 'ねこ', sentence: '<b>猫</b>だ', definition: 'cat', entry: null, selection: '' };
     const card = { ...plain, audio };
     const page = { url: 'https://example.com/', title: 'Cats' };
-    assert.equal(await addNote({ deck: 'Minerr', noteType: BUILTIN, card, page, jpegDataUrl: 'data:image/jpeg;base64,/9j/' }), 42);
+    const add = (noteType: Parameters<typeof noteDraft>[0], fields: Parameters<typeof noteDraft>[1]) =>
+      addDraft('Minerr', noteDraft(noteType, fields, page, 'data:image/jpeg;base64,/9j/'));
+    assert.equal(await add(BUILTIN, card), 42);
     assert.deepEqual(requests.filter(r => r.action === 'modelFieldAdd').map(r => r.params),
       [{ modelName: 'Minerr', fieldName: 'SentenceAudio', index: 5 }]);
     assert.ok(RECOGNITION.Back.includes('{{SentenceAudio}}'));
     assert.equal(requests.filter(r => r.action === 'updateModelTemplates').length, 1);
-    assert.deepEqual(requests.find(r => r.action === 'storeMediaFile')?.params, audio);
-    const note = requests.find(r => r.action === 'addNote')?.params.note;
-    assert.equal((note as { fields: Record<string, string> }).fields.SentenceAudio, '[sound:minerr-1.mp3]');
+    const stored = requests.filter(r => r.action === 'storeMediaFile').map(r => r.params);
+    assert.deepEqual(stored[1], audio);
+    const fields = (requests.find(r => r.action === 'addNote')?.params.note as { fields: Record<string, string> }).fields;
+    assert.equal(fields.SentenceAudio, '[sound:stored-minerr-1.mp3]', 'the field names the file as Anki stored it');
+    assert.equal(fields.Image, `<img src="stored-${String(stored[0]?.filename)}">`);
 
     requests.length = 0;
     const custom = { kind: 'custom' as const, model: 'Mine', fields: { Front: '{sentence}', Audio: '{audio}', Back: '{word}' } };
-    await addNote({ deck: 'Minerr', noteType: custom, card, page, jpegDataUrl: 'data:image/jpeg;base64,/9j/' });
+    await add(custom, card);
     assert.deepEqual(requests.map(r => r.action), ['createDeck', 'storeMediaFile', 'addNote'], 'no screenshot is stored without {image}');
-    assert.deepEqual((requests[2]?.params.note as { fields: unknown }).fields, { Front: '<b>猫</b>だ', Audio: '[sound:minerr-1.mp3]', Back: '猫' });
+    assert.deepEqual((requests[2]?.params.note as { fields: unknown }).fields, { Front: '<b>猫</b>だ', Audio: '[sound:stored-minerr-1.mp3]', Back: '猫' });
     requests.length = 0;
-    await addNote({ deck: 'Minerr', noteType: custom, card: plain, page, jpegDataUrl: 'data:image/jpeg;base64,/9j/' });
+    await add(custom, plain);
     assert.deepEqual((requests[1]?.params.note as { fields: unknown }).fields, { Front: '<b>猫</b>だ', Audio: '', Back: '猫' });
   } finally {
     globalThis.fetch = saved;

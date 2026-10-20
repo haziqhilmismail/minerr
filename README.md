@@ -26,7 +26,7 @@ The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedi
 - It shows the tags of the dictionary in color, as Yomitan does. The tags of the word, for example `⭐` (high priority) and `ichi` or `news13k` (frequent), are next to the reading. The tags of each definition, for example `v1` (Ichidan verb) and `uk` (usually in kana), are before the definition. Move the mouse over a tag to see what it means.
 - If the word has more than one reading in the dictionaries, the popup shows each reading with its own definitions.
 - It keeps the word statuses in the browser. A status change updates the underlines in all open tabs at once.
-- It sends cards to Anki through AnkiConnect. It makes the deck and the note type if they do not exist.
+- It sends cards to Anki through AnkiConnect, by default to the Lapis note type of the [mining guide](https://learnjapanese.moe/mining/). It makes the deck if it does not exist.
 - It can mark the words of your mature Anki cards as known.
 - On YouTube, it shows the subtitles in its own large overlay at the bottom center of the video. You can look up and mine the words in the overlay. The overlay also works on other video sites and on video files from your computer.
 - A card from a subtitle line gets the audio of the line.
@@ -35,7 +35,7 @@ The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedi
 - It has a word browser to find, sort, and change word statuses, and to add a list of known words.
 - It has a reader for `.epub`, `.txt`, `.srt`, and `.vtt` files, with vertical text, and a page for pasted text.
 
-All data stays on your computer. The extension sends requests only to AnkiConnect at `http://127.0.0.1:8765` and to the optional WhisperX server at `http://127.0.0.1:8766`.
+All data stays on your computer. The extension sends requests only to AnkiConnect at `http://127.0.0.1:8765` and to the optional WhisperX server at `http://127.0.0.1:8766`. When you click **Install Lapis**, Anki downloads the Lapis package from GitHub.
 
 ## Install
 
@@ -497,7 +497,53 @@ With **Auto-paste**, the page adds the text from the clipboard each time the pag
 
 If the clipboard has the same text as the last paste, the page adds nothing. Minerr asks for the clipboard permission only when you select **Auto-paste**, so the installation of Minerr asks for no clipboard permission.
 
+## Lapis note type
+
+Lapis is the default note type. It is the note type of the [mining guide of learnjapanese.moe](https://learnjapanese.moe/mining/). [Lapis](https://github.com/donkuri/lapis) is a separate project with the GPL-3.0 license. Minerr does not contain the Lapis templates. Minerr fills the fields of the Lapis note type in your Anki, and does not change the note type.
+
+If you selected a different note type before this version, Minerr keeps your selection.
+
+### Install Lapis
+
+If Anki has no note type with the name `Lapis`, the popup shows an error when you add a card. To install Lapis:
+
+1. Open Anki.
+2. Open the options page.
+3. In **Anki**, click **Check connection**.
+4. Click **Install Lapis**.
+
+Anki downloads `Lapis.apkg` of Lapis 1.7.0 from the [releases of the Lapis project](https://github.com/donkuri/lapis/releases) and imports it. Then Minerr deletes the downloaded file from the media folder. The package also makes a `Lapis` deck with one sample note. Minerr deletes this deck only if it contains the sample note and no other note. If Anki already has a Lapis note type, the button does nothing.
+
+### Lapis fields
+
+Minerr fills the fields as the Yomitan setup of the [Lapis README](https://github.com/donkuri/lapis#how-to-use-lapis) does:
+
+| Field | Content |
+| --- | --- |
+| `Expression` | The dictionary form of the word, for example 食べる. |
+| `ExpressionFurigana` | The word with the reading over each kanji, in the furigana syntax of Anki, for example `食[た]べる`. |
+| `ExpressionReading` | The reading in hiragana, for example たべる. |
+| `ExpressionAudio` | Empty. |
+| `SelectionText` | The selected text, if you opened the popup with `Alt+S`. Else empty. |
+| `MainDefinition` | The definitions of the first dictionary that has the word. |
+| `DefinitionPicture` | Empty. |
+| `Sentence` | The sentence from the page. The word is in `<b>`. |
+| `SentenceFurigana` | Empty, as the Lapis README recommends. |
+| `SentenceAudio` | The audio of the subtitle line. See [Sentence audio](#sentence-audio). |
+| `Picture` | The screenshot of the tab. |
+| `Glossary` | The tags and the definitions of all dictionaries, as in the `Definition` field of the classic note type. |
+| `Hint`, `IsWordAndSentenceCard`, `IsClickCard`, `IsSentenceCard`, `IsAudioCard` | Empty. Lapis then makes a word card. |
+| `PitchPosition` | The pitch accent positions from the pitch dictionaries, for example `[0]`. More than one position is a list. |
+| `PitchCategories` | The pitch patterns, separated by commas: `heiban`, `atamadaka`, `nakadaka`, `odaka`, or `kifuku`. A verb or an i-adjective with a drop is `kifuku`. |
+| `Frequency` | The frequency of the word in each frequency dictionary, as a list. |
+| `FreqSort` | The harmonic mean of the frequency ranks, as Yomitan `{frequency-harmonic-rank}`. It is `9999999` if no dictionary gives a rank. Sort new cards by this field. |
+| `MiscInfo` | The title and the address of the page. |
+
+The **Word field** in **Known words** is `Expression` for Lapis.
+
 ## The note type
+
+This section is about the classic `Minerr` note type. To use it, select **Minerr (classic)** in **Note type** on the options page.
 
 You do not make the note type yourself. When you add the first card, Minerr makes the deck and the note type in Anki through AnkiConnect. The default deck is `Minerr`. You can change the deck on the options page. Minerr adds the tag `minerr` to each note.
 
@@ -547,7 +593,7 @@ Minerr replaces each marker when it adds a card:
 | `{reading}` | The reading from the dictionary, for example たべる. |
 | `{furigana}` | The word with its reading in the furigana syntax of Anki, for example `食べる[たべる]`. Use it with `{{furigana:Field}}` in the card template. |
 | `{sentence}` | The sentence from the page. The word is in `<b>`. |
-| `{definition}` | The tags and the definitions, as in the `Definition` field of the built-in note type. |
+| `{definition}` | The tags and the definitions, as in the `Definition` field of the classic note type. |
 | `{image}` | The screenshot of the tab, as `<img src="...">`. Minerr stores the file in the media folder of Anki. |
 | `{audio}` | The audio of the subtitle line, as `[sound:...]`. It is empty for a word that is not in video subtitles. |
 | `{url}` | The address of the page. |
@@ -565,7 +611,7 @@ With your own note type, Minerr does not make or change a note type. If you add,
 
 The **Word field** in **Known words** changes to the field that contains `{word}`.
 
-To use the Minerr note type again, select **Minerr (built-in)**.
+To use the classic Minerr note type, select **Minerr (classic)**. To use Lapis, select **Lapis**.
 
 ## Back up word statuses
 
@@ -758,7 +804,8 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/subtitles.ts` | The subtitle overlay on YouTube. |
 | `src/status.ts` | The word statuses, their colors, and their storage. |
 | `src/tags.ts` | The colors of the dictionary tags, for the popup and the card. |
-| `src/anki.ts` | The AnkiConnect client and the note type. |
+| `src/anki.ts` | The AnkiConnect client, the note types, and the note draft of a card. |
+| `src/lapis.ts` | The pure parts of the Lapis fields: the furigana, the frequency rank, and the pitch accent. |
 | `src/whisper.ts` | The client for the WhisperX server. |
 | `src/lineaudio.ts`, `src/record.ts` | The sentence audio of a card: the server cuts it, or the tab records the line. |
 | `src/db.ts` | The dictionary storage in IndexedDB. |
@@ -790,9 +837,9 @@ Node.js runs the `.ts` test files directly, without a build. To run the tests:
 1. Run `npm ci`.
 2. Download `JMdict_english.zip` to `test/fixtures/JMdict_english.zip`.
 3. Run `npm run build`. The browser tests load the extension from `dist`.
-4. Run `node test/unit.ts` and `node test/video-unit.ts`.
+4. Run `node test/unit.ts`, `node test/card-unit.ts`, and `node test/video-unit.ts`.
 5. Close Anki, because the next test uses port 8765.
-6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect.
+6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect. Then run `node test/card.ts`. It tests the Lapis note type with a mock AnkiConnect.
 7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/media.ts`, `node test/player.ts`, and `node test/sites.ts`, which use the same ports.
 8. Run `python3 -I -B -m unittest discover -s server` to test the WhisperX server. This test does not need WhisperX.
 

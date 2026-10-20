@@ -31,6 +31,7 @@ const ankiReplies: Record<string, (params: unknown) => unknown> = {
   createDeck: () => 1,
   modelNames: () => ['Basic'],
   createModel: () => ({}),
+  storeMediaFile: params => at(params, 'filename'),
   addNote: () => 1700000000000 + ankiRequests.length,
   findNotes: () => [11],
   notesInfo: () => [{ noteId: 11, fields: { Word: { value: '<span>猫</span>&nbsp;', order: 0 } } }],
@@ -218,16 +219,16 @@ try {
   const added = ankiRequests.slice(firstAdd);
   const actions = added.map(r => at(r, 'action'));
   console.log('AnkiConnect actions:', actions);
-  assert.deepEqual(actions, ['createDeck', 'modelNames', 'createModel', 'addNote']);
+  assert.deepEqual(actions, ['createDeck', 'modelNames', 'createModel', 'storeMediaFile', 'addNote']);
   assert.ok(ankiRequests.every(r => at(r, 'version') === 6));
   assert.deepEqual(at(added[0], 'params'), { deck: 'Minerr' });
   assert.equal(at(added[2], 'params', 'modelName'), 'Minerr');
   assert.deepEqual(at(added[2], 'params', 'inOrderFields'), ['Word', 'Reading', 'Sentence', 'Definition', 'Image', 'SentenceAudio']);
-  const note = at(added[3], 'params', 'note');
-  const picture = at(note, 'picture', 0);
+  const note = at(added[4], 'params', 'note');
+  const picture = at(added[3], 'params');
   const data = at(picture, 'data');
   assert.ok(typeof data === 'string', 'picture data is a string');
-  console.log('addNote fields:', at(note, 'fields'), 'picture:', at(picture, 'filename'), at(picture, 'fields'), `${data.length} base64 chars`);
+  console.log('addNote fields:', at(note, 'fields'), 'picture:', at(picture, 'filename'), `${data.length} base64 chars`);
   assert.equal(at(note, 'deckName'), 'Minerr');
   assert.equal(at(note, 'modelName'), 'Minerr');
   assert.deepEqual(at(note, 'fields'), {
@@ -235,10 +236,9 @@ try {
     Reading: 'たべる',
     Sentence: '猫が魚を<b>食べなかった</b>。',
     Definition: DEFINITION,
-    Image: '',
+    Image: `<img src="${String(at(picture, 'filename'))}">`,
     SentenceAudio: '',
   });
-  assert.deepEqual(at(picture, 'fields'), ['Image']);
   assert.ok(data.startsWith('/9j/'), 'picture is base64 JPEG');
   writeFileSync(join(work, 'card.jpg'), Buffer.from(data, 'base64'));
   console.log('card screenshot saved to', join(work, 'card.jpg'));
@@ -377,7 +377,7 @@ try {
   const stale = await addAfterRestart();
   const staleActions = stale.map(r => at(r, 'action')).sort();
   console.log('AnkiConnect actions after a restart with an old note type:', staleActions);
-  assert.deepEqual(staleActions, ['addNote', 'createDeck', 'modelFieldAdd', 'modelFieldNames', 'modelNames', 'modelStyling', 'modelTemplates', 'updateModelStyling', 'updateModelTemplates']);
+  assert.deepEqual(staleActions, ['addNote', 'createDeck', 'modelFieldAdd', 'modelFieldNames', 'modelNames', 'modelStyling', 'modelTemplates', 'storeMediaFile', 'updateModelStyling', 'updateModelTemplates']);
   assert.deepEqual(at(stale.find(r => at(r, 'action') === 'modelFieldAdd'), 'params'), { modelName: 'Minerr', fieldName: 'SentenceAudio', index: 5 });
   const templates = at(stale.find(r => at(r, 'action') === 'updateModelTemplates'), 'params', 'model');
   const styling = at(stale.find(r => at(r, 'action') === 'updateModelStyling'), 'params', 'model');
@@ -388,7 +388,7 @@ try {
 
   const current = (await addAfterRestart()).map(r => at(r, 'action')).sort();
   console.log('AnkiConnect actions after a restart with the current note type:', current);
-  assert.deepEqual(current, ['addNote', 'createDeck', 'modelFieldNames', 'modelNames', 'modelStyling', 'modelTemplates']);
+  assert.deepEqual(current, ['addNote', 'createDeck', 'modelFieldNames', 'modelNames', 'modelStyling', 'modelTemplates', 'storeMediaFile']);
 
   ankiReplies.modelStyling = () => ({ css: 'edited in Anki' });
   ankiReplies.updateModelStyling = () => { throw new Error('Close the affected editor before this API write, even if its content is saved.'); };
@@ -412,8 +412,8 @@ try {
   const storedNoteType = async () => at(await options.evaluate(() => chrome.storage.local.get('noteType')), 'noteType');
   await options.bringToFront();
   await options.click('#anki-check');
-  await options.locator('#note-type option[value="Mining"]').waitFor({ state: 'attached' });
-  assert.deepEqual(await options.$$eval('#note-type option', items => items.map(item => item.textContent)), ['Minerr (built-in)', 'Basic', 'Mining']);
+  await options.locator('#note-type option[value="custom:Mining"]').waitFor({ state: 'attached' });
+  assert.deepEqual(await options.$$eval('#note-type option', items => items.map(item => item.textContent)), ['Lapis', 'Minerr (classic)', 'Basic', 'Mining']);
   await options.selectOption('#note-type', 'Mining');
   await saved.waitFor();
   assert.deepEqual(await storedNoteType(), { kind: 'custom', model: 'Mining', fields: {
@@ -481,17 +481,18 @@ try {
   console.log('a field renamed in Anki: the options page follows it');
 
   await options.bringToFront();
-  await options.selectOption('#note-type', '');
+  await options.selectOption('#note-type', 'builtin');
   await saved.waitFor();
   assert.deepEqual(await storedNoteType(), { kind: 'builtin' });
   assert.equal(await options.inputValue('#known-field'), 'Word');
   assert.equal(await options.isVisible('#note-fields'), false);
   const builtin = await addTaberu();
-  assert.deepEqual(builtin.map(r => at(r, 'action')).sort(), ['addNote', 'createDeck', 'modelFieldNames', 'modelNames', 'modelStyling', 'modelTemplates']);
+  assert.deepEqual(builtin.map(r => at(r, 'action')).sort(), ['addNote', 'createDeck', 'modelFieldNames', 'modelNames', 'modelStyling', 'modelTemplates', 'storeMediaFile']);
   const builtinNote = at(builtin.find(r => at(r, 'action') === 'addNote'), 'params', 'note');
   assert.equal(at(builtinNote, 'modelName'), 'Minerr');
-  assert.deepEqual(at(builtinNote, 'fields'), { Word: '食べる', Reading: 'たべる', Sentence: '猫が魚を<b>食べなかった</b>。', Definition: DEFINITION, Image: '', SentenceAudio: '' });
-  assert.deepEqual(at(builtinNote, 'picture', 0, 'fields'), ['Image']);
+  assert.deepEqual(at(builtinNote, 'fields'), {
+    Word: '食べる', Reading: 'たべる', Sentence: '猫が魚を<b>食べなかった</b>。', Definition: DEFINITION, Image: '<img src="minerr-stored.jpg">', SentenceAudio: '',
+  });
   console.log('back to the built-in note type: the Minerr note type and a picture again');
 
   const counts = () => options.$$eval('#status-counts li', items => items.map(item => item.textContent));

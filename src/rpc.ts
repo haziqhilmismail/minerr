@@ -25,6 +25,8 @@ interface Protocol {
   ankiVersion: { request: {}; reply: number };
   ankiModels: { request: {}; reply: string[] };
   ankiModelFields: { request: { model: string }; reply: string[] };
+  // Imports the Lapis note type into Anki and replies with the result for the options page.
+  ankiInstallLapis: { request: {}; reply: string };
   whisperHealth: { request: {}; reply: Health };
   whisperStart: { request: { url: string }; reply: { id: string } };
   whisperJob: { request: { id: string }; reply: Job | null };

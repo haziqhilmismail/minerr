@@ -305,7 +305,7 @@ try {
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
   assert.ok(whisperRequests.includes('POST /clip {"url":"https://www.youtube.com/watch?v=timedvideo","start":1.5,"end":6.5}'));
   const lastNote = at(ankiRequests.filter(r => at(r, 'action') === 'addNote').at(-1), 'params', 'note');
-  const stored = ankiRequests.filter(r => at(r, 'action') === 'storeMediaFile');
+  const stored = ankiRequests.filter(r => at(r, 'action') === 'storeMediaFile' && !String(at(r, 'params', 'filename')).endsWith('.jpg'));
   assert.equal(stored.length, 1, 'only the card from the timed line stores audio');
   assert.equal(at(stored[0], 'params', 'data'), Buffer.from('ID3 clip').toString('base64'));
   assert.equal(at(lastNote, 'fields', 'SentenceAudio'), `[sound:${String(at(stored[0], 'params', 'filename'))}]`);

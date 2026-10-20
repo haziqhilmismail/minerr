@@ -1,11 +1,12 @@
 import {
-  BUILTIN, DEFAULT_DECK, DEFAULT_KNOWN_QUERY, definitionHtml, getDeck, getNoteType, markerValues, NOTE_TYPE, type NoteType,
+  BUILTIN, DEFAULT_DECK, DEFAULT_KNOWN_QUERY, definitionHtml, getDeck, getNoteType, LAPIS, markerValues, NOTE_TYPE, type NoteType,
   renderField, setNoteType, suggestFields, unknownMarkers, wordField,
 } from './src/anki.ts';
 import { deleteDictionary, importDictionary, listDictionaries } from './src/db.ts';
 import { byId } from './src/dom.ts';
 import { furiganaMode } from './src/furigana.ts';
 import { hoverMode } from './src/hover.ts';
+import { LAPIS_MODEL } from './src/lapis.ts';
 import { PITCH } from './src/meta.ts';
 import { pitchColors } from './src/pitch-colors.ts';
 import { sentenceHighlight } from './src/sentence-hover.ts';
@@ -139,15 +140,22 @@ const SAMPLE = markerValues({
       { dict: 'JMdict', tags: [], glossary: ['to live on (e.g. a salary)', 'to make a living'] },
     ],
   }),
-}, { url: 'https://www.youtube.com/watch?v=sample', title: 'Sample video' }, `<img src="${SAMPLE_IMAGE}" alt="">`);
+  entry: null,
+  selection: '',
+}, { url: 'https://www.youtube.com/watch?v=sample', title: 'Sample video' }, { image: `<img src="${SAMPLE_IMAGE}" alt="">`, audio: '' });
 
 const noteTypeSelect = byId('note-type', HTMLSelectElement);
 const noteTypeStatus = byId('note-type-status', HTMLElement);
 const noteFields = byId('note-fields', HTMLElement);
 const fieldRows = byId('field-rows', HTMLElement);
 const previewRows = byId('preview-rows', HTMLElement);
-const builtinOption = el('option', { value: '', textContent: 'Minerr (built-in)' });
+const lapisInstall = byId('lapis-install', HTMLElement);
+// The values of the list: the kind of a preset, or custom: and the name of a note type of the user.
+const PRESETS = [el('option', { value: 'lapis', textContent: 'Lapis' }), el('option', { value: 'builtin', textContent: 'Minerr (classic)' })];
+const CUSTOM = 'custom:';
 let noteType = await getNoteType();
+// The note types in Anki, or null before Anki answers.
+let models: string[] | null = null;
 
 // The values of a user template are the user's HTML, so the preview shows them as Anki does.
 function showPreview(fields: Record<string, string>): void {
@@ -159,10 +167,11 @@ function showPreview(fields: Record<string, string>): void {
 }
 
 function showNoteType(): void {
-  noteTypeSelect.value = noteType.kind === 'custom' ? noteType.model : '';
+  noteTypeSelect.value = noteType.kind === 'custom' ? CUSTOM + noteType.model : noteType.kind;
   knownField.value = wordField(noteType);
-  noteFields.hidden = noteType.kind === 'builtin';
-  if (noteType.kind === 'builtin') return;
+  lapisInstall.hidden = !(noteType.kind === 'lapis' && models && !models.includes(LAPIS_MODEL));
+  noteFields.hidden = noteType.kind !== 'custom';
+  if (noteType.kind !== 'custom') return;
   const { model } = noteType;
   const fields = { ...noteType.fields };
   fieldRows.replaceChildren(...Object.entries(fields).flatMap(([name, template], i) => {
@@ -189,18 +198,17 @@ function showNoteType(): void {
   showPreview(fields);
 }
 
-// The list keeps the selected note type when Anki is closed. The Minerr note type is the built-in choice.
+// The list keeps the selected note type when Anki is closed. Lapis and the Minerr note type are the presets.
 async function showModels(): Promise<void> {
   const selected = noteType.kind === 'custom' ? [noteType.model] : [];
-  let models: string[] = [];
   try {
     models = await call({ type: 'ankiModels' });
   } catch {
     showStatus(noteTypeStatus, 'Open Anki, then click Check connection to see your note types.');
   }
-  const names = [...new Set([...models, ...selected])].filter(name => name !== NOTE_TYPE.modelName);
-  noteTypeSelect.replaceChildren(builtinOption, ...names.map(name => el('option', { value: name, textContent: name })));
-  if (noteType.kind === 'custom' && models.includes(noteType.model)) await syncFields(noteType.model, noteType.fields);
+  const names = [...new Set([...(models ?? []).filter(name => name !== NOTE_TYPE.modelName && name !== LAPIS_MODEL), ...selected])];
+  noteTypeSelect.replaceChildren(...PRESETS, ...names.map(name => el('option', { value: CUSTOM + name, textContent: name })));
+  if (noteType.kind === 'custom' && models?.includes(noteType.model)) await syncFields(noteType.model, noteType.fields);
   showNoteType();
 }
 
@@ -216,9 +224,11 @@ async function syncFields(model: string, fields: Record<string, string>): Promis
 }
 
 noteTypeSelect.onchange = async () => {
-  const model = noteTypeSelect.value;
+  const { value } = noteTypeSelect;
+  const model = value.startsWith(CUSTOM) ? value.slice(CUSTOM.length) : null;
   try {
-    const next: NoteType = model ? { kind: 'custom', model, fields: suggestFields(await call({ type: 'ankiModelFields', model })) } : BUILTIN;
+    const next: NoteType = model === null ? (value === 'builtin' ? BUILTIN : LAPIS)
+      : { kind: 'custom', model, fields: suggestFields(await call({ type: 'ankiModelFields', model })) };
     await setNoteType(next);
     noteType = next;
     showStatus(noteTypeStatus, 'Saved', 'ok');
@@ -226,6 +236,21 @@ noteTypeSelect.onchange = async () => {
     showStatus(noteTypeStatus, messageOf(error), 'error');
   }
   showNoteType();
+};
+
+const lapisButton = byId('lapis-install-button', HTMLButtonElement);
+lapisButton.onclick = async () => {
+  lapisButton.disabled = true;
+  showStatus(noteTypeStatus, 'Installing Lapis…');
+  try {
+    const result = await call({ type: 'ankiInstallLapis' });
+    await showModels();
+    showStatus(noteTypeStatus, result, 'ok');
+  } catch (error) {
+    showStatus(noteTypeStatus, messageOf(error), 'error');
+  } finally {
+    lapisButton.disabled = false;
+  }
 };
 
 const ankiCheck = byId('anki-check', HTMLButtonElement);

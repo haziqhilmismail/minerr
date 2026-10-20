@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
+import { BUILTIN, type NoteType } from '../src/anki.ts';
 import type { MetaRow } from '../src/meta.ts';
 import { at } from '../src/parse.ts';
 import type { TagRow, TermRow } from '../src/yomitan.ts';
@@ -26,13 +27,16 @@ export const listen = (server: Server, port: number) => new Promise<number>(reso
   resolve(typeof address === 'object' && address !== null ? address.port : port);
 }));
 
-export async function launch(profileDir: string) {
+// The tests of the classic note type select it, as a user can; the mock AnkiConnect servers have no Lapis note type.
+// A null noteType keeps the default of a fresh profile.
+export async function launch(profileDir: string, noteType: NoteType | null = BUILTIN) {
   const context = await chromium.launchPersistentContext(profileDir, {
     channel: 'chromium',
     headless: true,
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
   });
   const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+  if (noteType) await worker.evaluate(value => chrome.storage.local.set({ noteType: value }), noteType);
   return { context, worker, extensionId: new URL(worker.url()).host };
 }
 

@@ -285,15 +285,16 @@ test('hoverDelay opens on Shift at once, waits for the mouse to stop on plain ho
 
 test('renderField fills each marker in one pass and escapes the plain text values one time', async () => {
   const { markerValues, renderField } = await import('../src/anki.ts');
-  const card = { word: '食べる', reading: 'たべる', sentence: '猫が魚を<b>食べなかった</b>。', definition: '<ol><li>to eat</li></ol>' };
-  const values = markerValues(card, { url: 'https://example.com/?a=1&b=2', title: 'Tom & Jerry <3 {word}' }, '<img src="minerr-1.jpg">');
+  const card = { word: '食べる', reading: 'たべる', sentence: '猫が魚を<b>食べなかった</b>。', definition: '<ol><li>to eat</li></ol>', entry: null, selection: '' };
+  const media = { image: '<img src="minerr-1.jpg">', audio: '' };
+  const values = markerValues(card, { url: 'https://example.com/?a=1&b=2', title: 'Tom & Jerry <3 {word}' }, media);
   assert.equal(renderField('<div>{word}</div> {furigana} [{reading}]', values), '<div>食べる</div> 食べる[たべる] [たべる]');
   assert.equal(renderField('{sentence}{definition}{image}', values), '猫が魚を<b>食べなかった</b>。<ol><li>to eat</li></ol><img src="minerr-1.jpg">');
   assert.equal(renderField('<a href="{url}">{title}</a>', values), '<a href="https://example.com/?a=1&amp;b=2">Tom &amp; Jerry &lt;3 {word}</a>');
   assert.equal(renderField('&amp; {Word} {nope} {}', values), '&amp; {Word} {nope} {}');
   assert.equal(renderField('', values), '');
-  assert.equal(markerValues({ ...card, word: 'ねこ', reading: 'ねこ' }, { url: '', title: '' }, '').furigana, 'ねこ');
-  assert.equal(markerValues({ ...card, reading: '' }, { url: '', title: '' }, '').furigana, '食べる');
+  assert.equal(markerValues({ ...card, word: 'ねこ', reading: 'ねこ' }, { url: '', title: '' }, media).furigana, 'ねこ');
+  assert.equal(markerValues({ ...card, reading: '' }, { url: '', title: '' }, media).furigana, '食べる');
 });
 
 test('unknownMarkers lists each marker that is not known, one time, as written', async () => {
@@ -312,12 +313,12 @@ test('suggestFields maps known field names to one marker and leaves the others e
   });
 });
 
-test('parseNoteType reads a stored note type and falls back to the built-in one', async () => {
+test('parseNoteType reads a stored note type and falls back to Lapis', async () => {
   const { parseNoteType, wordField } = await import('../src/anki.ts');
   const custom = { kind: 'custom', model: 'Mining', fields: { Front: '{sentence}', Back: '{word} {definition}' } };
   assert.deepEqual(parseNoteType(custom), custom);
   for (const bad of [undefined, null, 'custom', { kind: 'custom', model: 'Mining' }, { ...custom, fields: { Front: 1 } }, { ...custom, fields: [] }]) {
-    assert.deepEqual(parseNoteType(bad), { kind: 'builtin' });
+    assert.deepEqual(parseNoteType(bad), { kind: 'lapis' });
   }
   assert.equal(wordField(parseNoteType(custom)), 'Back');
   assert.equal(wordField({ kind: 'custom', model: 'Mining', fields: { Front: '{sentence}' } }), 'Word');

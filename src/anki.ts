@@ -1,3 +1,9 @@
+import { toHiragana } from './group.ts';
+import {
+  furiganaPlain, harmonicRank, LAPIS_MODEL, LAPIS_PACKAGE_URL, LAPIS_SAMPLE_EXPRESSION, type LapisField, pitchCategories,
+  pitchPositions,
+} from './lapis.ts';
+import type { Entry } from './meta.ts';
 import { at, isList, isRecordOf, isString, isStringList } from './parse.ts';
 import { TAG_CSS, tagClass } from './tags.ts';
 import type { Group, Tag } from './yomitan.ts';
@@ -11,12 +17,15 @@ export const DEFAULT_KNOWN_QUERY = `deck:"${DEFAULT_DECK}" prop:ivl>=21`;
 export const DEFAULT_KNOWN_FIELD = 'Word';
 
 // The word of a new note and its HTML: sentence has the word in <b>, definition is from definitionHtml.
-// audio is the audio of the subtitle line of the word; the service worker adds it for a word in video subtitles.
+// entry is the first dictionary entry of the word, null if no dictionary has it. selection is the selected text of Alt+S, else ''.
+// The service worker adds audio, the audio of the subtitle line for a word in video subtitles.
 export interface CardFields {
   word: string;
   reading: string;
   sentence: string;
   definition: string;
+  entry: Entry | null;
+  selection: string;
   audio?: MediaFile;
 }
 
@@ -31,17 +40,21 @@ export interface PageInfo {
   title: string;
 }
 
-// The note type of new notes. builtin is the Minerr note type, which Minerr makes and keeps up to date.
+// The note type of new notes. lapis is the Lapis note type of the user, with a fixed field map; Minerr never changes it.
+// builtin is the classic Minerr note type, which Minerr makes and keeps up to date.
 // custom is a note type of the user: fields maps each of its fields to a template with markers. Minerr never changes it.
-export type NoteType = { kind: 'builtin' } | { kind: 'custom'; model: string; fields: Record<string, string> };
+export type NoteType = { kind: 'lapis' } | { kind: 'builtin' } | { kind: 'custom'; model: string; fields: Record<string, string> };
 
+export const LAPIS: NoteType = { kind: 'lapis' };
 export const BUILTIN: NoteType = { kind: 'builtin' };
 
+// Lapis is the default for a user who never selected a note type.
 export function parseNoteType(value: unknown): NoteType {
+  const kind = at(value, 'kind');
   const model = at(value, 'model');
   const fields = at(value, 'fields');
-  return at(value, 'kind') === 'custom' && isString(model) && isRecordOf(fields, isString)
-    ? { kind: 'custom', model, fields } : BUILTIN;
+  if (kind === 'custom' && isString(model) && isRecordOf(fields, isString)) return { kind: 'custom', model, fields };
+  return kind === 'builtin' ? BUILTIN : LAPIS;
 }
 
 export const getNoteType = async (): Promise<NoteType> => parseNoteType((await chrome.storage.local.get('noteType')).noteType);
@@ -63,8 +76,10 @@ export const unknownMarkers = (template: string): string[] =>
 export const renderField = (template: string, values: MarkerValues): string =>
   template.replace(MARKER, (text, name: string) => (isMarker(name) ? values[name] : text));
 
-// image is the HTML of the screenshot, or '' if no field uses {image}; audio is the [sound:...] tag of the line audio, or ''.
-export function markerValues(card: CardFields, page: PageInfo, image: string, audio = ''): MarkerValues {
+// The HTML of the media of a note: the <img> of the screenshot, and the [sound:...] tag of the line audio. '' for none.
+export type MediaHtml = Record<'image' | 'audio', string>;
+
+export function markerValues(card: CardFields, page: PageInfo, media: MediaHtml): MarkerValues {
   const word = escapeHtml(card.word);
   const reading = escapeHtml(card.reading);
   return {
@@ -73,10 +88,49 @@ export function markerValues(card: CardFields, page: PageInfo, image: string, au
     furigana: reading && reading !== word ? `${word}[${reading}]` : word,
     sentence: card.sentence,
     definition: card.definition,
-    image,
-    audio,
+    ...media,
     url: escapeHtml(page.url),
     title: escapeHtml(page.title),
+  };
+}
+
+// The senses of the first dictionary of the entry.
+function mainDefinition(entry: Entry | null): string {
+  const dict = entry?.senses[0]?.dict;
+  return entry ? definitionHtml({ ...entry, senses: entry.senses.filter(sense => sense.dict === dict) }) : '';
+}
+
+// Yomitan {frequencies}.
+const frequencyList = (entry: Entry | null) => (entry?.frequencies.length
+  ? `<ul style="text-align: left;">${entry.frequencies.map(({ dict, display }) => `<li>${escapeHtml(dict)}: ${escapeHtml(display)}</li>`).join('')}</ul>` : '');
+
+// The fields of a Lapis note, with the values of the Yomitan setup of the Lapis README. Lapis wants SentenceFurigana empty.
+export function lapisFields(card: CardFields, page: PageInfo, media: MediaHtml): Record<LapisField, string> {
+  const values = markerValues(card, page, media);
+  const { entry } = card;
+  return {
+    Expression: values.word,
+    ExpressionFurigana: escapeHtml(furiganaPlain(card.word, card.reading)),
+    ExpressionReading: escapeHtml(toHiragana(card.reading)),
+    ExpressionAudio: '',
+    SelectionText: escapeHtml(card.selection),
+    MainDefinition: mainDefinition(entry),
+    DefinitionPicture: '',
+    Sentence: values.sentence,
+    SentenceFurigana: '',
+    SentenceAudio: values.audio,
+    Picture: values.image,
+    Glossary: values.definition,
+    Hint: '',
+    IsWordAndSentenceCard: '',
+    IsClickCard: '',
+    IsSentenceCard: '',
+    IsAudioCard: '',
+    PitchPosition: entry ? pitchPositions(entry.pitches) : '',
+    PitchCategories: entry ? pitchCategories(entry) : '',
+    Frequency: frequencyList(entry),
+    FreqSort: String(harmonicRank(entry?.frequencies ?? []) ?? 9999999),
+    MiscInfo: `${values.title}<br><a href="${values.url}">${values.url}</a>`,
   };
 }
 
@@ -104,6 +158,7 @@ export function suggestFields(names: string[]): Record<string, string> {
 
 // The field that holds the word in dictionary form, for the import of known words.
 export function wordField(noteType: NoteType): string {
+  if (noteType.kind === 'lapis') return 'Expression';
   if (noteType.kind === 'builtin') return DEFAULT_KNOWN_FIELD;
   const [name] = Object.entries(noteType.fields).find(([, template]) => template.includes('{word}')) ?? [DEFAULT_KNOWN_FIELD];
   return name;
@@ -246,46 +301,80 @@ async function store(file: MediaFile): Promise<string> {
   return stored;
 }
 
-const soundTag = async (audio: MediaFile | undefined) => (audio ? `[sound:${await store(audio)}]` : '');
-
-async function builtinNote(card: CardFields, picture: MediaFile) {
-  modelReady ??= ensureModel().catch(error => { modelReady = null; throw error; });
-  await modelReady;
-  const SentenceAudio = await soundTag(card.audio);
-  return {
-    modelName: MODEL,
-    fields: { Word: card.word, Reading: card.reading, Sentence: card.sentence, Definition: card.definition, Image: '', SentenceAudio },
-    picture: [{ ...picture, fields: ['Image'] }],
-  };
+// A note before it goes to Anki. The fields name each file of media by its filename.
+export interface NoteDraft {
+  modelName: string;
+  fields: Record<string, string>;
+  media: MediaFile[];
 }
 
-// A file goes to the media folder only if a field uses its marker: {image} becomes an <img>, {audio} a [sound:...] tag.
-async function customNote({ model, fields }: Extract<NoteType, { kind: 'custom' }>, card: CardFields, page: PageInfo, picture: MediaFile) {
-  const templates = Object.entries(fields);
-  const uses = (marker: Marker) => templates.some(([, template]) => template.includes(`{${marker}}`));
-  const image = uses('image') ? `<img src="${escapeHtml(await store(picture))}">` : '';
-  const sound = uses('audio') ? await soundTag(card.audio) : '';
-  const values = markerValues(card, page, image, sound);
-  return { modelName: model, fields: Object.fromEntries(templates.map(([name, template]) => [name, renderField(template, values)])) };
-}
+const soundTag = (file: MediaFile | undefined) => (file ? `[sound:${file.filename}]` : '');
 
-export interface NewNote {
-  deck: string;
-  noteType: NoteType;
-  card: CardFields;
-  page: PageInfo;
-  // From captureVisibleTab.
-  jpegDataUrl: string;
-}
-
-// Returns the ID of the new note.
-export async function addNote({ deck, noteType, card, page, jpegDataUrl }: NewNote): Promise<number> {
-  await invoke('createDeck', { deck });
+// The note of a card for the note type. jpegDataUrl is the screenshot, from captureVisibleTab.
+export function noteDraft(noteType: NoteType, card: CardFields, page: PageInfo, jpegDataUrl: string): NoteDraft {
   const picture = { data: jpegDataUrl.split(',')[1] ?? '', filename: `minerr-${Date.now()}.jpg` };
-  const note = noteType.kind === 'builtin' ? await builtinNote(card, picture) : await customNote(noteType, card, page, picture);
-  const noteId = await invoke('addNote', { note: { deckName: deck, ...note, tags: ['minerr'] } });
+  const media = [picture, ...(card.audio ? [card.audio] : [])];
+  const html: MediaHtml = { image: `<img src="${escapeHtml(picture.filename)}">`, audio: soundTag(card.audio) };
+  switch (noteType.kind) {
+    case 'lapis':
+      return { modelName: LAPIS_MODEL, fields: lapisFields(card, page, html), media };
+    case 'builtin':
+      return {
+        modelName: MODEL, media,
+        fields: { Word: card.word, Reading: card.reading, Sentence: card.sentence, Definition: card.definition, Image: html.image, SentenceAudio: html.audio },
+      };
+    case 'custom': {
+      const values = markerValues(card, page, html);
+      return { modelName: noteType.model, fields: Object.fromEntries(Object.entries(noteType.fields).map(([name, template]) => [name, renderField(template, values)])), media };
+    }
+  }
+}
+
+export const LAPIS_MISSING = 'Anki has no Lapis note type. Install Lapis in Options, or select another note type.';
+
+// Adds the note and returns its ID. Only the files that a field still names go to the media folder of Anki.
+export async function addDraft(deck: string, { modelName, fields, media }: NoteDraft): Promise<number> {
+  await invoke('createDeck', { deck });
+  if (modelName === MODEL) {
+    modelReady ??= ensureModel().catch(error => { modelReady = null; throw error; });
+    await modelReady;
+  } else if (modelName === LAPIS_MODEL && !(await modelNames()).includes(LAPIS_MODEL)) {
+    throw new Error(LAPIS_MISSING);
+  }
+  let stored = fields;
+  for (const file of media.filter(file => Object.values(fields).some(value => value.includes(file.filename)))) {
+    const name = await store(file);
+    stored = Object.fromEntries(Object.entries(stored).map(([field, value]) => [field, value.replaceAll(file.filename, name)]));
+  }
+  const noteId = await invoke('addNote', { note: { deckName: deck, modelName, fields: stored, tags: ['minerr'] } });
   if (typeof noteId !== 'number') unexpected('addNote');
   return noteId;
+}
+
+const LAPIS_PACKAGE = '_minerr_lapis.apkg';
+
+// Imports Lapis.apkg from the Lapis project, if Anki has no Lapis note type. AnkiConnect downloads the file to the media folder,
+// and importPackage reads a path relative to that folder. The package also makes a "Lapis" deck with one sample note:
+// Minerr deletes that deck only if it holds the sample note and nothing else.
+export async function installLapis(): Promise<string> {
+  if ((await modelNames()).includes(LAPIS_MODEL)) return 'Lapis is already in Anki.';
+  const filename = await invoke('storeMediaFile', { filename: LAPIS_PACKAGE, url: LAPIS_PACKAGE_URL });
+  if (!isString(filename)) unexpected('storeMediaFile');
+  try {
+    if (await invoke('importPackage', { path: filename }) !== true) throw new Error('Anki did not import Lapis.apkg.');
+  } finally {
+    await invoke('deleteMediaFile', { filename });
+  }
+  const decks = await invoke('deckNames');
+  if (!isStringList(decks)) unexpected('deckNames');
+  if (!decks.includes(LAPIS_MODEL)) return 'Installed Lapis.';
+  const notes = await invoke('notesInfo', { notes: await invoke('findNotes', { query: `deck:"${LAPIS_MODEL}"` }) });
+  if (!isList(notes)) unexpected('notesInfo');
+  const onlySample = notes.length > 0
+    && notes.every(note => at(note, 'modelName') === LAPIS_MODEL && at(note, 'fields', 'Expression', 'value') === LAPIS_SAMPLE_EXPRESSION);
+  if (!onlySample) return 'Installed Lapis. The "Lapis" deck has other notes, so Minerr kept it.';
+  await invoke('deleteDecks', { decks: [LAPIS_MODEL], cardsToo: true });
+  return 'Installed Lapis.';
 }
 
 export async function version(): Promise<number> {

@@ -236,13 +236,15 @@ try {
   await popup.locator('.message').filter({ hasText: /./ }).waitFor();
   assert.equal(await popup.locator('.message').innerText(), 'Added to Anki.');
   const note = at(ankiRequests.find(r => at(r, 'action') === 'addNote'), 'params', 'note');
-  const picture = at(note, 'picture', 0, 'data');
+  const storedFile = (extension: string) => at(ankiRequests.find(r => at(r, 'action') === 'storeMediaFile'
+    && String(at(r, 'params', 'filename')).endsWith(extension)), 'params');
+  const picture = at(storedFile('.jpg'), 'data');
   assert.ok(typeof picture === 'string', 'picture data is a string');
   writeFileSync(join(out, 'player-card.jpg'), Buffer.from(picture, 'base64'));
   console.log('player card sentence:', at(note, 'fields', 'Sentence'), 'picture:', `${picture.length} base64 chars, saved to`, join(out, 'player-card.jpg'));
   assert.equal(at(note, 'fields', 'Sentence'), '猫が<b>魚</b>を食べた');
   assert.ok(picture.startsWith('/9j/'), 'picture is base64 JPEG');
-  const recorded = at(ankiRequests.find(r => at(r, 'action') === 'storeMediaFile'), 'params');
+  const recorded = storedFile('.webm');
   console.log('player card audio without the server:', at(recorded, 'filename'), String(at(recorded, 'data')).length, 'base64 chars');
   assert.match(String(at(recorded, 'filename')), /^minerr-\d+\.webm$/);
   assert.ok(String(at(recorded, 'data')).startsWith('GkXf'), 'the recorded line audio is a WebM file');

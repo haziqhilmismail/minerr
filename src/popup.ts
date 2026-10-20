@@ -144,6 +144,8 @@ async function addCard(): Promise<void> {
     reading: view.groups[0]?.reading ?? '',
     sentence: sentenceHtml(view.anchor),
     definition: definitionHtml(view.groups[0]),
+    entry: view.groups[0] ?? null,
+    selection: view.anchor.kind === 'text' ? view.anchor.range.toString().trim() : '',
   };
   button.disabled = true;
   button.replaceChildren('Adding to Anki…');

@@ -43,6 +43,7 @@ const ankiReplies: Record<string, (params: unknown) => unknown> = {
   createDeck: () => 1,
   modelNames: () => [],
   createModel: () => ({}),
+  storeMediaFile: params => at(params, 'filename'),
   addNote: params => ankiNotes.push(at(params, 'note')),
 };
 const anki = createServer((req, res) => {
