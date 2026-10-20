@@ -159,7 +159,7 @@ for (const button of sourceButtons) {
 const plusOne = byId('iplusone', HTMLInputElement);
 plusOne.checked = await iPlusOne.get();
 plusOne.addEventListener('change', () => iPlusOne.set(plusOne.checked));
-const PAGES = { player: 'player.html', words: 'words.html' };
+const PAGES = { player: 'player.html', reader: 'reader.html', paste: 'reader.html?paste', words: 'words.html' };
 for (const [id, page] of Object.entries(PAGES)) {
   byId(id, HTMLButtonElement).addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL(page) }));
 }

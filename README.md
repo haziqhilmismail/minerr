@@ -29,6 +29,9 @@ The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedi
 - It can mark the words of your mature Anki cards as known.
 - On YouTube, it shows the subtitles in its own large overlay at the bottom center of the video. You can look up and mine the words in the overlay.
 - It can make Japanese subtitles for a YouTube video with WhisperX, in a small server on your computer.
+- It shows a comprehension score for each page or video, and the recommended i+1 sentences.
+- It has a word browser to find, sort, and change word statuses, and to add a list of known words.
+- It has a reader for `.epub`, `.txt`, `.srt`, and `.vtt` files, with vertical text, and a page for pasted text.
 
 All data stays on your computer. The extension sends requests only to AnkiConnect at `http://127.0.0.1:8765` and to the optional WhisperX server at `http://127.0.0.1:8766`.
 
@@ -286,6 +289,59 @@ Keep the player tab open while the server works. If you close the tab, open the 
 
 Click **Save subtitles** to download the WhisperX subtitles as an `.srt` file. The file gets the name of the video, for example `lesson.srt` for `lesson.mp4`. Keep the `.srt` file in the same folder as the video. Next time, open the video and the `.srt` file together. Then you do not need the server. Most video players also show an `.srt` file that has the name of the video.
 
+## Read a file
+
+The Minerr reader shows the text of a book or a subtitle file. The words get underlines, and the popup, the keys, and the i+1 highlight work as on a web page.
+
+1. Click the Minerr button in the Chrome toolbar.
+2. Click **Read a file**. The reader opens in a new tab.
+3. Drop a file on the page, or click **Choose a file**.
+
+The reader reads these files:
+
+| File | Content |
+| --- | --- |
+| `.epub` | Each chapter of the book. The **Chapter** list shows the first heading of each chapter. |
+| `.txt` | Each line with text is a paragraph. A long file is cut into parts of about 10,000 characters. |
+| `.srt`, `.vtt` | Each subtitle is a paragraph. The reader does not show the times. |
+
+The reader keeps only the text of an EPUB file. It keeps the paragraphs, the headings, and the furigana (ruby). It removes the scripts, the styles, the links, and the images. The furigana is not page text, so a card sentence does not contain it.
+
+Use these keys to turn the pages:
+
+| Key | Action |
+| --- | --- |
+| `PageDown`, `Space`, `↓` | Go to the next page. At the end of a chapter, open the next chapter. |
+| `PageUp`, `Shift+Space`, `↑` | Go to the previous page. At the start of a chapter, open the end of the chapter before. |
+| `→` | Go to the next page. In vertical text, go to the previous page. |
+| `←` | Go to the previous page. In vertical text, go to the next page. |
+
+The keys do not work when the focus is in a text field or a list.
+
+To show vertical text, click **Vertical text**. The lines go from top to bottom, and from right to left. The mouse wheel also turns the lines. Click **Vertical text** again to show horizontal text. Minerr keeps this setting for all files.
+
+Minerr keeps the place where you stop in each file. When you open the same file again, the reader shows the same chapter and the same place. Minerr knows a file by its name and its size.
+
+## Paste text
+
+You can read text that you copy, for example from a game or a different program.
+
+1. Click the Minerr button in the Chrome toolbar.
+2. Click **Paste text**.
+3. Copy Japanese text, then press `Ctrl+V` on the page.
+
+Each paste adds the text at the bottom of the page. To remove all the texts, click **Clear**.
+
+### Auto-paste
+
+With **Auto-paste**, the page adds the text from the clipboard each time the page gets the focus. You do not press `Ctrl+V`.
+
+1. Select **Auto-paste**.
+2. Chrome asks for the permission to read the clipboard. Click **Allow**.
+3. Copy text in a different program, then click the Minerr page.
+
+If the clipboard has the same text as the last paste, the page adds nothing. Minerr asks for the clipboard permission only when you select **Auto-paste**, so the installation of Minerr asks for no clipboard permission.
+
 ## The note type
 
 You do not make the note type yourself. When you add the first card, Minerr makes the deck and the note type in Anki through AnkiConnect. The default deck is `Minerr`. You can change the deck on the options page. Minerr adds the tag `minerr` to each note.
@@ -470,6 +526,9 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/score.ts` | Pure functions for the score, its label, and the text of the i+1 sentences. |
 | `words.html`, `words.ts` | The word browser page. |
 | `src/wordlist.ts` | Pure functions for the search, the filter, and the sort of the word browser, and for the pasted words. |
+| `reader.html`, `reader.ts` | The reader page for files and pasted text. It loads `src/page.ts`, `src/popup.ts`, `src/iplusone.ts`, and `src/stats.ts` itself. |
+| `src/epub.ts` | The EPUB reader. It makes new DOM nodes from an allowlist of tags, with no attributes from the file. |
+| `src/book.ts` | Pure functions of the reader: the text parts, the page keys, the page turn, and the saved place. |
 
 Node.js runs the `.ts` test files directly, without a build. To run the tests:
 
@@ -500,7 +559,7 @@ The WhisperX server has two endpoints for the player:
 
 `node test/media.ts` tests the i+1 highlight and the player, with a mock AnkiConnect and a mock WhisperX server. It uses port 8765 and port 8766. `npm test` runs it after `node test/subtitles.ts`.
 
-`node test/pages-unit.ts` tests the pure functions of the comprehension score and the word browser. `node test/pages.ts` tests the comprehension score in the toolbar popup and the word browser in Chromium. `npm test` runs both after `node test/media.ts`.
+`node test/pages-unit.ts` tests the pure functions of the comprehension score, the word browser, and the reader. `node test/pages.ts` tests the comprehension score in the toolbar popup, the word browser, and the reader in Chromium. `npm test` runs both after `node test/media.ts`.
 
 ## Third-party data
 
