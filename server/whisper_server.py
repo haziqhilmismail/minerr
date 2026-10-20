@@ -29,18 +29,25 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import urllib.request
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit, urlunsplit
 
 PORT = 8766
 CACHE = Path.home() / '.cache' / 'minerr' / 'subs'
 # Uploads go to disk next to the cache, not to /tmp, which is in memory on some systems.
 UPLOADS = Path.home() / '.cache' / 'minerr' / 'uploads'
+# The audio of each video and uploaded file, for sentence audio. A video's audio downloads once.
+AUDIO = Path.home() / '.cache' / 'minerr' / 'audio'
 CHUNK = 1 << 20
 VIDEO_ID = re.compile(r'[A-Za-z0-9_-]{11}')
 SHA256 = re.compile(r'[0-9a-f]{64}')
+LANG = re.compile(r'[a-z]{2,3}')
+# The subtitle formats that the extension reads, best first.
+CAPTION_EXTS = ('json3', 'vtt', 'srt')
+MAX_CLIP = 60
 # Whisper ends a Japanese sentence with 。！？ or, when it omits the punctuation, with a space.
 SENTENCE = re.compile(r'.+?(?:[。！？!?]+[」』）)]*|\s+|$)', re.S)
 MAX_CHARS = 40
@@ -62,6 +69,24 @@ def video_id(url):
     if not VIDEO_ID.fullmatch(found):
         raise ValueError('The URL has no YouTube video id.')
     return found
+
+
+def media_key(url):
+    """The cache key of a video page: the YouTube video id, or the SHA-256 of any other http(s) URL without its fragment."""
+    parts = urlsplit(url)
+    if parts.scheme not in ('http', 'https') or not parts.hostname:
+        raise ValueError('Use an http or https URL.')
+    try:
+        return video_id(url)
+    except ValueError as error:
+        if 'no YouTube video id' in str(error):
+            raise
+    return hashlib.sha256(urlunsplit(parts._replace(fragment='')).encode()).hexdigest()
+
+
+def page_url(key, url):
+    """The URL that yt-dlp opens: the plain watch URL for a YouTube video id."""
+    return f'https://www.youtube.com/watch?v={key}' if VIDEO_ID.fullmatch(key) else url
 
 
 def split_segment(segment, max_chars=MAX_CHARS):
@@ -122,12 +147,87 @@ class Transcriber:
         return subtitle_segments(result['segments'])
 
 
-def download_audio(vid, folder):
-    yt_dlp = shutil.which('yt-dlp') or str(Path.home() / '.local' / 'bin' / 'yt-dlp')
-    subprocess.run([yt_dlp, '--quiet', '--no-warnings', '--no-playlist', '--js-runtimes', 'node', '-f', 'bestaudio',
-                    '-o', str(Path(folder) / 'audio.%(ext)s'), '--', f'https://www.youtube.com/watch?v={vid}'],
-                   check=True, capture_output=True, text=True, timeout=1800)
-    return next(Path(folder).glob('audio.*'))
+def yt_dlp(*args, timeout):
+    command = shutil.which('yt-dlp') or str(Path.home() / '.local' / 'bin' / 'yt-dlp')
+    return subprocess.run([command, '--quiet', '--no-warnings', '--no-playlist', '--js-runtimes', 'node', *args],
+                          check=True, capture_output=True, text=True, timeout=timeout).stdout
+
+
+def cached_audio(key):
+    return next((path for path in AUDIO.glob(f'{key}.*') if path.suffix != '.part'), None) if AUDIO.is_dir() else None
+
+
+def download_audio(url, key):
+    """The audio file of the video at url, from AUDIO, downloaded first if it is not there."""
+    found = cached_audio(key)
+    if found:
+        return found
+    AUDIO.mkdir(parents=True, exist_ok=True)
+    yt_dlp('-f', 'bestaudio/best', '-o', str(AUDIO / f'{key}.%(ext)s'), '--', page_url(key, url), timeout=1800)
+    found = cached_audio(key)
+    if not found:
+        raise RuntimeError('yt-dlp wrote no audio file.')
+    return found
+
+
+def keep_audio(path, key):
+    """Copies the audio stream of an uploaded file to AUDIO, so the file can go."""
+    AUDIO.mkdir(parents=True, exist_ok=True)
+    subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-y', '-i', str(path), '-vn', '-c:a', 'copy', str(AUDIO / f'{key}.mka')],
+                   check=True, capture_output=True, timeout=600)
+
+
+def clip(source, start, end):
+    """MP3 bytes of the audio of source from start to end, in seconds."""
+    result = subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-ss', f'{start:.3f}', '-t', f'{end - start:.3f}', '-i', str(source),
+                             '-vn', '-ac', '1', '-c:a', 'libmp3lame', '-q:a', '4', '-f', 'mp3', 'pipe:1'],
+                            check=True, capture_output=True, timeout=120)
+    return result.stdout
+
+
+def pick_track(info, lang):
+    """The URL and format of the best subtitle track in lang: a track of the uploader first, then the automatic
+    track in the language of the video, then any automatic one (YouTube translates it)."""
+    def best(tracks):
+        usable = [t for t in tracks or [] if t.get('ext') in CAPTION_EXTS and t.get('url')]
+        return min(usable, key=lambda t: CAPTION_EXTS.index(t['ext']), default=None)
+    own = info.get('subtitles') or {}
+    auto = info.get('automatic_captions') or {}
+    names = sorted((name for name in own if name == lang or name.startswith(f'{lang}-')), key=len)
+    for tracks in [*(own[name] for name in names), auto.get(f'{lang}-orig'), auto.get(lang)]:
+        track = best(tracks)
+        if track:
+            return track['url'], track['ext']
+    return None
+
+
+def fetch_captions(url, key, lang):
+    """The subtitles of the video in lang, as {'ext', 'text'}, or None if it has none."""
+    info = json.loads(yt_dlp('-J', '--', page_url(key, url), timeout=300))
+    track = pick_track(info, lang)
+    if not track:
+        return None
+    with urllib.request.urlopen(track[0], timeout=60) as response:
+        return {'ext': track[1], 'text': response.read().decode('utf-8', 'replace')}
+
+
+def write_json(path, value):
+    """Writes value to path in one step, so a reader never sees half a file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.with_suffix('.tmp').write_text(json.dumps(value, ensure_ascii=False), encoding='utf-8')
+    os.replace(path.with_suffix('.tmp'), path)
+
+
+def read_json(path):
+    return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else None
+
+
+def failure(error):
+    """The text of an error for the extension. A yt-dlp error ends with its own message."""
+    if isinstance(error, subprocess.CalledProcessError):
+        stderr = error.stderr.decode('utf-8', 'replace') if isinstance(error.stderr, bytes) else error.stderr or ''
+        return f'{Path(str(error.cmd[0])).name} failed: {stderr.strip()[-300:]}'
+    return f'{type(error).__name__}: {error}'
 
 
 class Jobs:
@@ -140,16 +240,16 @@ class Jobs:
         self.queue = queue.Queue()
         threading.Thread(target=self.work, daemon=True).start()
 
-    # key is a YouTube video id, or the SHA-256 of an uploaded file.
+    # key is a YouTube video id, the SHA-256 of another video URL, or the SHA-256 of an uploaded file.
     def cache_path(self, key):
         return CACHE / f'{key}.{self.transcribe.name}.json'
 
     def cached(self, key):
-        path = self.cache_path(key)
-        return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else None
+        return read_json(self.cache_path(key))
 
-    def start(self, key, upload=None):
-        """Queues a job for key, or returns the running job for key. The job owns upload, a file that it deletes when it ends."""
+    def start(self, key, upload=None, url=None):
+        """Queues a job for key, or returns the running job for key. The job owns upload, a file that it deletes when it ends.
+        A job without upload downloads the audio of url."""
         with self.lock:
             for job_id, job in self.jobs.items():
                 if job['key'] == key and job['state'] not in ('done', 'error'):
@@ -157,7 +257,7 @@ class Jobs:
                         upload.unlink(missing_ok=True)
                     return job_id
             job_id = uuid.uuid4().hex
-            self.jobs[job_id] = {'key': key, 'upload': upload, 'state': 'queued'}
+            self.jobs[job_id] = {'key': key, 'upload': upload, 'url': url, 'state': 'queued'}
         self.queue.put(job_id)
         return job_id
 
@@ -165,44 +265,49 @@ class Jobs:
         """The public fields of the job, or None."""
         with self.lock:
             job = self.jobs.get(job_id)
-            return {k: v for k, v in job.items() if k not in ('key', 'upload')} if job else None
+            return {k: v for k, v in job.items() if k not in ('key', 'upload', 'url')} if job else None
 
     def update(self, job_id, **fields):
         with self.lock:
             self.jobs[job_id].update(fields)
 
-    def subtitles(self, job_id, key, upload):
+    def subtitles(self, job_id, key, upload, url):
         def on_progress(percent):
             self.update(job_id, progress=percent)
-        if upload:
-            self.update(job_id, state='transcribing', progress=0)
-            return self.transcribe(upload, on_progress)
-        with tempfile.TemporaryDirectory(prefix='minerr-audio-') as folder:
+        if not upload:
             self.update(job_id, state='downloading')
-            audio = download_audio(key, folder)
-            self.update(job_id, state='transcribing', progress=0)
-            return self.transcribe(audio, on_progress)
+        audio = upload or download_audio(url, key)
+        self.update(job_id, state='transcribing', progress=0)
+        return self.transcribe(audio, on_progress)
 
     def work(self):
         while True:
             job_id = self.queue.get()
-            key, upload = self.jobs[job_id]['key'], self.jobs[job_id]['upload']
+            job = self.jobs[job_id]
+            key, upload, url = job['key'], job['upload'], job['url']
             try:
                 segments = self.cached(key)
                 if segments is None:
-                    segments = self.subtitles(job_id, key, upload)
-                    CACHE.mkdir(parents=True, exist_ok=True)
-                    path = self.cache_path(key)
-                    path.with_suffix('.tmp').write_text(json.dumps(segments, ensure_ascii=False), encoding='utf-8')
-                    os.replace(path.with_suffix('.tmp'), path)
-                self.update(job_id, state='done', segments=segments)
-            except subprocess.CalledProcessError as error:
-                self.update(job_id, state='error', error=f'yt-dlp failed: {(error.stderr or "").strip()[-300:]}')
+                    segments = self.subtitles(job_id, key, upload, url)
+                    write_json(self.cache_path(key), segments)
+                result = {'state': 'done', 'segments': segments}
             except Exception as error:
-                self.update(job_id, state='error', error=f'{type(error).__name__}: {error}')
-            finally:
-                if upload:
-                    upload.unlink(missing_ok=True)
+                result = {'state': 'error', 'error': failure(error)}
+            # The upload goes before the job ends, so a client that sees the end sees no upload.
+            if upload:
+                keep_upload_audio(upload, key)
+            self.update(job_id, **result)
+
+
+def keep_upload_audio(upload, key):
+    # A file that ffmpeg cannot read has no audio to keep; its subtitles are still good.
+    try:
+        if not cached_audio(key):
+            keep_audio(upload, key)
+    except Exception:
+        pass
+    finally:
+        upload.unlink(missing_ok=True)
 
 
 def handler(jobs, health, port=PORT):
@@ -242,14 +347,67 @@ def handler(jobs, health, port=PORT):
                 return
             if self.path == '/files':
                 return self.upload()
-            if self.path != '/jobs' or not self.headers.get('Content-Type', '').startswith('application/json'):
+            routes = {'/jobs': self.job, '/captions': self.captions, '/clip': self.clip}
+            route = routes.get(self.path)
+            if not route or not self.headers.get('Content-Type', '').startswith('application/json'):
                 return self.reply(404, {'error': 'Not found.'})
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
-                vid = video_id(str(body.get('url', '')))
-            except (ValueError, AttributeError) as error:
-                return self.reply(400, {'error': str(error)})
-            self.reply(200, {'id': jobs.start(vid)})
+                if not isinstance(body, dict):
+                    raise ValueError('Send a JSON object.')
+                route(body)
+            except (ValueError, TypeError) as error:
+                self.reply(400, {'error': str(error)})
+
+        def job(self, body):
+            url = str(body.get('url', ''))
+            self.reply(200, {'id': jobs.start(media_key(url), url=url)})
+
+        # POST /captions {url, lang}: the subtitles of the site in lang, as {ext, text}. yt-dlp finds them; the cache keeps them.
+        def captions(self, body):
+            url, lang = str(body.get('url', '')), str(body.get('lang', ''))
+            if not LANG.fullmatch(lang):
+                raise ValueError('Send a language code such as ja.')
+            key = media_key(url)
+            path = CACHE / f'{key}.captions.{lang}.json'
+            found = read_json(path)
+            if found is None:
+                try:
+                    found = fetch_captions(url, key, lang) or {}
+                except Exception as error:
+                    return self.reply(502, {'error': failure(error)})
+                write_json(path, found)
+            if not found:
+                return self.reply(404, {'error': f'The video has no {lang} subtitles.'})
+            self.reply(200, found)
+
+        # POST /clip {url or sha256, start, end}: an MP3 of the audio between start and end, in seconds.
+        # The audio of a URL downloads once; the audio of a file is there only after a WhisperX job for the file.
+        def clip(self, body):
+            start, end = body.get('start'), body.get('end')
+            if not all(isinstance(t, (int, float)) and not isinstance(t, bool) for t in (start, end)) or not 0 <= start < end <= start + MAX_CLIP:
+                raise ValueError(f'Send a start and an end in seconds, at most {MAX_CLIP} seconds apart.')
+            sha256 = str(body.get('sha256', ''))
+            try:
+                if sha256:
+                    if not SHA256.fullmatch(sha256):
+                        raise ValueError('The sha256 is not a SHA-256.')
+                    source = cached_audio(sha256)
+                    if not source:
+                        return self.reply(404, {'error': 'The server has no audio of this file. Generate subtitles with WhisperX first.'})
+                else:
+                    url = str(body.get('url', ''))
+                    source = download_audio(url, media_key(url))
+                data = clip(source, start, end)
+            except ValueError:
+                raise
+            except Exception as error:
+                return self.reply(502, {'error': failure(error)})
+            self.send_response(200)
+            self.send_header('Content-Type', 'audio/mpeg')
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
 
         # POST /files: the body is the media file. The job transcribes it and caches the subtitles by its SHA-256.
         def upload(self):

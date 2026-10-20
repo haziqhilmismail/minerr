@@ -7,7 +7,7 @@ import type { Health, Job } from './whisper.ts';
 import type { Group } from './yomitan.ts';
 
 // Every message type, with the fields that call() sends and the value that its handler replies with.
-// The service worker handles parse to whisperCached; it passes parse and lookup on to the offscreen document.
+// The service worker handles parse to siteCaptions; it passes parse and lookup on to the offscreen document.
 // The content scripts of a YouTube tab handle subsState, subsGenerate, and subsUse.
 interface Protocol {
   parse: { request: { texts: string[] }; reply: Segment[][] };
@@ -21,6 +21,7 @@ interface Protocol {
   whisperStart: { request: { url: string }; reply: { id: string } };
   whisperJob: { request: { id: string }; reply: Job | null };
   whisperCached: { request: { videoId: string }; reply: SubtitleSegment[] | null };
+  siteCaptions: { request: { url: string; lang: string }; reply: SubtitleSegment[] | null };
   subsState: { request: {}; reply: Snapshot };
   subsGenerate: { request: {}; reply: Snapshot };
   subsUse: { request: { source: Source }; reply: Snapshot };

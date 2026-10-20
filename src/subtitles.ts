@@ -12,7 +12,8 @@ const STYLE = `
   :root[data-minerr-off] .minerr-subs { display: none; }
 `;
 
-// 'youtube' mirrors YouTube's own captions; 'whisperx' shows the segments from the local server.
+// 'youtube' shows the YouTube subtitles: with times when the server downloaded them, else a mirror of YouTube's own captions.
+// 'whisperx' shows the WhisperX segments from the local server.
 export type Source = 'youtube' | 'whisperx';
 
 // The overlay of a tab, as the toolbar popup shows it.
@@ -30,10 +31,11 @@ interface TrackedJob {
 }
 
 // segments are the WhisperX subtitles of the video, when the server has them.
-type OverlayState = { videoId: string | null; job: TrackedJob | null }
+// youtube is the Japanese YouTube subtitles with times, when the server could download them with yt-dlp.
+type OverlayState = { videoId: string | null; job: TrackedJob | null; youtube: SubtitleSegment[] | null }
   & ({ source: 'youtube'; segments: SubtitleSegment[] | null } | { source: 'whisperx'; segments: SubtitleSegment[] });
 
-let state: OverlayState = { videoId: null, source: 'youtube', segments: null, job: null };
+let state: OverlayState = { videoId: null, source: 'youtube', segments: null, youtube: null, job: null };
 
 document.head.append(Object.assign(document.createElement('style'), { textContent: STYLE }));
 
@@ -46,21 +48,29 @@ const currentVideoId = () => (location.pathname === '/watch' ? new URLSearchPara
 attach({ video, blocked: () => player?.classList.contains('ad-showing') ?? false });
 
 function render(): void {
-  setLines(state.source === 'whisperx'
-    ? { kind: 'timed', id: `youtube:${state.videoId}`, segments: state.segments }
+  const segments = state.source === 'whisperx' ? state.segments : state.youtube;
+  setLines(segments
+    ? { kind: 'timed', id: `youtube:${state.videoId}`, segments }
     : { kind: 'mirror', text: captionText([...(player?.querySelectorAll('.caption-visual-line') ?? [])].map(l => l.textContent ?? '')) });
 }
 
 const captions = new MutationObserver(() => {
-  if (state.source === 'youtube') render();
+  if (state.source === 'youtube' && !state.youtube) render();
 });
 
-async function changeVideo(videoId: string | null): Promise<void> {
-  state = { videoId, source: 'youtube', segments: null, job: null };
+// The cached WhisperX subtitles come at once; the YouTube subtitles take some seconds, because yt-dlp asks YouTube.
+function changeVideo(videoId: string | null): void {
+  state = { videoId, source: 'youtube', segments: null, youtube: null, job: null };
   render();
   if (!videoId) return;
-  const segments = await call({ type: 'whisperCached', videoId }).catch(() => null);
-  if (segments && state.videoId === videoId) useSegments(segments);
+  call({ type: 'whisperCached', videoId }).then(segments => {
+    if (segments && state.videoId === videoId) useSegments(segments);
+  }, () => undefined);
+  call({ type: 'siteCaptions', url: `https://www.youtube.com/watch?v=${videoId}`, lang: 'ja' }).then(segments => {
+    if (!segments?.length || state.videoId !== videoId) return;
+    state.youtube = segments;
+    render();
+  }, () => undefined);
 }
 
 function useSegments(segments: SubtitleSegment[]): void {

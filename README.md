@@ -177,6 +177,18 @@ If the captions are off, the overlay shows nothing. When a caption has two lines
 
 The overlay text is page text. Minerr underlines its words, and the popup and the keys work on it. Pause the video, then move the mouse over a word. If you press `A`, the `Sentence` field gets the overlay line that contains the word.
 
+### YouTube subtitles with times
+
+The captions that Minerr copies from the YouTube player have no times. Thus the keys that go to a line, the play modes, and the sentence audio do not work with them. If the Minerr server runs, Minerr gets the Japanese subtitles of the video with times:
+
+1. Start the server, as [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx) shows.
+2. Open a YouTube video.
+3. Wait some seconds. The server downloads the subtitles with `yt-dlp`.
+
+The server uses the subtitles of the uploader first. If the video has none, it uses the automatic subtitles of YouTube. The overlay then shows the subtitles at the times of the video, also when the YouTube captions are off. If the video has no Japanese subtitles, the overlay copies the YouTube captions as before.
+
+The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.captions.ja.json`. The file of a video with no Japanese subtitles contains `{}`. To download the subtitles again, delete the file.
+
 ## Generate subtitles with WhisperX
 
 Some videos have no Japanese captions, or captions of low quality. For these videos, Minerr can make subtitles from the audio with [WhisperX](https://github.com/m-bain/whisperX). WhisperX runs in a small server on your computer.
@@ -222,6 +234,8 @@ On a Ryzen 5 7600X (6 cores), the server needs about 24 seconds for 100 seconds 
 ### Cache and privacy
 
 The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.<model>.json`. When you open a video again, Minerr shows these subtitles at once. To make the subtitles again, delete the file.
+
+The server also keeps the audio of each video in `~/.cache/minerr/audio/`, for the sentence audio of the cards. A 20-minute video needs about 20 MB. To free the disk space, delete the files in this folder.
 
 The audio stays on your computer. Only `yt-dlp` connects to YouTube, to download the audio. WhisperX downloads its models from Hugging Face the first time. The server accepts connections only from your computer.
 
@@ -467,6 +481,9 @@ The WhisperX server has two endpoints for the player:
 
 - `POST /files` takes the file as the request body, with `Content-Type: application/octet-stream` and the URL-encoded file name in `X-Filename`. It returns the job ID and the SHA-256 of the file.
 - `GET /files/<sha256>` returns the cached subtitles of a file.
+- `POST /jobs` takes `{"url": ...}` and starts a WhisperX job for the video at the URL. A URL that is not a YouTube URL gets the SHA-256 of the URL as its cache key.
+- `POST /captions` takes `{"url": ..., "lang": "ja"}`. It returns the subtitles of the site in that language as `{"ext": ..., "text": ...}`, or 404 if the video has none. `ext` is `json3`, `vtt`, or `srt`.
+- `POST /clip` takes `{"url": ..., "start": ..., "end": ...}` or `{"sha256": ..., "start": ..., "end": ...}`, with the times in seconds. It returns an MP3 of the audio between the two times. The server downloads the audio of a URL one time, to `~/.cache/minerr/audio/`. It keeps the audio of an uploaded file after the WhisperX job for the file.
 
 `node test/media.ts` tests the i+1 highlight and the player, with a mock AnkiConnect and a mock WhisperX server. It uses port 8765 and port 8766. `npm test` runs it after `node test/subtitles.ts`.
 

@@ -2,7 +2,7 @@ import { addNote, fieldValues, getDeck, getNoteType, modelFieldNames, modelNames
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
 import { getStatuses, setStatus, setStatuses } from './src/status.ts';
 import { minerrEnabled } from './src/settings.ts';
-import { cachedSegments, getJob, health, startJob } from './src/whisper.ts';
+import { cachedSegments, getJob, health, siteCaptions, startJob } from './src/whisper.ts';
 
 let creating: Promise<void> | null = null;
 
@@ -69,6 +69,7 @@ serve(
     whisperStart: ({ url }) => startJob(url),
     whisperJob: ({ id }) => getJob(id),
     whisperCached: ({ videoId }) => cachedSegments(videoId),
+    siteCaptions: ({ url, lang }) => siteCaptions(url, lang),
   },
   target => target === undefined,
 );

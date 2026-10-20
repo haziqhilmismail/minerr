@@ -49,6 +49,13 @@ const SEGMENTS = [
 ];
 const JOB_STATES = [{ state: 'queued' }, { state: 'downloading' }, { state: 'transcribing', progress: 50 },
   { state: 'transcribing', progress: 50 }, { state: 'done', segments: SEGMENTS }];
+// The json3 format of YouTube: a window event, two caption events, and an appended line break.
+const JSON3 = JSON.stringify({ events: [
+  { tStartMs: 0, dDurationMs: 9000, id: 1 },
+  { tStartMs: 0, dDurationMs: 2500, segs: [{ utf8: '猫が' }, { utf8: '魚を', tOffsetMs: 400 }, { utf8: '食べた' }] },
+  { tStartMs: 1900, dDurationMs: 600, aAppend: 1, segs: [{ utf8: '\n' }] },
+  { tStartMs: 2000, dDurationMs: 4000, segs: [{ utf8: '今日は雨' }] },
+] });
 const whisperRequests: string[] = [];
 let cached = false;
 let jobPolls = 0;
@@ -65,6 +72,7 @@ const whisper = createServer((req, res) => {
     if (req.method === 'POST' && req.url === '/jobs') return reply(200, { id: 'job1' });
     if (req.url === '/jobs/job1') return reply(200, JOB_STATES[Math.min(jobPolls++, JOB_STATES.length - 1)]);
     if (req.url === '/subs/testvideo' && cached) return reply(200, SEGMENTS);
+    if (req.method === 'POST' && req.url === '/captions' && body.includes('timedvideo') && body.includes('"ja"')) return reply(200, { ext: 'json3', text: JSON3 });
     reply(404, { error: 'Not found.' });
   });
 });
@@ -250,6 +258,17 @@ try {
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べなかった\n今日は雨');
   assert.ok(whisperRequests.includes('GET /subs/othervideo'));
   console.log('after navigation to a video with no WhisperX subtitles: YouTube captions again');
+
+  await tab.evaluate(() => {
+    history.pushState({}, '', '/watch?v=timedvideo');
+    document.dispatchEvent(new Event('yt-navigate-finish'));
+  });
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べた');
+  assert.ok(whisperRequests.includes('POST /captions {"url":"https://www.youtube.com/watch?v=timedvideo","lang":"ja"}'));
+  await tab.keyboard.press('ArrowRight');
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '今日は雨');
+  assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 2);
+  console.log('YouTube subtitles with times from the server: the overlay follows them, and ArrowRight goes to the next line');
 
   await new Promise(resolve => whisper.close(resolve));
   whisper.closeAllConnections();
