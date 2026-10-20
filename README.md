@@ -107,14 +107,14 @@ Minerr reads the page text only on the sites that you turn on:
 1. Open a page with Japanese text.
 2. Press `Alt+Shift+D`. Or click the Minerr button in the Chrome toolbar, then click the large **Page text on this site** switch.
 
-Each word of the page then gets an underline. The Minerr subtitle overlay and the pages of Minerr do not need the switch. See [Turn the page text on or off for a site](#turn-the-page-text-on-or-off-for-a-site).
+Each unknown word of the page then gets an underline. The other words get their underline when the mouse is on them. The Minerr subtitle overlay and the pages of Minerr do not need the switch. See [Turn the page text on or off for a site](#turn-the-page-text-on-or-off-for-a-site).
 
 
 | Status | Underline | Meaning |
 | --- | --- | --- |
-| Unknown | Red | The default. You do not know the word yet. |
-| Learning | Orange | You study the word now. |
-| Known | Thin green | You know the word. |
+| Unknown | Red, always. Thicker under the mouse. | The default. You do not know the word yet. |
+| Learning | Orange, under the mouse only | You study the word now. |
+| Known | Thin green, under the mouse only | You know the word. |
 | Ignored | None | You do not want to study the word, for example a name. |
 
 The words that Minerr reads have the hand cursor. Move the mouse onto a word and stop it there. The popup of the word opens after 0.3 seconds. To open the popup at once, hold `Shift` while the mouse is on a word. To change when the popup opens, see [Word popup](#word-popup). The popup does not open while text is selected or a mouse button is down.
@@ -470,7 +470,7 @@ Open the options page and go to **Video** to change these settings. They apply t
 
 - **Subtitle size.** Move the slider to make the subtitles larger or smaller. On a video, `Alt+=` and `Alt+-` change the same size.
 - **Obscure the subtitles.** The overlay blurs or hides the text while the video plays. The text shows when you move the mouse onto it or pause the video. Select **Blur** or **Hide**. Press `W` on a video to turn this on or off.
-- **Second subtitles.** A second subtitle track, for example English, shows under the Japanese line. Select **Show**, **On hover or pause**, or **Off**. Press `Shift+W` on a video to show or hide it. On YouTube, the server gets the English subtitles of the video, as it does for the Japanese subtitles. In the video player, click **Add second subtitle file**.
+- **Second subtitles.** A second subtitle track, for example English, shows under the Japanese line. Select **Show**, **On hover or pause**, or **Off**. **Off** is the default. Press `Shift+W` on a video to show or hide it. On YouTube, the server gets the English subtitles of the video, as it does for the Japanese subtitles. In the video player, click **Add second subtitle file**.
 - **Remove bracketed text.** Minerr removes text in brackets, for example （笑）, (laughs), [音楽], and 【拍手】. A line with only bracketed text does not show.
 - **Parts with no subtitles.** For a part of 1.5 seconds or more with no line, the video plays at 2× or 4× speed, or skips the part. The last 0.5 seconds before the next line play at the normal speed. This needs subtitles with times.
 

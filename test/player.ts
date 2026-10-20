@@ -150,6 +150,8 @@ try {
   await status.filter({ hasText: 'Second subtitles from clip.en.srt.' }).waitFor();
   const secondLine = player.locator('.minerr-subs-second');
   await seek(1);
+  assert.equal(await secondLine.isVisible(), false, 'the second subtitles are off by default');
+  await player.keyboard.press('Shift+W');
   await secondLine.filter({ hasText: 'The cat ate the fish.' }).waitFor();
   const stackOrder = await player.evaluate(() => {
     const [first, next] = [...document.querySelectorAll('.minerr-subs-line, .minerr-subs-second')].map(el => el.getBoundingClientRect());
@@ -169,7 +171,7 @@ try {
   await player.mouse.move(0, 0);
   await player.evaluate(() => document.querySelector('video')?.pause());
   await setStorage({ secondDisplay: 'show', pauseOnHover: true });
-  console.log('second subtitle file: shown under the line, Shift+W hides it, hover mode shows it on hover');
+  console.log('second subtitle file: off by default, Shift+W shows it under the line and hides it, hover mode shows it on hover');
 
   const playFrom = (time: number) => player.evaluate(t => {
     const video = document.querySelector('video');

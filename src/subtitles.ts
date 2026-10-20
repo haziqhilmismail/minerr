@@ -99,12 +99,21 @@ function loadSiteCaptions(videoId: string): void {
     state.tracks.youtube = segments;
     render();
   }, () => undefined);
-  secondDisplay.get().then(display => (display === 'off' ? null : call({ type: 'siteCaptions', url, lang: 'en' }))).then(segments => {
+  secondDisplay.get().then(display => { if (display !== 'off') loadEnglish(videoId); });
+}
+
+// The second track loads only while it can show: when the video opens, or when the user turns it on (Shift+W, options).
+function loadEnglish(videoId: string): void {
+  call({ type: 'siteCaptions', url: watchUrl(videoId), lang: 'en' }).then(segments => {
     if (!segments?.length || state.videoId !== videoId) return;
     state.tracks.english = segments;
     render();
   }, () => undefined);
 }
+
+secondDisplay.onChange(display => {
+  if (display !== 'off' && state.videoId && !state.tracks.english) loadEnglish(state.videoId);
+});
 
 function useSegments(segments: SubtitleSegment[]): void {
   state.tracks.whisperx = segments;

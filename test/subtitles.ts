@@ -279,8 +279,10 @@ try {
   });
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べた');
   assert.ok(whisperRequests.includes('POST /captions {"url":"https://www.youtube.com/watch?v=timedvideo","lang":"ja"}'));
+  assert.ok(!whisperRequests.some(request => request.includes('"lang":"en"')), 'the second track is off by default, so the tab does not ask for it');
+  await tab.keyboard.press('Shift+W');
   await tab.locator('.minerr-subs-second', { hasText: 'The cat ate the fish.' }).waitFor();
-  console.log('YouTube second track: the English subtitles show under the Japanese line');
+  console.log('YouTube second track: off by default; Shift+W loads the English subtitles and shows them under the Japanese line');
   await tab.keyboard.press('ArrowRight');
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '今日は雨');
   assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 2);
