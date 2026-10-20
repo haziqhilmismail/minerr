@@ -1,24 +1,15 @@
 import { captionText, segmentAt, type SubtitleSegment } from './captions.ts';
+import { createOverlay } from './overlay.ts';
 import { call, type Message, messageOf, serve } from './rpc.ts';
 import type { Job, JobStatus } from './whisper.ts';
 
 const POLL_MS = 2000;
 
 // YouTube's caption window stays in the DOM (the overlay reads it), but it is invisible and takes no mouse events.
-// The layer fills the player as a size container, so the subtitle size follows the player in every view mode.
 // When Minerr is off (page.ts sets data-minerr-off on the root), YouTube's own captions come back and the overlay hides.
 const STYLE = `
   :root:not([data-minerr-off]) .ytp-caption-window-container { opacity: 0 !important; pointer-events: none !important; }
   :root[data-minerr-off] .minerr-subs { display: none; }
-  .minerr-subs { position: absolute; inset: 0; z-index: 60; container-type: size; pointer-events: none; }
-  .minerr-subs-line {
-    position: absolute; left: 50%; bottom: max(64px, 11cqh); transform: translateX(-50%);
-    box-sizing: border-box; width: max-content; max-width: 90cqw; padding: 0.12em 0.55em 0.18em;
-    border-radius: 0.3em; background: rgba(10, 10, 14, 0.74); color: #fff; pointer-events: auto;
-    font: 500 clamp(20px, min(5.6cqh, 3.4cqw), 64px)/1.45 "Hiragino Sans", "Yu Gothic UI", "Meiryo", "Noto Sans JP", system-ui, sans-serif;
-    text-align: center; white-space: pre-line; overflow-wrap: anywhere; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
-  }
-  .minerr-subs-line[hidden] { display: none; }
 `;
 
 // 'youtube' mirrors YouTube's own captions; 'whisperx' shows the segments from the local server.
@@ -44,24 +35,13 @@ type OverlayState = { videoId: string | null; job: TrackedJob | null }
 
 let state: OverlayState = { videoId: null, source: 'youtube', segments: null, job: null };
 
-const layer = Object.assign(document.createElement('div'), { className: 'minerr-subs' });
-const line = Object.assign(document.createElement('div'), { className: 'minerr-subs-line', hidden: true });
-layer.append(line);
+const { layer, show } = createOverlay();
 document.head.append(Object.assign(document.createElement('style'), { textContent: STYLE }));
 
 let player: Element | null = null;
-let shown = '';
 
 const video = () => player?.querySelector('video');
 const currentVideoId = () => (location.pathname === '/watch' ? new URLSearchParams(location.search).get('v') : null);
-
-// Replace the text only when it changes: page.ts swaps the text node for word spans, and that must stay.
-function show(text: string): void {
-  if (text === shown) return;
-  shown = text;
-  line.textContent = text;
-  line.hidden = !text;
-}
 
 function render(): void {
   if (state.source === 'whisperx') {

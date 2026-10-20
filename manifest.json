@@ -10,7 +10,7 @@
     { "matches": ["<all_urls>"], "js": ["content.js"] }
   ],
   "web_accessible_resources": [
-    { "resources": ["src/anki.js", "src/captions.js", "src/page.js", "src/parse.js", "src/popup.js", "src/rpc.js", "src/sentence.js", "src/status.js", "src/subtitles.js", "src/switch.js", "src/tags.js"], "matches": ["<all_urls>"] }
+    { "resources": ["src/anki.js", "src/captions.js", "src/overlay.js", "src/page.js", "src/parse.js", "src/popup.js", "src/rpc.js", "src/sentence.js", "src/status.js", "src/subtitles.js", "src/switch.js", "src/tags.js"], "matches": ["<all_urls>"] }
   ],
   "action": { "default_title": "Minerr", "default_popup": "action.html" },
   "commands": {
