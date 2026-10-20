@@ -20,3 +20,27 @@ export const TOKENS = `
   --font-ui: Inter, "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
   --font-jp: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
 `;
+
+// The primary button (docs/design.md rule 3): the coral to amber gradient. Each surface gives the button its shape.
+export const PRIMARY_BUTTON = `
+  .primary { border-color: transparent; background: var(--brand); color: var(--on-brand); box-shadow: var(--shadow-1); }
+  .primary:hover:not(:disabled) { border-color: transparent; background: var(--brand); filter: brightness(1.05) saturate(1.1); }
+`;
+
+// dist/theme.css: the tokens and the base rules of the extension pages. applyTheme() sets data-theme; before it runs,
+// the page follows the system. The <style> of a page adds its layout and changes these rules where it needs to.
+export const PAGE_CSS = `:root { color-scheme: light dark; ${TOKENS} }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 var(--font-ui); }
+[hidden] { display: none !important; }
+p { margin: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button { min-height: 36px; padding: 7px 18px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--card);
+  color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+button:disabled { cursor: progress; opacity: .6; }
+select, textarea, input:is([type="text"], [type="number"], [type="search"]) { padding: 7px 12px; border: 1px solid var(--line);
+  border-radius: var(--radius-s); background: var(--field); color: inherit; font: inherit; }
+${PRIMARY_BUTTON}`;

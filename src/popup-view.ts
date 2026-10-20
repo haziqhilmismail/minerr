@@ -2,7 +2,7 @@ import { setStatus, type Status, STATUS_NAMES, STATUSES, WORD_CSS, type WordId }
 import { minerrEnabled } from './settings.ts';
 import { TAG_CSS, tagClass } from './tags.ts';
 import { applyTheme } from './theme.ts';
-import { TOKENS } from './tokens.ts';
+import { PRIMARY_BUTTON, TOKENS } from './tokens.ts';
 import { wordText } from './words.ts';
 import { type Entry, entryStars, highs, morae, PITCH, pitchPattern } from './meta.ts';
 import type { Sense, Tag } from './yomitan.ts';
@@ -71,8 +71,8 @@ const STYLE = `
   footer { padding: 12px 16px 14px; border-top: 1px solid var(--line); }
   .actions { display: flex; gap: 8px; }
   .add, .edit { min-height: 36px; padding: 8px 16px; border: 0; border-radius: var(--radius-pill); font-weight: 700; }
-  .add { flex: 1; background: var(--brand); color: var(--on-brand); box-shadow: var(--shadow-1); }
-  .add:hover { filter: brightness(1.05) saturate(1.1); }
+  .add { flex: 1; }
+  ${PRIMARY_BUTTON}
   .add:disabled { cursor: progress; opacity: .65; filter: none; }
   .edit { background: var(--raised); }
   .edit:hover { background: var(--accent-soft); }
@@ -246,7 +246,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, editCard, clo
       senseList(group.senses),
     ])]
     : [el('p', { className: 'empty', textContent: 'No dictionary entry. Import a dictionary in the options page.' })];
-  const addButton = el('button', { className: 'add', onclick: addCard }, ...addLabel());
+  const addButton = el('button', { className: 'add primary', onclick: addCard }, ...addLabel());
   const editButton = el('button', { className: 'edit', title: 'Edit the card before Minerr sends it', onclick: editCard }, 'Edit ', el('kbd', { textContent: 'E' }));
   const message = el('div', { className: 'message', role: 'status' });
   box.replaceChildren(

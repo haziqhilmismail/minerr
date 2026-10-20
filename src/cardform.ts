@@ -14,9 +14,8 @@ const STYLE = `
   .card-form img { display: block; max-width: 100%; margin-top: 8px; border-radius: var(--radius-s); }
   .card-form audio { display: block; width: 100%; margin-top: 8px; }
   .card-form .buttons { display: flex; gap: 8px; padding: 12px 16px 14px; border-top: 1px solid var(--line); }
-  .card-form .buttons button { flex: 1; min-height: 36px; padding: 8px 16px; border: 0; border-radius: var(--radius-pill);
-    background: var(--raised); font-weight: 700; }
-  .card-form .buttons .send { background: var(--brand); color: var(--on-brand); box-shadow: var(--shadow-1); }
+  .card-form .buttons button { flex: 1; min-height: 36px; padding: 8px 16px; border: 0; border-radius: var(--radius-pill); font-weight: 700; }
+  .card-form .buttons .cancel { background: var(--raised); }
 `;
 
 const MIME: Record<string, string> = { jpg: 'image/jpeg', mp3: 'audio/mpeg', webm: 'audio/webm' };
@@ -43,7 +42,7 @@ export function cardForm(draft: NoteDraft, { send, cancel }: FormActions): HTMLF
       ...areas.flatMap(area => [el('label', { htmlFor: area.id, textContent: area.name }), area]),
       ...draft.media.filter(file => values.some(value => value.includes(file.filename))).map(preview)),
     el('div', { className: 'buttons' },
-      el('button', { type: 'submit', className: 'send', textContent: 'Send' }),
+      el('button', { type: 'submit', className: 'send primary', textContent: 'Send' }),
       el('button', { type: 'button', className: 'cancel', textContent: 'Cancel', onclick: cancel })));
   form.onsubmit = event => {
     event.preventDefault();
