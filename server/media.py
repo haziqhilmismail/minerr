@@ -136,9 +136,10 @@ def pick_track(info, lang):
     return None
 
 
-# The info of yt-dlp for each video, for some minutes: the extension asks for two languages at once.
+# The info of yt-dlp for the last videos, for some minutes: the extension asks for two languages at once.
 # ponytail: one lock for all videos, so a second video waits for the first; a lock per key if that gets slow.
 INFO_SECONDS = 600
+INFO_VIDEOS = 32
 infos = {}
 info_lock = threading.Lock()
 
@@ -147,6 +148,9 @@ def video_info(url, key):
     with info_lock:
         found = infos.get(key)
         if not found or time.monotonic() - found[0] > INFO_SECONDS:
+            infos.pop(key, None)
+            while len(infos) >= INFO_VIDEOS:
+                del infos[next(iter(infos))]
             found = infos[key] = (time.monotonic(), json.loads(yt_dlp('-J', '--', page_url(key, url), timeout=300)))
         return found[1]
 
@@ -157,6 +161,9 @@ def fetch_captions(url, key, lang):
     track = pick_track(info, lang)
     if not track:
         return None
+    # The generic extractor of yt-dlp takes the src of a <track> on the page as it is, file: URLs too.
+    if urlsplit(track[0]).scheme not in ('http', 'https'):
+        raise ValueError('The subtitle track is not an http or https URL.')
     with urllib.request.urlopen(track[0], timeout=60) as response:
         return {'ext': track[1], 'text': response.read().decode('utf-8', 'replace')}
 

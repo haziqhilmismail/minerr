@@ -11,7 +11,7 @@ import time
 import unittest
 import urllib.error
 import urllib.request
-from http.server import ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import media
@@ -58,12 +58,31 @@ class PickTrack(unittest.TestCase):
         self.assertIsNone(pick_track({'subtitles': {'ja': [{'ext': 'ass', 'url': 'x'}]}}, 'ja'))
 
 
+class Track(BaseHTTPRequestHandler):
+    def do_GET(self):
+        body = 'WEBVTT\n\n00:01.000 --> 00:02.000\n猫'.encode()
+        self.send_response(200)
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, format, *args):
+        pass
+
+
 class FetchCaptions(unittest.TestCase):
+    def setUp(self):
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Track)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        self.track_url = f'http://127.0.0.1:{server.server_address[1]}/ja.vtt'
+
     def test_reads_the_info_of_yt_dlp_then_downloads_the_track(self):
         calls = []
         def fake_yt_dlp(*args, timeout):
             calls.append(args)
-            return json.dumps({'subtitles': {'ja': [{'ext': 'vtt', 'url': 'data:text/vtt;charset=utf-8,WEBVTT%0A%0A00:01.000 --> 00:02.000%0A%E7%8C%AB'}]}})
+            return json.dumps({'subtitles': {'ja': [{'ext': 'vtt', 'url': self.track_url}]}})
         saved, media.yt_dlp = media.yt_dlp, fake_yt_dlp
         media.infos.clear()
         try:
@@ -74,6 +93,22 @@ class FetchCaptions(unittest.TestCase):
         self.assertEqual(found, {'ext': 'vtt', 'text': 'WEBVTT\n\n00:01.000 --> 00:02.000\n猫'})
         self.assertIsNone(none)
         self.assertEqual(calls, [('-J', '--', 'https://www.youtube.com/watch?v=KfQPZZ5JmXw')], 'the second language uses the info of the first')
+
+    def fake_info(self, info):
+        saved, media.yt_dlp = media.yt_dlp, lambda *args, timeout: json.dumps(info)
+        self.addCleanup(setattr, media, 'yt_dlp', saved)
+        media.infos.clear()
+
+    def test_a_track_that_is_not_http_is_not_read(self):
+        self.fake_info({'subtitles': {'ja': [{'ext': 'vtt', 'url': 'file:///etc/hostname'}]}})
+        with self.assertRaisesRegex(ValueError, 'The subtitle track is not an http or https URL.'):
+            media.fetch_captions('https://videos.example/ep/1', 'k', 'ja')
+
+    def test_the_info_cache_keeps_at_most_32_videos(self):
+        self.fake_info({})
+        for n in range(40):
+            media.video_info('https://videos.example/ep/1', f'k{n}')
+        self.assertEqual(list(media.infos), [f'k{n}' for n in range(8, 40)])
 
 
 class AudioCache(unittest.TestCase):
