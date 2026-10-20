@@ -7,7 +7,8 @@ import { test } from 'node:test';
 import kuromoji from 'kuromoji';
 import { definitionHtml } from '../src/anki.ts';
 import { groupTokens } from '../src/group.ts';
-import { sentenceAround } from '../src/sentence.ts';
+import { iPlusOneSentences, isIPlusOne, type Piece, sentenceAround } from '../src/sentence.ts';
+import type { Status } from '../src/status.ts';
 import { type DictTerm, flattenGlossaryItem, groupTerms, readYomitan } from '../src/yomitan.ts';
 import { unzip } from '../src/zip.ts';
 
@@ -64,6 +65,33 @@ test('sentenceAround keeps only the sentence that holds the word', () => {
     { start: '彼は「本当に', word: '美味しい', end: '！」' },
   );
   assert.deepEqual(sentenceAround('', '猫', ''), { start: '', word: '猫', end: '' });
+});
+
+test('isIPlusOne is true only for exactly one unknown word', () => {
+  const cases: Status[][] = [
+    [], ['known'], ['unknown'], ['known', 'unknown', 'learning', 'ignored'], ['unknown', 'unknown'], ['learning', 'ignored'],
+  ];
+  assert.deepEqual(cases.map(statuses => isIPlusOne(statuses)), [false, false, true, true, false, false]);
+});
+
+test('iPlusOneSentences finds the sentences with one unknown word, across pieces, without edge white space', () => {
+  const pieces: Piece[] = [
+    { text: '  ', status: null }, { text: '猫', status: 'known' }, { text: 'が', status: null }, { text: '魚', status: 'unknown' },
+    { text: 'を', status: null }, { text: '食べた', status: 'known' }, { text: '。「', status: null }, { text: '雨', status: 'unknown' },
+    { text: 'だ！」\n', status: null }, { text: '今日', status: 'unknown' }, { text: 'は', status: null }, { text: '雨', status: 'unknown' },
+    { text: '。', status: null }, { text: '本', status: 'learning' }, { text: 'を', status: null }, { text: '読む', status: 'unknown' },
+  ];
+  const found = iPlusOneSentences(pieces);
+  const textOf = ({ start, end }: (typeof found)[number]) => pieces.slice(start.piece, end.piece + 1)
+    .map((p, i, run) => p.text.slice(i === 0 ? start.offset : 0, i === run.length - 1 ? end.offset : undefined)).join('');
+  assert.deepEqual(found.map(textOf), ['猫が魚を食べた。', '「雨だ！」', '本を読む']);
+  assert.deepEqual(found, [
+    { start: { piece: 1, offset: 0 }, end: { piece: 6, offset: 1 } },
+    { start: { piece: 6, offset: 1 }, end: { piece: 8, offset: 3 } },
+    { start: { piece: 13, offset: 0 }, end: { piece: 15, offset: 2 } },
+  ]);
+  assert.deepEqual(iPlusOneSentences([{ text: '猫が好き', status: 'known' }]), []);
+  assert.deepEqual(iPlusOneSentences([]), []);
 });
 
 test('definitionHtml is a term tag row and one escaped <ol> with tag chips and a label after each dictionary run', () => {
