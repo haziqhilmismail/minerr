@@ -20,7 +20,7 @@ async function ensureOffscreen(): Promise<void> {
   await creating;
 }
 
-async function toOffscreen<K extends 'parse' | 'lookup'>(message: Message<K>): Promise<Reply<K>> {
+async function toOffscreen<K extends 'parse' | 'lookup' | 'pitch'>(message: Message<K>): Promise<Reply<K>> {
   await ensureOffscreen();
   return call({ ...message, target: 'offscreen' });
 }
@@ -60,6 +60,7 @@ serve(
   {
     parse: toOffscreen,
     lookup: toOffscreen,
+    pitch: toOffscreen,
     addCard,
     importKnown,
     ankiVersion: version,

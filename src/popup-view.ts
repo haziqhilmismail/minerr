@@ -2,7 +2,8 @@ import { setStatus, type Status, STATUS_NAMES, STATUSES } from './status.ts';
 import { minerrEnabled } from './settings.ts';
 import { TAG_CSS, tagClass } from './tags.ts';
 import { applyTheme } from './theme.ts';
-import type { Group, Sense, Tag } from './yomitan.ts';
+import { type Entry, entryStars, highs, morae, PITCH, pitchPattern } from './meta.ts';
+import type { Sense, Tag } from './yomitan.ts';
 
 const POWER_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>';
 
@@ -57,6 +58,16 @@ const STYLE = `
     color: var(--muted); font-size: 11px; line-height: 18px; }
   ${TAG_CSS}
   .empty { margin: 0 0 8px; color: var(--muted); }
+  .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin-top: 4px; font-size: 12px; color: var(--muted); }
+  .group .meta { margin: 2px 0 0; }
+  .stars { color: #e8a200; font-size: 13px; letter-spacing: 1px; }
+  .freq b { color: var(--text); font-weight: 600; }
+  .pitch { display: inline-flex; align-items: baseline; gap: 6px; }
+  .morae { font-size: 14px; color: var(--text); }
+  .mora { display: inline-block; padding-top: 1px; border-top: 1.5px solid transparent; }
+  .mora.high { border-top-color: currentColor; }
+  .mora.drop { border-right: 1.5px solid currentColor; }
+  .pattern { font-weight: 600; }
   footer { padding: 10px 16px 12px; border-top: 1px solid var(--line); }
   .add { width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent);
     font-weight: 700; }
@@ -101,7 +112,7 @@ export interface View {
   span: HTMLElement;
   lemma: string;
   status: Status;
-  groups: Group[];
+  groups: Entry[];
 }
 
 // A rendered popup: its box, its word, and the controls that the keys and the card code change later.
@@ -142,6 +153,32 @@ const chips = (tags: Tag[]) => tags.flatMap(({ name, category, notes }) => [el('
 const senseList = (senses: Sense[]) => el('ol', {}, ...senses.map((sense, i) => el('li', {}, ...chips(sense.tags), sense.glossary.join('\n'),
   sense.dict === senses[i + 1]?.dict ? '' : el('div', { className: 'dict', textContent: sense.dict }))));
 
+const starText = (count: number) => '★'.repeat(count) + '☆'.repeat(5 - count);
+
+// The reading in marked kana: a line over each high mora, and a line down after the mora where the pitch drops.
+function pitchMarks(reading: string, position: number): HTMLElement {
+  const kana = morae(reading);
+  const high = highs(position, kana.length);
+  const pattern = PITCH[pitchPattern(position, kana.length)];
+  const label = el('span', { className: 'pattern', textContent: `${pattern.label} [${position}]` });
+  label.style.color = pattern.color;
+  return el('span', { className: 'pitch' },
+    el('span', { className: 'morae' }, ...kana.map((mora, i) => el('span', {
+      className: `mora${high[i] ? ' high' : ''}${i + 1 === position ? ' drop' : ''}`, textContent: mora,
+    }))), label);
+}
+
+// The stars, the frequency in each dictionary, and the pitch accents of one entry.
+function metaRow({ reading, frequencies, pitches }: Entry): HTMLElement | '' {
+  const count = entryStars(frequencies);
+  const items = [
+    ...(count === null ? [] : [el('span', { className: 'stars', title: `Frequency: ${count} of 5 stars`, textContent: starText(count) })]),
+    ...frequencies.map(({ dict, display }) => el('span', { className: 'freq' }, `${dict} `, el('b', { textContent: display }))),
+    ...pitches.flatMap(({ dict, positions }) => positions.map(position => Object.assign(pitchMarks(reading, position), { title: dict }))),
+  ];
+  return items.length ? el('div', { className: 'meta' }, ...items) : '';
+}
+
 export interface Actions {
   addCard: () => void;
   close: () => void;
@@ -168,7 +205,8 @@ export function render(box: HTMLDivElement, view: View, { addCard, close }: Acti
       el('div', { className: 'group' },
         el('span', { className: 'word', textContent: group.expression }),
         el('span', { className: 'reading', textContent: group.reading }),
-        ...chips(group.termTags)),
+        ...chips(group.termTags),
+        metaRow(group)),
       senseList(group.senses),
     ])]
     : [el('p', { className: 'empty', textContent: 'No dictionary entry. Import a dictionary in the options page.' })];
@@ -180,6 +218,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, close }: Acti
         el('span', { className: 'lemma', textContent: lemma }),
         reading !== lemma ? el('span', { className: 'reading', textContent: reading }) : '',
         first?.termTags.length ? el('span', { className: 'tags' }, ...chips(first.termTags)) : ''),
+      first ? metaRow(first) : '',
       surface !== lemma ? el('div', { className: 'surface', textContent: `On the page: ${surface}` }) : '',
       statusRow,
       el('div', { className: 'corner' },

@@ -1,3 +1,4 @@
+import { isMetaRow, type TermMeta, toMeta } from './meta.ts';
 import { at, isList } from './parse.ts';
 import { type Bytes, unzip } from './zip.ts';
 
@@ -142,11 +143,14 @@ function rowsOf<Row>(name: string, rows: unknown, isRow: (row: unknown) => row i
 export interface YomitanDictionary {
   title: string;
   revision: string;
+  // rank-based (1 is the most common word, the Yomitan default) or occurrence-based (a count).
+  frequencyMode: 'rank-based' | 'occurrence-based';
   tags: Tag[];
   banks: (() => Promise<Term[]>)[];
+  metaBanks: (() => Promise<TermMeta[]>)[];
 }
 
-// Returns the dictionary title/revision, its tags, and one loader per term bank,
+// Returns the dictionary title/revision, its tags, and one loader per term bank and per term meta bank,
 // so a caller holds one term bank in memory at a time.
 export async function readYomitan(bytes: Bytes): Promise<YomitanDictionary> {
   const members = unzip(bytes);
@@ -163,5 +167,8 @@ export async function readYomitan(bytes: Bytes): Promise<YomitanDictionary> {
     .map(([name, read]) => async () => rowsOf(name, await readJson(read), isTermRow).map(toTerm));
   const tagBanks = await Promise.all(named(/^tag_bank_\d+\.json$/)
     .map(async ([name, read]) => rowsOf(name, await readJson(read), isTagRow)));
-  return { title, revision, tags: tagBanks.flat().map(toTag), banks };
+  const metaBanks = named(/^term_meta_bank_\d+\.json$/)
+    .map(([name, read]) => async () => rowsOf(name, await readJson(read), isMetaRow).flatMap(row => toMeta(row) ?? []));
+  const frequencyMode = at(index, 'frequencyMode') === 'occurrence-based' ? 'occurrence-based' : 'rank-based';
+  return { title, revision, frequencyMode, tags: tagBanks.flat().map(toTag), banks, metaBanks };
 }

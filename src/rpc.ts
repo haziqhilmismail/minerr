@@ -3,15 +3,16 @@ import type { SubtitleSegment } from './captions.ts';
 import type { Segment } from './group.ts';
 import { at } from './parse.ts';
 import type { Snapshot, Source } from './subtitles.ts';
+import type { Entry, PitchPattern } from './meta.ts';
 import type { Health, Job } from './whisper.ts';
-import type { Group } from './yomitan.ts';
 
 // Every message type, with the fields that call() sends and the value that its handler replies with.
-// The service worker handles parse to whisperCached; it passes parse and lookup on to the offscreen document.
+// The service worker handles parse to whisperCached; it passes parse, lookup, and pitch on to the offscreen document.
 // The content scripts of a YouTube tab handle subsState, subsGenerate, and subsUse.
 interface Protocol {
   parse: { request: { texts: string[] }; reply: Segment[][] };
-  lookup: { request: { lemma: string }; reply: Group[] };
+  lookup: { request: { lemma: string }; reply: Entry[] };
+  pitch: { request: { words: { lemma: string; reading: string }[] }; reply: (PitchPattern | null)[] };
   addCard: { request: { card: CardFields }; reply: number };
   importKnown: { request: { query: string; field: string }; reply: number };
   ankiVersion: { request: {}; reply: number };

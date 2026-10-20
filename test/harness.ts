@@ -3,17 +3,19 @@ import { writeFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
+import type { MetaRow } from '../src/meta.ts';
 import type { TagRow, TermRow } from '../src/yomitan.ts';
 
 const here = import.meta.dirname;
 // Run npm run build first: the tests load the built extension in dist/.
 export const extension = process.env.EXTENSION_DIR ?? join(here, '..', 'dist');
 
-export function makeDictionary(path: string, title: string, rows: TermRow[], tags: TagRow[] = []): string {
+export function makeDictionary(path: string, title: string, rows: TermRow[], tags: TagRow[] = [], meta: MetaRow[] = []): string {
   execFileSync('python3', ['-I', join(here, 'make-zip.py'), path,
     `index.json=stored:${JSON.stringify({ title, revision: '1', format: 3 })}`,
     `term_bank_1.json=deflated:${JSON.stringify(rows)}`,
-    `tag_bank_1.json=deflated:${JSON.stringify(tags)}`]);
+    `tag_bank_1.json=deflated:${JSON.stringify(tags)}`,
+    ...(meta.length ? [`term_meta_bank_1.json=deflated:${JSON.stringify(meta)}`] : [])]);
   return path;
 }
 

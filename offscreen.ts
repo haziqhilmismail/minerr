@@ -1,4 +1,4 @@
-import { lookup } from './src/db.ts';
+import { lookup, pitchPatterns } from './src/db.ts';
 import { groupTokens } from './src/group.ts';
 import { serve } from './src/rpc.ts';
 
@@ -14,6 +14,7 @@ serve(
       return texts.map(text => groupTokens(parser.tokenize(text)));
     },
     lookup: ({ lemma }) => lookup(lemma),
+    pitch: ({ words }) => pitchPatterns(words),
   },
   target => target === 'offscreen',
 );

@@ -371,6 +371,27 @@ You can choose when the word popup opens.
 
 In all modes, `Shift` opens the popup at once. You can press `Shift` before or after you move the mouse onto the word. If a popup is open, the popup of the next word opens after 0.05 seconds. A quick pass of the mouse over a word does not open a popup. The change applies at once in all tabs.
 
+## Frequency and pitch accent
+
+Minerr also reads Yomitan frequency dictionaries and pitch accent dictionaries, for example the JPDB frequency list or the Kanjium pitch accents. Import them on the options page in the same way as a term dictionary. The list of dictionaries shows the number of frequency and pitch entries of each one.
+
+The popup then shows a row under the word:
+
+- **Stars.** The stars show how common the word is. Minerr uses the best rank from your frequency dictionaries:
+
+  | Rank | Stars |
+  | --- | --- |
+  | 1 to 1,500 | 5 |
+  | 1,501 to 5,000 | 4 |
+  | 5,001 to 15,000 | 3 |
+  | 15,001 to 30,000 | 2 |
+  | More than 30,000 | 1 |
+
+- **Frequency.** The name of each frequency dictionary and the value from it. Some dictionaries give the number of times that a word occurs, not a rank. These dictionaries give no stars.
+- **Pitch accent.** The reading with a line over each high mora. A vertical line shows where the pitch drops. Then the name of the pattern, with the mora after which the pitch drops: Heiban [0] (no drop), Atamadaka [1], Nakadaka, or Odaka (a drop after the last mora).
+
+If a word has more than one reading, each reading shows its own frequency and pitch accent.
+
 ## Theme
 
 The options page, the toolbar menu, and the word popup have a light theme and a dark theme.
@@ -395,6 +416,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/page.ts` | Finds Japanese text on the page and wraps each word. |
 | `src/popup.ts` | The dictionary popup: when it opens, its keys, and the card that it adds. |
 | `src/popup-view.ts` | The content of the popup and its position. |
+| `src/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |
 | `src/subtitles.ts` | The subtitle overlay on YouTube. |
 | `src/status.ts` | The word statuses, their colors, and their storage. |
 | `src/tags.ts` | The colors of the dictionary tags, for the popup and the card. |

@@ -35,10 +35,11 @@ function showStatus(node: HTMLElement, text: string, kind = ''): void {
 }
 
 const dictList = byId('dict-list', HTMLElement);
+const metaText = (meta = 0) => (meta ? `, ${meta} frequency and pitch entries` : '');
 
 async function showDictionaries(): Promise<void> {
   const dictionaries = await listDictionaries();
-  const items = dictionaries.map(({ title, count, tags }) => {
+  const items = dictionaries.map(({ title, count, tags, meta: entries }) => {
     const remove = el('button', { type: 'button', className: 'delete', textContent: 'Delete' });
     remove.onclick = async () => {
       if (!confirm(`Delete the dictionary "${title}"?`)) return;
@@ -48,7 +49,7 @@ async function showDictionaries(): Promise<void> {
     };
     // An import from before tags were stored has no tags flag.
     const meta = count === null ? 'Import not finished. Import it again.'
-      : tags ? `${count} terms` : `${count} terms. Import again to show tags.`;
+      : tags ? `${count} terms${metaText(entries)}` : `${count} terms. Import again to show tags.`;
     return el('li', { className: count === null || !tags ? 'warn' : '' },
       el('div', {}, el('span', { className: 'name', textContent: title }), el('span', { className: 'meta', textContent: meta })),
       remove);
@@ -68,12 +69,12 @@ async function importFile(file: File): Promise<void> {
   progress.hidden = false;
   try {
     showStatus(status, `Reading ${file.name}…`);
-    const { title, count } = await importDictionary(await file.arrayBuffer(), ({ bank, banks, count }) => {
+    const { title, count, meta } = await importDictionary(await file.arrayBuffer(), ({ bank, banks, count }) => {
       progress.max = banks;
       progress.value = bank;
       showStatus(status, `Importing ${file.name}: bank ${bank} of ${banks}, ${count} terms`);
     });
-    showStatus(status, `Imported ${title}: ${count} terms`, 'ok');
+    showStatus(status, `Imported ${title}: ${count} terms${metaText(meta)}`, 'ok');
   } catch (error) {
     showStatus(status, `Import failed: ${messageOf(error)}`, 'error');
   } finally {
