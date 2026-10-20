@@ -167,7 +167,7 @@ function addPasted(pasted: string): void {
 
 // Capture on window, as the popup keys do; the popup does not use these keys.
 window.addEventListener('keydown', event => {
-  if (view.kind === 'start' || event.ctrlKey || event.metaKey || event.altKey || isEditable(event.target)) return;
+  if (view.kind === 'start' || event.ctrlKey || event.metaKey || event.altKey || isEditable(event)) return;
   // Space presses a focused button; the arrows and the page keys still turn the page.
   if (event.key === ' ' && event.target instanceof HTMLButtonElement) return;
   const move = pageMove(event.key, event.shiftKey, isVertical());
@@ -210,7 +210,7 @@ clearButton.addEventListener('click', () => {
 });
 
 document.addEventListener('paste', event => {
-  if (isEditable(event.target) || view.kind === 'book') return;
+  if (isEditable(event) || view.kind === 'book') return;
   event.preventDefault();
   addPasted(event.clipboardData?.getData('text/plain') ?? '');
 });

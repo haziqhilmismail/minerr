@@ -287,6 +287,17 @@ try {
   assert.equal(await popup.isVisible(), false, 'N with no unknown word in the line opens no popup');
   await options.evaluate(() => chrome.storage.local.remove(['w:猫', 'w:魚', 'w:食べる']));
   console.log('subtitle line with one unknown word: a status key sets it with no popup');
+  await tab.evaluate(() => {
+    const host = document.body.appendChild(Object.assign(document.createElement('div'), { id: 'shadow-field' }));
+    host.attachShadow({ mode: 'open' }).append(document.createElement('input'));
+  });
+  const field = tab.locator('#shadow-field input');
+  await field.focus();
+  await tab.keyboard.type('n');
+  assert.equal(await field.inputValue(), 'n', 'a key in a field in a shadow root goes to the field');
+  assert.equal(await popup.isVisible(), false);
+  await field.blur();
+  console.log('a field in a shadow root: the page keys do not fire there');
 
   const popups = tab.locator('minerr-popup .popup');
   const lemmas = () => popups.locator('.lemma').allTextContents();

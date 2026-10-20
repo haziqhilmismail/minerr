@@ -284,9 +284,9 @@ const ACTIONS: Record<VideoAction, () => boolean | void> = {
 // Capture on window, so the keys of the site (YouTube binds c, j, l, ., and the arrows) do not also fire.
 // The overlay takes a key only while it has lines; a key that needs times gets a hint on mirrored captions, once per video.
 window.addEventListener('keydown', event => {
-  if (event.ctrlKey || event.metaKey || isEditable(event.target) || !video()) return;
+  if (event.ctrlKey || event.metaKey || isEditable(event) || !video()) return;
   const entry = videoKey(event);
-  if (!entry || lines.kind === 'none') return;
+  if (!entry || lines.kind === 'none' || target.blocked?.()) return;
   if (entry.timed && !timed()) {
     if (lines.kind === 'mirror' && !hinted) toast(TIMED_HINT);
     hinted = true;

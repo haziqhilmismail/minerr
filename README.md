@@ -226,7 +226,7 @@ The overlay text is page text. Minerr underlines its words, and the popup and th
 
 You can also use the keyboard on the subtitle line:
 
-- Press `N` to open the popup of the first unknown word of the line. Press `N` again to go to the next unknown word. After the last unknown word, `N` goes back to the first one.
+- Press `N` to open the popup of the first unknown word of the line. Press `N` again to go to the next unknown word. After the last unknown word, `N` goes back to the first one. If no popup is open, YouTube gets `Shift+N` (the next video).
 - If the line has exactly one unknown word, press a status key, `1` to `4`, to set that word. You do not need to open the popup. A short message shows the change.
 
 These keys work in the Minerr video player too. If the line has no unknown word, the page gets the key, so YouTube keys still work.
