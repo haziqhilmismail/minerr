@@ -260,6 +260,15 @@
       </div>
     </div>
     <div class="field">
+      <p id="second-heading" style="font-weight: 600">Second subtitles</p>
+      <div class="segmented" role="radiogroup" aria-labelledby="second-heading" aria-describedby="second-help" style="margin-top: 4px">
+        <label><input type="radio" name="secondDisplay" value="show">Show</label>
+        <label><input type="radio" name="secondDisplay" value="hover">On hover or pause</label>
+        <label><input type="radio" name="secondDisplay" value="off">Off</label>
+      </div>
+      <p id="second-help" class="help">A second subtitle track, for example English, shows under the line. On YouTube, Minerr gets the English subtitles from the server. Press Shift+W on a video to show or hide them.</p>
+    </div>
+    <div class="field">
       <label class="check"><input id="clean-subs" type="checkbox" aria-describedby="clean-subs-help">Remove bracketed text</label>
       <p id="clean-subs-help" class="help">Removes text in brackets, for example （笑） or [音楽], from the lines. A line with only bracketed text does not show.</p>
     </div>

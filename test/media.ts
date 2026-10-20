@@ -20,6 +20,8 @@ useCjkFonts(work);
 const clip = join(work, 'clip.webm');
 execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=s=640x360:r=10:d=6',
   '-f', 'lavfi', '-i', 'sine=frequency=440:duration=6', '-c:v', 'libvpx', '-b:v', '200k', '-c:a', 'libopus', clip]);
+const englishSrt = join(work, 'clip.en.srt');
+writeFileSync(englishSrt, '1\n00:00:00,000 --> 00:00:03,000\nThe cat ate the fish.\n\n2\n00:00:03,000 --> 00:00:06,000\nIt is raining today.\n');
 const srt = join(work, 'clip.srt');
 writeFileSync(srt, '1\n00:00:00,000 --> 00:00:03,000\n猫が魚を食べた\n\n2\n00:00:03,000 --> 00:00:06,000\n今日は雨が降っている\n');
 
@@ -316,6 +318,31 @@ try {
   await player.keyboard.press('Alt+-');
   await player.waitForFunction(size => parseFloat(getComputedStyle(document.querySelector('.minerr-subs-line') ?? document.body).fontSize) === size, before);
   assert.deepEqual(await worker.evaluate(() => chrome.storage.local.get('subScale')), { subScale: 1 });
+
+  await player.setInputFiles('#second-file', englishSrt);
+  await status.filter({ hasText: 'Second subtitles from clip.en.srt.' }).waitFor();
+  const secondLine = player.locator('.minerr-subs-second');
+  await seek(1);
+  await secondLine.filter({ hasText: 'The cat ate the fish.' }).waitFor();
+  const stackOrder = await player.evaluate(() => {
+    const [first, next] = [...document.querySelectorAll('.minerr-subs-line, .minerr-subs-second')].map(el => el.getBoundingClientRect());
+    return Boolean(first && next && next.top >= first.bottom);
+  });
+  assert.ok(stackOrder, 'the second line is under the Japanese line');
+  await player.keyboard.press('Shift+W');
+  await secondLine.waitFor({ state: 'hidden' });
+  assert.deepEqual(await worker.evaluate(() => chrome.storage.local.get('secondDisplay')), { secondDisplay: 'off' });
+  await player.keyboard.press('Shift+W');
+  await secondLine.waitFor();
+  await setStorage({ secondDisplay: 'hover', pauseOnHover: false });
+  await player.evaluate(() => document.querySelector('video')?.play());
+  await player.waitForFunction(() => getComputedStyle(document.querySelector('.minerr-subs-second') ?? document.body).visibility === 'hidden');
+  await line.hover();
+  assert.equal(await secondLine.evaluate(node => getComputedStyle(node).visibility), 'visible', 'hover shows the second line');
+  await player.mouse.move(0, 0);
+  await player.evaluate(() => document.querySelector('video')?.pause());
+  await setStorage({ secondDisplay: 'show', pauseOnHover: true });
+  console.log('second subtitle file: shown under the line, Shift+W hides it, hover mode shows it on hover');
 
   const playFrom = (time: number) => player.evaluate(t => {
     const video = document.querySelector('video');

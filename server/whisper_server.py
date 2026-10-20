@@ -29,6 +29,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 import urllib.request
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -201,9 +202,24 @@ def pick_track(info, lang):
     return None
 
 
+# The info of yt-dlp for each video, for some minutes: the extension asks for two languages at once.
+# ponytail: one lock for all videos, so a second video waits for the first; a lock per key if that gets slow.
+INFO_SECONDS = 600
+infos = {}
+info_lock = threading.Lock()
+
+
+def video_info(url, key):
+    with info_lock:
+        found = infos.get(key)
+        if not found or time.monotonic() - found[0] > INFO_SECONDS:
+            found = infos[key] = (time.monotonic(), json.loads(yt_dlp('-J', '--', page_url(key, url), timeout=300)))
+        return found[1]
+
+
 def fetch_captions(url, key, lang):
     """The subtitles of the video in lang, as {'ext', 'text'}, or None if it has none."""
-    info = json.loads(yt_dlp('-J', '--', page_url(key, url), timeout=300))
+    info = video_info(url, key)
     track = pick_track(info, lang)
     if not track:
         return None

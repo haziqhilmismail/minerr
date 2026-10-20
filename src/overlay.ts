@@ -18,7 +18,12 @@ const STYLE = `
     border-radius: 0.3em; background: rgba(10, 10, 14, 0.74); color: #fff; pointer-events: auto;
     text-align: center; white-space: pre-line; overflow-wrap: anywhere; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
   }
-  .minerr-subs-line[hidden], .minerr-subs-toast[hidden] { display: none; }
+  .minerr-subs-second {
+    box-sizing: border-box; max-width: 100%; padding: 0.1em 0.5em 0.14em; border-radius: 0.3em; background: rgba(10, 10, 14, 0.66);
+    color: #e6e6ea; font-size: 0.72em; pointer-events: auto; text-align: center; white-space: pre-line; overflow-wrap: anywhere;
+  }
+  .minerr-subs[data-second="hover"]:not([data-paused]) .minerr-subs-stack:not(:hover) .minerr-subs-second { visibility: hidden; }
+  .minerr-subs-line[hidden], .minerr-subs-second[hidden], .minerr-subs-toast[hidden] { display: none; }
   .minerr-subs[data-obscure="blur"]:not([data-paused]) .minerr-subs-line:not(:hover) { filter: blur(0.3em); }
   .minerr-subs[data-obscure="hide"]:not([data-paused]) .minerr-subs-line:not(:hover),
   .minerr-subs[data-obscure="hide"]:not([data-paused]) .minerr-subs-line:not(:hover) * {
@@ -35,7 +40,7 @@ const TOAST_MS = 2500;
 export interface Overlay {
   layer: HTMLDivElement;
   line: HTMLDivElement;
-  show: (text: string) => void;
+  show: (text: string, second: string) => void;
   toast: (text: string) => void;
 }
 
@@ -43,17 +48,23 @@ export function createOverlay(): Overlay {
   const layer = Object.assign(document.createElement('div'), { className: 'minerr-subs' });
   const stack = Object.assign(document.createElement('div'), { className: 'minerr-subs-stack' });
   const line = Object.assign(document.createElement('div'), { className: 'minerr-subs-line', hidden: true });
+  // The second line is the secondary track, for example English, under the Japanese line.
+  const secondLine = Object.assign(document.createElement('div'), { className: 'minerr-subs-second', hidden: true });
   const note = Object.assign(document.createElement('div'), { className: 'minerr-subs-toast', hidden: true, role: 'status' });
-  stack.append(line);
+  stack.append(line, secondLine);
   layer.append(stack, note);
   document.head.append(Object.assign(document.createElement('style'), { textContent: STYLE }));
-  let shown = '';
+  const shown = new Map<HTMLElement, string>();
   // Replace the text only when it changes: page.ts swaps the text node for word spans, and that must stay.
-  const show = (text: string) => {
-    if (text === shown) return;
-    shown = text;
-    line.textContent = text;
-    line.hidden = !text;
+  const set = (element: HTMLElement, text: string) => {
+    if (shown.get(element) === text) return;
+    shown.set(element, text);
+    element.textContent = text;
+    element.hidden = !text;
+  };
+  const show = (text: string, second: string) => {
+    set(line, text);
+    set(secondLine, second);
   };
   let timer: ReturnType<typeof setTimeout> | undefined;
   const toast = (text: string) => {

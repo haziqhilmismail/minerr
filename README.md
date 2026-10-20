@@ -246,7 +246,7 @@ You can mine a video file from your computer. The Minerr video player shows the 
 1. Click the Minerr button in the Chrome toolbar.
 2. Click **Play a local video**. The player opens in a new tab.
 3. Drop a video file on the page, or click **Choose a video**.
-4. To use a subtitle file, drop it together with the video, or click **Add subtitle file**. Minerr reads `.srt` and `.vtt` files.
+4. To use a subtitle file, drop it together with the video, or click **Add subtitle file**. Minerr reads `.srt` and `.vtt` files. To show a second subtitle file under the line, for example in English, click **Add second subtitle file**.
 5. Pause the video, then move the mouse over a word in the subtitles.
 6. Press `A` to add an Anki card.
 
@@ -309,6 +309,7 @@ More settings in **Video**:
 Open the options page and go to **Video** to change these settings. They apply to the subtitle overlay on all video pages.
 
 - **Obscure the subtitles.** The overlay blurs or hides the text while the video plays. The text shows when you move the mouse onto it or pause the video. Select **Blur** or **Hide**. Press `W` on a video to turn this on or off.
+- **Second subtitles.** A second subtitle track, for example English, shows under the Japanese line. Select **Show**, **On hover or pause**, or **Off**. Press `Shift+W` on a video to show or hide it. On YouTube, the server gets the English subtitles of the video, as it does for the Japanese subtitles. In the video player, click **Add second subtitle file**.
 - **Remove bracketed text.** Minerr removes text in brackets, for example （笑）, (laughs), [音楽], and 【拍手】. A line with only bracketed text does not show.
 - **Parts with no subtitles.** For a part of 1.5 seconds or more with no line, the video plays at 2× or 4× speed, or skips the part. The last 0.5 seconds before the next line play at the normal speed. This needs subtitles with times.
 
@@ -330,6 +331,7 @@ These keys work on a video with the Minerr subtitle overlay: on YouTube, in the 
 | `Alt+I` | Show the subtitles 0.1 seconds earlier. | Needs subtitles with times. |
 | `Alt+=` | Make the subtitles larger. | |
 | `Alt+-` | Make the subtitles smaller. | |
+| `Shift+W` | Show or hide the second subtitle track. | Needs subtitles with times. |
 | `W` | Blur or hide the subtitles until you move the mouse onto them or pause, or show them again. | |
 
 Subtitles with times come from WhisperX, from a subtitle file, or from the YouTube subtitles that the Minerr server downloads. The YouTube captions that Minerr copies from the player have no times. With these captions, a key that needs times shows a hint, and YouTube gets the key.

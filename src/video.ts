@@ -10,16 +10,19 @@ import { recordPart } from './record.ts';
 import { serve } from './rpc.ts';
 import { isIPlusOne } from './sentence.ts';
 import { type VideoAction, videoKey } from './videokeys.ts';
-import { cleanSubs, gapMode, playMode, type SubEffect, subEffect, subObscured, subScale } from './videosettings.ts';
+import {
+  cleanSubs, gapMode, playMode, type SecondDisplay, secondDisplay, type SubEffect, subEffect, subObscured, subScale,
+} from './videosettings.ts';
 import type { AudioSource } from './whisper.ts';
 
 // What the overlay shows. 'timed' lines have times (WhisperX, a subtitle file, the subtitles of the site from the server).
 // 'mirror' is the text of the site's own caption window, which has no times.
 // id names the video, so a new video starts with no offset. audio is the audio that the server can have of the video.
+// second is the secondary track (for example English), which shows under the line with the same offset.
 export type Lines =
   | { kind: 'none' }
   | { kind: 'mirror'; text: string }
-  | { kind: 'timed'; id: string; segments: SubtitleSegment[]; audio: AudioSource | null };
+  | { kind: 'timed'; id: string; segments: SubtitleSegment[]; second: SubtitleSegment[] | null; audio: AudioSource | null };
 
 export interface Target {
   video: () => HTMLVideoElement | null;
@@ -55,6 +58,7 @@ let mode: PlayMode = 'normal';
 let lastTime = 0;
 // The line that the play mode paused at its end: it stays on the screen until the video plays or seeks.
 let heldIndex = -1;
+let secondShown: SecondDisplay = 'show';
 
 export { layer };
 
@@ -73,8 +77,10 @@ function render(): void {
   const found = timed();
   const held = heldIndex >= 0 && video()?.paused;
   shownIndex = found && !target.blocked?.() ? (held ? heldIndex : currentIndex()) : -1;
-  if (lines.kind === 'mirror') show(lines.text);
-  else show(found?.segments[shownIndex]?.text ?? '');
+  if (lines.kind === 'mirror') return show(lines.text, '');
+  const time = lineTime();
+  const second = found && !target.blocked?.() && secondShown !== 'off' ? found.second?.find(s => s.start <= time && time < s.end)?.text : '';
+  show(found?.segments[shownIndex]?.text ?? '', second ?? '');
 }
 
 function crossGap(playing: HTMLVideoElement): void {
@@ -122,7 +128,8 @@ export function attach(next: Target): void {
 
 const cleaned = (value: Lines): Lines => {
   if (!clean || value.kind === 'none') return value;
-  return value.kind === 'mirror' ? { ...value, text: cleanText(value.text) } : { ...value, segments: cleanSegments(value.segments) };
+  if (value.kind === 'mirror') return { ...value, text: cleanText(value.text) };
+  return { ...value, segments: cleanSegments(value.segments), second: value.second && cleanSegments(value.second) };
 };
 
 export function setLines(next: Lines): void {
@@ -201,6 +208,11 @@ const ACTIONS: Record<VideoAction, () => boolean | void> = {
   bigger: () => resize(SCALE_STEP),
   smaller: () => resize(-SCALE_STEP),
   obscure: toggleObscured,
+  second: () => {
+    const next = secondShown === 'off' ? 'show' : 'off';
+    secondDisplay.set(next);
+    toast(next === 'off' ? 'Second subtitles hidden.' : 'Second subtitles shown.');
+  },
 };
 
 // Capture on window, so the keys of the site (YouTube binds c, j, l, ., and the arrows) do not also fire.
@@ -256,6 +268,11 @@ cleanSubs.watch(value => {
 });
 gapMode.watch(value => { gap = value; });
 playMode.watch(value => { mode = value; });
+secondDisplay.watch(value => {
+  secondShown = value;
+  layer.dataset.second = value;
+  follow();
+});
 
 line.addEventListener('mouseenter', () => { const playing = video(); if (playing) setHold(playing, 'hover', true); });
 line.addEventListener('mouseleave', () => { const playing = video(); if (playing) setHold(playing, 'hover', false); });

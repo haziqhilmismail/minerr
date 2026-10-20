@@ -62,6 +62,7 @@
     </div>
     <div class="actions">
       <button id="add-subs">Add subtitle file</button>
+      <button id="add-second">Add second subtitle file</button>
       <button class="primary" id="generate">Generate with WhisperX</button>
       <button id="save" hidden>Save subtitles</button>
       <button id="fullscreen">Full screen</button>
@@ -70,5 +71,6 @@
   <p class="hint muted" id="hint" hidden>Pause the video, then move the mouse over a word in the subtitles. Press <kbd>A</kbd> to add an Anki card.</p>
   <input type="file" id="video-file" accept="video/*,audio/*,.mkv,.srt,.vtt" multiple hidden>
   <input type="file" id="subs-file" accept=".srt,.vtt" hidden>
+  <input type="file" id="second-file" accept=".srt,.vtt" hidden>
 </main>
 <script src="player.js" type="module"></script>

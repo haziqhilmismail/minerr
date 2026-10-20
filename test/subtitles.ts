@@ -81,6 +81,9 @@ const whisper = createServer((req, res) => {
       return res.end('ID3 clip');
     }
     if (req.method === 'POST' && req.url === '/captions' && body.includes('timedvideo') && body.includes('"ja"')) return reply(200, { ext: 'json3', text: JSON3 });
+    if (req.method === 'POST' && req.url === '/captions' && body.includes('timedvideo') && body.includes('"en"')) {
+      return reply(200, { ext: 'vtt', text: 'WEBVTT\n\n00:00.000 --> 00:02.000\nThe cat ate the fish.\n' });
+    }
     reply(404, { error: 'Not found.' });
   });
 });
@@ -264,6 +267,7 @@ try {
     document.dispatchEvent(new Event('yt-navigate-finish'));
   });
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べなかった\n今日は雨');
+  for (let i = 0; i < 50 && !whisperRequests.includes('GET /subs/othervideo'); i++) await tab.waitForTimeout(100);
   assert.ok(whisperRequests.includes('GET /subs/othervideo'));
   console.log('after navigation to a video with no WhisperX subtitles: YouTube captions again');
 
@@ -273,6 +277,8 @@ try {
   });
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べた');
   assert.ok(whisperRequests.includes('POST /captions {"url":"https://www.youtube.com/watch?v=timedvideo","lang":"ja"}'));
+  await tab.locator('.minerr-subs-second', { hasText: 'The cat ate the fish.' }).waitFor();
+  console.log('YouTube second track: the English subtitles show under the Japanese line');
   await tab.keyboard.press('ArrowRight');
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '今日は雨');
   assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 2);

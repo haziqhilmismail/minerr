@@ -14,6 +14,7 @@ export const VIDEO_KEYS = [
   { action: 'offsetDown', keys: ['alt+i'], label: 'Show the subtitles 0.1 seconds earlier', timed: true },
   { action: 'bigger', keys: ['alt+='], label: 'Make the subtitles larger', timed: false },
   { action: 'smaller', keys: ['alt+-'], label: 'Make the subtitles smaller', timed: false },
+  { action: 'second', keys: ['shift+w'], label: 'Show or hide the second subtitle track', timed: true },
   { action: 'obscure', keys: ['w'], label: 'Blur or hide the subtitles until you hover them or pause, or show them again', timed: false },
 ] as const;
 

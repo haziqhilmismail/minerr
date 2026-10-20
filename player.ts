@@ -32,6 +32,7 @@ const saveButton = byId('save', HTMLButtonElement);
 const hint = byId('hint', HTMLElement);
 const videoInput = byId('video-file', HTMLInputElement);
 const subsInput = byId('subs-file', HTMLInputElement);
+const secondInput = byId('second-file', HTMLInputElement);
 
 stage.append(layer);
 attach({ video: () => video });
@@ -41,14 +42,21 @@ let file: File | null = null;
 let sha256: string | null = null;
 let playError = false;
 let subs: Subtitles = { state: 'none' };
+// The secondary track from a second subtitle file, for example English, under the line.
+let second: { state: 'ready'; name: string; segments: SubtitleSegment[] } | { state: 'failed'; error: string } | null = null;
 // Counts the opened videos, so that a job for an earlier video does not change the subtitles of the current one.
 let opened = 0;
+
+function secondText(): string {
+  if (!second) return '';
+  return second.state === 'ready' ? ` Second subtitles from ${second.name}.` : ` ${second.error}`;
+}
 
 function statusText(): [string, string] {
   if (playError) return [`Chrome cannot play ${file?.name ?? 'this file'}. Convert it to MP4 or WebM, then open it again.`, 'error'];
   switch (subs.state) {
     case 'none': return ['No subtitles. Add a subtitle file, or generate subtitles with WhisperX.', ''];
-    case 'ready': return [`${subs.origin === 'whisperx' ? 'WhisperX subtitles' : `Subtitles from ${subs.name}`}: ${subs.segments.length} lines.`, 'ok'];
+    case 'ready': return [`${subs.origin === 'whisperx' ? 'WhisperX subtitles' : `Subtitles from ${subs.name}`}: ${subs.segments.length} lines.${secondText()}`, 'ok'];
     case 'working': return [subs.text, ''];
     case 'failed': return [subs.error, 'error'];
     default: {
@@ -73,7 +81,7 @@ function render(): void {
   if (subs.state === 'working' && subs.progress) progress.value = subs.progress;
   else progress.removeAttribute('value');
   setLines(subs.state === 'ready' && file
-    ? { kind: 'timed', id: `file:${file.name}:${file.size}`, segments: subs.segments, audio: sha256 ? { sha256 } : null }
+    ? { kind: 'timed', id: `file:${file.name}:${file.size}`, segments: subs.segments, second: second?.state === 'ready' ? second.segments : null, audio: sha256 ? { sha256 } : null }
     : { kind: 'none' });
 }
 
@@ -85,7 +93,10 @@ function setSubs(next: Subtitles): void {
 function openVideo(next: File): void {
   opened++;
   // Subtitles chosen before the first video belong to it; a later video starts without subtitles.
-  if (file) subs = { state: 'none' };
+  if (file) {
+    subs = { state: 'none' };
+    second = null;
+  }
   if (video.src) URL.revokeObjectURL(video.src);
   file = next;
   sha256 = null;
@@ -157,6 +168,17 @@ video.addEventListener('error', () => {
 });
 byId('choose', HTMLButtonElement).addEventListener('click', () => videoInput.click());
 byId('add-subs', HTMLButtonElement).addEventListener('click', () => subsInput.click());
+byId('add-second', HTMLButtonElement).addEventListener('click', () => secondInput.click());
+secondInput.addEventListener('change', async () => {
+  const [picked] = secondInput.files ?? [];
+  secondInput.value = '';
+  if (!picked) return;
+  const segments = parseSubtitles(await picked.text());
+  second = segments.length
+    ? { state: 'ready', name: picked.name, segments }
+    : { state: 'failed', error: `${picked.name} has no subtitles that Minerr can read. Use an .srt or .vtt file.` };
+  render();
+});
 generateButton.addEventListener('click', generate);
 saveButton.addEventListener('click', save);
 byId('fullscreen', HTMLButtonElement).addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : stage.requestFullscreen()));

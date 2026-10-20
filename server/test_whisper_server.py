@@ -62,6 +62,7 @@ class FetchCaptions(unittest.TestCase):
             calls.append(args)
             return json.dumps({'subtitles': {'ja': [{'ext': 'vtt', 'url': 'data:text/vtt;charset=utf-8,WEBVTT%0A%0A00:01.000 --> 00:02.000%0A%E7%8C%AB'}]}})
         saved, whisper_server.yt_dlp = whisper_server.yt_dlp, fake_yt_dlp
+        whisper_server.infos.clear()
         try:
             found = whisper_server.fetch_captions('https://youtu.be/KfQPZZ5JmXw', 'KfQPZZ5JmXw', 'ja')
             none = whisper_server.fetch_captions('https://youtu.be/KfQPZZ5JmXw', 'KfQPZZ5JmXw', 'en')
@@ -69,7 +70,7 @@ class FetchCaptions(unittest.TestCase):
             whisper_server.yt_dlp = saved
         self.assertEqual(found, {'ext': 'vtt', 'text': 'WEBVTT\n\n00:01.000 --> 00:02.000\n猫'})
         self.assertIsNone(none)
-        self.assertEqual(calls[0], ('-J', '--', 'https://www.youtube.com/watch?v=KfQPZZ5JmXw'))
+        self.assertEqual(calls, [('-J', '--', 'https://www.youtube.com/watch?v=KfQPZZ5JmXw')], 'the second language uses the info of the first')
 
 
 class SplitSegment(unittest.TestCase):
