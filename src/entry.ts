@@ -156,6 +156,8 @@ export function joinCompounds(tokens: kuromoji.Token[], headwords: Set<string>):
   return joined;
 }
 
+const ONE_KANA = /^[ぁ-ゖァ-ヺー]$/;
+
 // The segments of tokens, with compound nouns joined and the dictionary entry of each word.
 // A word spelled as its headword gets the reading of the entry: kuromoji reads the joined 食肉目 しょくにくめ.
 // If a dictionary read fails, the text gets the kuromoji grouping without entries, as with no dictionary.
@@ -171,7 +173,8 @@ export async function entrySegments(tokens: kuromoji.Token[], words: Words): Pro
         const found = await words.entry(suru, null);
         if (found) return { ...segment, lemma: suru, entry: found };
       }
-      if (!entry) return segment;
+      // A one-kana piece with no entry is not a word: broken captions such as 西ニっポり (西日暮里) parse into ニ|っ|ポ|り.
+      if (!entry) return ONE_KANA.test(segment.text) ? { text: segment.text } : segment;
       const headword = segment.reading && segment.text === entry.headword;
       return { ...segment, ...(headword ? { reading: toHiragana(entry.reading) } : {}), entry };
     }));

@@ -65,6 +65,12 @@ const keys = async (text: string, dict = words) => (await parse(text, dict))
 
 const CAT = { key: '猫', headword: '猫', reading: 'ねこ' };
 
+test('a one-kana piece with no dictionary entry is plain text, not a word: broken captions such as 西ニっポり', async () => {
+  const words = (await parse('西ニっポりに猫')).filter(segment => segment.lemma).map(segment => segment.text);
+  assert.deepEqual(words, ['西', '猫'], 'ニ, っ, ポ and り have no entry, so they get no underline; a kanji keeps its mark');
+  assert.deepEqual((await parse('西ニっポりに猫')).map(segment => segment.text).join(''), '西ニっポりに猫', 'the text stays the same');
+});
+
 test('a verb that kuromoji reads as the old 五段 form 接す gets the entry of 接する; a real す verb keeps its own', async () => {
   assert.deepEqual(await keys('国境線で接しており'), ['国境=国境=国境', '線=線=線', '接しており=接する=接する']);
   assert.deepEqual(await keys('海に面して'), ['海=海=海', '面して=面する=面する']);
