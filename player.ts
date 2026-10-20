@@ -8,7 +8,7 @@ import { byId } from './src/dom.ts';
 import { messageOf } from './src/rpc.ts';
 import { applyTheme } from './src/theme.ts';
 import { attach, layer, setLines } from './src/video.ts';
-import { getJob, uploadFile } from './src/whisper.ts';
+import { getJob, uploadFile, waitForJob } from './src/whisper.ts';
 
 applyTheme();
 
@@ -122,7 +122,6 @@ async function open(files: File[]): Promise<void> {
   if (subtitle) await openSubtitles(subtitle);
 }
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // The page sends the file to the server itself: a runtime message cannot carry a File, and this page has the host permission.
 async function generate(): Promise<void> {
@@ -135,20 +134,14 @@ async function generate(): Promise<void> {
     const { id } = upload;
     if (stale()) return;
     ({ sha256 } = upload);
-    for (;;) {
-      const job = await getJob(id);
-      if (stale()) return;
-      if (!job) throw new Error('The WhisperX server lost the job. Generate the subtitles again.');
-      if (job.state === 'error') throw new Error(job.error);
-      if (job.state === 'done') {
-        setSubs({ state: 'ready', origin: 'whisperx', name: 'WhisperX', segments: job.segments });
-        return;
-      }
+    const segments = await waitForJob(id, getJob, job => {
+      if (stale()) return false;
       setSubs(job.state === 'transcribing'
         ? { state: 'working', text: `Transcribing… ${job.progress}%`, progress: job.progress }
         : { state: 'working', text: 'Waiting for the server…', progress: null });
-      await sleep(POLL_MS);
-    }
+      return true;
+    }, POLL_MS);
+    if (segments && !stale()) setSubs({ state: 'ready', origin: 'whisperx', name: 'WhisperX', segments });
   } catch (error) {
     if (!stale()) setSubs({ state: 'failed', error: messageOf(error) });
   }

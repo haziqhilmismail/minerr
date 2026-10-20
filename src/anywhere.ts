@@ -2,6 +2,7 @@
 // from the site through the server (yt-dlp), or from WhisperX. The toolbar popup starts it, so other pages load nothing more.
 import { parseSubtitles, type SubtitleSegment } from './captions.ts';
 import { call, messageOf, serve } from './rpc.ts';
+import { waitForJob } from './whisper.ts';
 
 const POLL_MS = 2000;
 const BAR_STYLE = `
@@ -46,10 +47,9 @@ async function start(video: HTMLVideoElement): Promise<void> {
     Object.assign(layer.style, { position: 'fixed', inset: 'auto', zIndex: '2147483646', top: `${rect.top}px`, left: `${rect.left}px`,
       width: `${rect.width}px`, height: `${rect.height}px` });
   }
-  setInterval(place, 250);
+  // The interval covers a resize, full screen, and a page that moves the video; scroll makes the overlay follow without a lag.
+  const timer = setInterval(() => (video.isConnected ? place() : clearInterval(timer)), 250);
   addEventListener('scroll', place, { passive: true, capture: true });
-  addEventListener('resize', place);
-  document.addEventListener('fullscreenchange', place);
   place();
   attach({ video: () => (video.isConnected ? video : null) });
 
@@ -82,18 +82,14 @@ async function start(video: HTMLVideoElement): Promise<void> {
   async function whisperx(): Promise<void> {
     try {
       const { id } = await call({ type: 'whisperStart', url });
-      for (;;) {
-        const job = await call({ type: 'whisperJob', id });
-        if (!job) throw new Error('The WhisperX server lost the job. Generate the subtitles again.');
-        if (job.state === 'error') throw new Error(job.error);
-        if (job.state === 'done') {
-          primary = job.segments;
-          use();
-          return toast(`WhisperX subtitles: ${job.segments.length} lines.`);
-        }
+      const segments = await waitForJob(id, jobId => call({ type: 'whisperJob', id: jobId }), job => {
         toast(job.state === 'transcribing' ? `WhisperX: transcribing… ${job.progress}%` : 'WhisperX: downloading the audio…');
-        await new Promise(resolve => setTimeout(resolve, POLL_MS));
-      }
+        return true;
+      }, POLL_MS);
+      if (!segments) return;
+      primary = segments;
+      use();
+      toast(`WhisperX subtitles: ${segments.length} lines.`);
     } catch (error) {
       toast(messageOf(error));
     }

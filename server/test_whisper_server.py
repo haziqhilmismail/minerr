@@ -3,6 +3,7 @@
 import hashlib
 import io
 import json
+import os
 import subprocess
 import tempfile
 import threading
@@ -13,8 +14,10 @@ import urllib.request
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
+import media
 import whisper_server
-from whisper_server import Jobs, handler, media_key, pick_track, receive, split_segment, subtitle_segments, video_id
+from media import media_key, pick_track, video_id
+from whisper_server import Jobs, handler, receive, split_segment, subtitle_segments
 
 
 class VideoId(unittest.TestCase):
@@ -61,13 +64,13 @@ class FetchCaptions(unittest.TestCase):
         def fake_yt_dlp(*args, timeout):
             calls.append(args)
             return json.dumps({'subtitles': {'ja': [{'ext': 'vtt', 'url': 'data:text/vtt;charset=utf-8,WEBVTT%0A%0A00:01.000 --> 00:02.000%0A%E7%8C%AB'}]}})
-        saved, whisper_server.yt_dlp = whisper_server.yt_dlp, fake_yt_dlp
-        whisper_server.infos.clear()
+        saved, media.yt_dlp = media.yt_dlp, fake_yt_dlp
+        media.infos.clear()
         try:
-            found = whisper_server.fetch_captions('https://youtu.be/KfQPZZ5JmXw', 'KfQPZZ5JmXw', 'ja')
-            none = whisper_server.fetch_captions('https://youtu.be/KfQPZZ5JmXw', 'KfQPZZ5JmXw', 'en')
+            found = media.fetch_captions('https://youtu.be/KfQPZZ5JmXw', 'KfQPZZ5JmXw', 'ja')
+            none = media.fetch_captions('https://youtu.be/KfQPZZ5JmXw', 'KfQPZZ5JmXw', 'en')
         finally:
-            whisper_server.yt_dlp = saved
+            media.yt_dlp = saved
         self.assertEqual(found, {'ext': 'vtt', 'text': 'WEBVTT\n\n00:01.000 --> 00:02.000\n猫'})
         self.assertIsNone(none)
         self.assertEqual(calls, [('-J', '--', 'https://www.youtube.com/watch?v=KfQPZZ5JmXw')], 'the second language uses the info of the first')
@@ -129,8 +132,8 @@ class FakeTranscriber:
 class Files(unittest.TestCase):
     def setUp(self):
         folder = Path(tempfile.mkdtemp(prefix='minerr-test-'))
-        self.saved = whisper_server.CACHE, whisper_server.UPLOADS, whisper_server.AUDIO
-        whisper_server.CACHE, whisper_server.UPLOADS, whisper_server.AUDIO = folder / 'subs', folder / 'uploads', folder / 'audio'
+        self.saved = whisper_server.CACHE, whisper_server.UPLOADS, media.AUDIO
+        whisper_server.CACHE, whisper_server.UPLOADS, media.AUDIO = folder / 'subs', folder / 'uploads', folder / 'audio'
         self.transcribe = FakeTranscriber()
         self.server = ThreadingHTTPServer(('127.0.0.1', 0), None)
         self.port = self.server.server_address[1]
@@ -140,7 +143,7 @@ class Files(unittest.TestCase):
     def tearDown(self):
         self.server.shutdown()
         self.server.server_close()
-        whisper_server.CACHE, whisper_server.UPLOADS, whisper_server.AUDIO = self.saved
+        whisper_server.CACHE, whisper_server.UPLOADS, media.AUDIO = self.saved
 
     def request(self, method, path, body=None, headers=None):
         request = urllib.request.Request(f'http://127.0.0.1:{self.port}{path}', data=body, method=method, headers=headers or {})
@@ -198,18 +201,18 @@ class Files(unittest.TestCase):
 
     def test_youtube_job_downloads_then_caches_by_video_id(self):
         def fake_download(url, key):
-            whisper_server.AUDIO.mkdir(parents=True, exist_ok=True)
-            path = whisper_server.AUDIO / f'{key}.webm'
+            media.AUDIO.mkdir(parents=True, exist_ok=True)
+            path = media.AUDIO / f'{key}.webm'
             path.write_bytes(key.encode())
             return path
-        saved, whisper_server.download_audio = whisper_server.download_audio, fake_download
+        saved, media.download_audio = media.download_audio, fake_download
         try:
             status, reply = self.request('POST', '/jobs', json.dumps({'url': 'https://youtu.be/KfQPZZ5JmXw'}).encode(),
                                          {'Content-Type': 'application/json'})
             self.assertEqual(status, 200)
             self.assertEqual(self.wait_done(reply['id'])[1]['state'], 'done')
         finally:
-            whisper_server.download_audio = saved
+            media.download_audio = saved
         self.assertEqual(self.transcribe.files, [('.webm', b'KfQPZZ5JmXw')])
         self.assertEqual(self.request('GET', '/subs/KfQPZZ5JmXw'), (200, [{'start': 0.0, 'end': 1.5, 'text': '猫が魚を食べた。'}]))
 
@@ -221,7 +224,7 @@ class Files(unittest.TestCase):
         def fake_fetch(url, key, lang):
             calls.append((url, key, lang))
             return {'ext': 'vtt', 'text': 'WEBVTT'} if lang == 'ja' else None
-        saved, whisper_server.fetch_captions = whisper_server.fetch_captions, fake_fetch
+        saved, media.fetch_captions = media.fetch_captions, fake_fetch
         try:
             url = 'https://www.youtube.com/watch?v=KfQPZZ5JmXw&t=3'
             self.assertEqual(self.post('/captions', {'url': url, 'lang': 'ja'}), (200, {'ext': 'vtt', 'text': 'WEBVTT'}))
@@ -231,7 +234,7 @@ class Files(unittest.TestCase):
             self.assertEqual(self.post('/captions', {'url': url, 'lang': '../x'}), (400, {'error': 'Send a language code such as ja.'}))
             self.assertEqual(self.post('/captions', {'url': 'file:///etc/passwd', 'lang': 'ja'}), (400, {'error': 'Use an http or https URL.'}))
         finally:
-            whisper_server.fetch_captions = saved
+            media.fetch_captions = saved
         self.assertEqual(calls, [(url, 'KfQPZZ5JmXw', 'ja'), (url, 'KfQPZZ5JmXw', 'en')], 'each language runs yt-dlp one time')
 
     def test_clip_cuts_mp3_from_the_audio_of_an_uploaded_file(self):
@@ -241,13 +244,13 @@ class Files(unittest.TestCase):
         self.assertEqual(self.post('/clip', {'sha256': sha256, 'start': 1, 'end': 2}),
                          (404, {'error': 'The server has no audio of this file. Generate subtitles with WhisperX first.'}))
         self.wait_done(self.upload(wav, 'tone.wav')[1]['id'])
-        self.assertEqual([p.name for p in whisper_server.AUDIO.iterdir()], [f'{sha256}.mka'], 'the job keeps the audio of the upload')
+        self.assertEqual([p.name for p in media.AUDIO.iterdir()], [f'{sha256}.mka'], 'the job keeps the audio of the upload')
         request = urllib.request.Request(f'http://127.0.0.1:{self.port}/clip', method='POST', headers={'Content-Type': 'application/json'},
                                          data=json.dumps({'sha256': sha256, 'start': 1.5, 'end': 3}).encode())
         with urllib.request.urlopen(request) as response:
             mp3 = response.read()
             self.assertEqual(response.headers['Content-Type'], 'audio/mpeg')
-        path = whisper_server.AUDIO / 'clip.mp3'
+        path = media.AUDIO / 'clip.mp3'
         path.write_bytes(mp3)
         probe = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=format_name,duration', '-of', 'json', str(path)],
                                check=True, capture_output=True).stdout
@@ -256,6 +259,35 @@ class Files(unittest.TestCase):
         self.assertAlmostEqual(float(found['duration']), 1.5, delta=0.1)
         for body in ({'sha256': sha256, 'start': 2, 'end': 1}, {'sha256': sha256, 'start': 0, 'end': 61}, {'sha256': sha256, 'start': True, 'end': 2}):
             self.assertEqual(self.post('/clip', body)[0], 400, body)
+
+    def test_clip_of_a_url_downloads_the_audio_in_the_background_and_answers_404_until_then(self):
+        started = []
+        saved, media.start_download = media.start_download, lambda url, key: started.append((url, key))
+        try:
+            url = 'https://videos.example/ep/1'
+            self.assertEqual(self.post('/clip', {'url': url, 'start': 1, 'end': 2}),
+                             (404, {'error': 'The server is downloading the audio of this video. Until then, the tab records the line.'}))
+        finally:
+            media.start_download = saved
+        self.assertEqual(started, [(url, hashlib.sha256(url.encode()).hexdigest())])
+
+    def test_captions_without_subtitles_expire_after_a_day(self):
+        calls = []
+        def fake_fetch(url, key, lang):
+            calls.append(lang)
+            return None
+        saved, media.fetch_captions = media.fetch_captions, fake_fetch
+        try:
+            body = {'url': 'https://youtu.be/KfQPZZ5JmXw', 'lang': 'ja'}
+            self.assertEqual(self.post('/captions', body)[0], 404)
+            self.assertEqual(self.post('/captions', body)[0], 404)
+            path = whisper_server.CACHE / 'KfQPZZ5JmXw.captions.ja.json'
+            day_ago = time.time() - 24 * 3600 - 60
+            os.utime(path, (day_ago, day_ago))
+            self.assertEqual(self.post('/captions', body)[0], 404)
+        finally:
+            media.fetch_captions = saved
+        self.assertEqual(calls, ['ja', 'ja'], 'the second request uses the cache, the third finds it too old')
 
     def test_receive_streams_in_chunks_and_rejects_a_short_body(self):
         data = b'v' * (whisper_server.CHUNK * 2 + 5)

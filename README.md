@@ -188,7 +188,7 @@ The captions that Minerr copies from the YouTube player have no times. Thus the 
 
 The server uses the subtitles of the uploader first. If the video has none, it uses the automatic subtitles of YouTube. The overlay then shows the subtitles at the times of the video, also when the YouTube captions are off. If the video has no Japanese subtitles, the overlay copies the YouTube captions as before.
 
-The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.captions.ja.json`. The file of a video with no Japanese subtitles contains `{}`. To download the subtitles again, delete the file.
+The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.captions.ja.json`. The file of a video with no Japanese subtitles contains `{}`. After one day, the server asks YouTube again, because YouTube can add automatic subtitles some hours after the upload. To download the subtitles again at once, delete the file.
 
 ## Generate subtitles with WhisperX
 
@@ -300,7 +300,7 @@ When you add a card for a word in the subtitle overlay, the card also gets the a
 
 The audio comes from one of these sources:
 
-1. The Minerr server cuts the line from its copy of the audio, as an MP3 file. This works for a YouTube video, and for a file that you sent to the server with **Generate with WhisperX**. The first card of a YouTube video takes longer, because the server downloads the audio of the video.
+1. The Minerr server cuts the line from its copy of the audio, as an MP3 file. This works for a YouTube video, and for a file that you sent to the server with **Generate with WhisperX**. The first card of a video starts the download of its audio. The later cards of the video get the MP3 file.
 2. If the server is off or has no audio of the video, Minerr records the line in the tab. The video goes back to the start of the line and plays it again. Then the video goes back to where it was. The recording is a WebM file.
 
 The sentence audio needs subtitles with times. A card from the YouTube captions that Minerr copies from the player has no sentence audio.
@@ -550,6 +550,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/linelist.ts` | The subtitle browser: the list of all lines, its filters, and the bookmarks. |
 | `src/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
 | `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
+| `server/whisper_server.py`, `server/media.py` | The local server: WhisperX jobs and the HTTP routes, and the video side (cache keys, `yt-dlp`, the audio cache, and line clips). |
 
 Node.js runs the `.ts` test files directly, without a build. To run the tests:
 
@@ -579,7 +580,7 @@ The WhisperX server has two endpoints for the player:
 - `GET /files/<sha256>` returns the cached subtitles of a file.
 - `POST /jobs` takes `{"url": ...}` and starts a WhisperX job for the video at the URL. A URL that is not a YouTube URL gets the SHA-256 of the URL as its cache key.
 - `POST /captions` takes `{"url": ..., "lang": "ja"}`. It returns the subtitles of the site in that language as `{"ext": ..., "text": ...}`, or 404 if the video has none. `ext` is `json3`, `vtt`, or `srt`.
-- `POST /clip` takes `{"url": ..., "start": ..., "end": ...}` or `{"sha256": ..., "start": ..., "end": ...}`, with the times in seconds. It returns an MP3 of the audio between the two times. The server downloads the audio of a URL one time, to `~/.cache/minerr/audio/`. It keeps the audio of an uploaded file after the WhisperX job for the file.
+- `POST /clip` takes `{"url": ..., "start": ..., "end": ...}` or `{"sha256": ..., "start": ..., "end": ...}`, with the times in seconds. It returns an MP3 of the audio between the two times. The server downloads the audio of a URL one time, to `~/.cache/minerr/audio/`. While the download runs, the reply is 404, and the extension records the line in the tab. The server keeps the audio of an uploaded file after the WhisperX job for the file.
 
 `node test/media.ts` tests the i+1 highlight and the player, with a mock AnkiConnect and a mock WhisperX server. It uses port 8765 and port 8766. `npm test` runs it after `node test/subtitles.ts`.
 

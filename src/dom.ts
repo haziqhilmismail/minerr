@@ -5,6 +5,9 @@ export function byId<T extends HTMLElement>(id: string, type: new () => T): T {
   return element;
 }
 
+// Plays the media. A pause, a seek, or a new source can interrupt play(); that is not an error.
+export const play = (media: HTMLMediaElement): void => { media.play().catch(() => undefined); };
+
 // The nearest ancestor-or-self of element that is not inline: the block that holds a sentence.
 // cache keeps the answer for each element that the walk visits, for callers that ask for many elements.
 export function blockOf(element: Element, cache = new Map<Element, Element>()): Element {

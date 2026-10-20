@@ -1,18 +1,12 @@
 // Pure rules for timed subtitle lines: which line is at a time, where a jump goes, and when a play mode pauses.
-import { escapeHtml } from './anki.ts';
 import type { SubtitleSegment } from './captions.ts';
 
 // A seek lands on the start of a line, but the video can report a time a little before it.
 const EPSILON = 0.05;
 
 // The index of the last line that started at or before time, or -1 before the first line.
-export function lastStarted(segments: SubtitleSegment[], time: number): number {
-  let found = -1;
-  segments.forEach((segment, i) => {
-    if (segment.start <= time + EPSILON) found = i;
-  });
-  return found;
-}
+export const lastStarted = (segments: SubtitleSegment[], time: number): number =>
+  segments.findLastIndex(segment => segment.start <= time + EPSILON);
 
 export const JUMPS = ['next', 'previous', 'replay'] as const;
 export type Jump = (typeof JUMPS)[number];
@@ -76,14 +70,4 @@ export function gapEnd(segments: SubtitleSegment[], time: number): number | null
   const next = segments.find(segment => segment.start > time);
   if (!next || next.start - (before?.end ?? 0) < MIN_GAP || time >= next.start - GAP_LEAD) return null;
   return next.start;
-}
-const UNESCAPES: Record<string, string> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"' };
-
-// The card sentence for joined lines: the text of the lines (line breaks become spaces) around the sentence of the popup,
-// which has the word in <b>. If the lines do not contain that sentence, it stays as it is.
-export function widenSentence(text: string, sentence: string): string {
-  const plain = sentence.replace(/<[^>]*>/g, '').replace(/&(amp|lt|gt|quot);/g, entity => UNESCAPES[entity] ?? entity);
-  const flat = text.replace(/\s+/g, ' ').trim();
-  const at = flat.indexOf(plain);
-  return at < 0 || !plain ? sentence : escapeHtml(flat.slice(0, at)) + sentence + escapeHtml(flat.slice(at + plain.length));
 }

@@ -2,7 +2,7 @@ import { captionText, type SubtitleSegment } from './captions.ts';
 import { call, type Message, messageOf, serve } from './rpc.ts';
 import { attach, layer, setLines } from './video.ts';
 import { secondDisplay } from './videosettings.ts';
-import type { Job, JobStatus } from './whisper.ts';
+import { type JobStatus, waitForJob } from './whisper.ts';
 
 const POLL_MS = 2000;
 
@@ -31,13 +31,24 @@ interface TrackedJob {
   status: JobStatus;
 }
 
-// segments are the WhisperX subtitles of the video, when the server has them.
-// youtube is the Japanese YouTube subtitles with times, when the server could download them with yt-dlp.
+// The subtitle tracks of the video, each null until the server has it.
+// whisperx is from WhisperX; youtube is the Japanese YouTube subtitles with times, which the server downloads with yt-dlp;
 // english is the English YouTube subtitles, the secondary track.
-type OverlayState = { videoId: string | null; job: TrackedJob | null; youtube: SubtitleSegment[] | null; english: SubtitleSegment[] | null }
-  & ({ source: 'youtube'; segments: SubtitleSegment[] | null } | { source: 'whisperx'; segments: SubtitleSegment[] });
+interface Tracks {
+  whisperx: SubtitleSegment[] | null;
+  youtube: SubtitleSegment[] | null;
+  english: SubtitleSegment[] | null;
+}
 
-let state: OverlayState = { videoId: null, source: 'youtube', segments: null, youtube: null, english: null, job: null };
+interface OverlayState {
+  videoId: string | null;
+  source: Source;
+  tracks: Tracks;
+  job: TrackedJob | null;
+}
+
+const noTracks = (): Tracks => ({ whisperx: null, youtube: null, english: null });
+let state: OverlayState = { videoId: null, source: 'youtube', tracks: noTracks(), job: null };
 
 document.head.append(Object.assign(document.createElement('style'), { textContent: STYLE }));
 
@@ -51,19 +62,20 @@ const currentVideoId = () => (location.pathname === '/watch' ? new URLSearchPara
 attach({ video, blocked: () => player?.classList.contains('ad-showing') ?? false });
 
 function render(): void {
-  const segments = state.source === 'whisperx' ? state.segments : state.youtube;
+  const { tracks } = state;
+  const segments = state.source === 'whisperx' ? tracks.whisperx : tracks.youtube;
   setLines(segments
-    ? { kind: 'timed', id: `youtube:${state.videoId}`, segments, second: state.english, audio: { url: watchUrl(state.videoId) } }
+    ? { kind: 'timed', id: `youtube:${state.videoId}`, segments, second: tracks.english, audio: { url: watchUrl(state.videoId) } }
     : { kind: 'mirror', text: captionText([...(player?.querySelectorAll('.caption-visual-line') ?? [])].map(l => l.textContent ?? '')) });
 }
 
 const captions = new MutationObserver(() => {
-  if (state.source === 'youtube' && !state.youtube) render();
+  if (state.source === 'youtube' && !state.tracks.youtube) render();
 });
 
 // The cached WhisperX subtitles come at once; the YouTube subtitles take some seconds, because yt-dlp asks YouTube.
 function changeVideo(videoId: string | null): void {
-  state = { videoId, source: 'youtube', segments: null, youtube: null, english: null, job: null };
+  state = { videoId, source: 'youtube', tracks: noTracks(), job: null };
   render();
   if (!videoId) return;
   const url = watchUrl(videoId);
@@ -72,18 +84,19 @@ function changeVideo(videoId: string | null): void {
   }, () => undefined);
   call({ type: 'siteCaptions', url, lang: 'ja' }).then(segments => {
     if (!segments?.length || state.videoId !== videoId) return;
-    state.youtube = segments;
+    state.tracks.youtube = segments;
     render();
   }, () => undefined);
   secondDisplay.get().then(display => (display === 'off' ? null : call({ type: 'siteCaptions', url, lang: 'en' }))).then(segments => {
     if (!segments?.length || state.videoId !== videoId) return;
-    state.english = segments;
+    state.tracks.english = segments;
     render();
   }, () => undefined);
 }
 
 function useSegments(segments: SubtitleSegment[]): void {
-  state = { ...state, source: 'whisperx', segments };
+  state.tracks.whisperx = segments;
+  state.source = 'whisperx';
   render();
 }
 
@@ -100,31 +113,28 @@ function sync(): void {
   if (videoId !== state.videoId) changeVideo(videoId);
 }
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const finished = (status: JobStatus) => status.state === 'done' || status.state === 'error';
 
 // The tab polls the job it started, so the result arrives even when the toolbar popup is closed.
 async function poll(job: TrackedJob, id: string): Promise<void> {
-  while (state.job === job) {
-    const reply: Job = await call({ type: 'whisperJob', id })
-      .catch((error: unknown): Job => ({ state: 'error', error: messageOf(error) }))
-      ?? { state: 'error', error: 'The WhisperX server lost the job. Generate the subtitles again.' };
-    if (state.job !== job) return;
-    if (reply.state === 'done') {
-      job.status = { state: 'done' };
-      useSegments(reply.segments);
-    } else {
-      job.status = reply;
-    }
-    if (finished(job.status)) return;
-    await sleep(POLL_MS);
+  const current = () => state.job === job;
+  try {
+    const segments = await waitForJob(id, jobId => call({ type: 'whisperJob', id: jobId }), status => {
+      if (current()) job.status = status;
+      return current();
+    }, POLL_MS);
+    if (!segments || !current()) return;
+    job.status = { state: 'done' };
+    useSegments(segments);
+  } catch (error) {
+    if (current()) job.status = { state: 'error', error: messageOf(error) };
   }
 }
 
 const snapshot = (): Snapshot => ({
   videoId: state.videoId,
   source: state.source,
-  hasWhisperx: Boolean(state.segments),
+  hasWhisperx: Boolean(state.tracks.whisperx),
   job: state.job?.status ?? null,
 });
 
@@ -146,10 +156,10 @@ async function generate(): Promise<Snapshot> {
 
 function use({ source }: Message<'subsUse'>): Snapshot {
   if (source === 'whisperx') {
-    if (!state.segments) throw new Error('No WhisperX subtitles for this video yet.');
-    state = { ...state, source: 'whisperx', segments: state.segments };
+    if (!state.tracks.whisperx) throw new Error('No WhisperX subtitles for this video yet.');
+    state.source = 'whisperx';
   } else {
-    state = { ...state, source: 'youtube' };
+    state.source = 'youtube';
   }
   render();
   return snapshot();

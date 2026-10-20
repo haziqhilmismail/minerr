@@ -2,8 +2,10 @@
 import type { SubtitleSegment } from './captions.ts';
 import { modePause, played, setHold } from './autopause.ts';
 import type { CardLine } from './lineaudio.ts';
+import { play } from './dom.ts';
 import { createLineList } from './linelist.ts';
 import { createOverlay, wordStatuses } from './overlay.ts';
+import { isEditable } from './popup.ts';
 import {
   autoPause, cleanSegments, cleanText, GAP_LEAD, GAP_MODES, gapEnd, type GapMode, jumpTarget, PLAY_MODES, type PlayMode,
 } from './playback.ts';
@@ -71,8 +73,6 @@ let combined: number | null = null;
 export { layer, toast };
 
 const video = () => target.video();
-const isEditable = (node: EventTarget | null) => node instanceof HTMLElement
-  && (node.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(node.tagName));
 const timed = () => (lines.kind === 'timed' && lines.segments.length ? lines : null);
 // The time of the video on the clock of the lines.
 const lineTime = () => (video()?.currentTime ?? 0) - offset;
@@ -201,8 +201,6 @@ function toggleList(): void {
   follow();
 }
 
-// A pause, a seek, or a new source can interrupt play(); that is not an error.
-const play = () => { video()?.play().catch(() => undefined); };
 
 function seek(time: number): void {
   const playing = video();
@@ -214,7 +212,8 @@ function jump(kind: 'next' | 'previous' | 'replay'): void {
   const start = found && jumpTarget(found.segments, lineTime(), kind);
   if (start === null || start === undefined) return;
   seek(start + offset);
-  if (kind === 'replay') play();
+  const playing = video();
+  if (kind === 'replay' && playing) play(playing);
 }
 
 function step(frames: number): void {
@@ -350,12 +349,13 @@ secondDisplay.watch(value => {
   follow();
 });
 
-line.addEventListener('mouseenter', () => { const playing = video(); if (playing) setHold(playing, 'hover', true); });
+// No hold starts during a recording: a pause would cut the recording short.
+line.addEventListener('mouseenter', () => { const playing = video(); if (playing && !recording) setHold(playing, 'hover', true); });
 line.addEventListener('mouseleave', () => { const playing = video(); if (playing) setHold(playing, 'hover', false); });
 // popup.ts marks the word of the open popup with data-ml-active.
 new MutationObserver(() => {
   const playing = video();
-  if (playing) setHold(playing, 'popup', layer.querySelector('.ml-word[data-ml-active]') !== null);
+  if (playing) setHold(playing, 'popup', !recording && layer.querySelector('.ml-word[data-ml-active]') !== null);
 }).observe(layer, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-ml-active'] });
 
 subScale.watch(value => {

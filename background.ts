@@ -1,6 +1,5 @@
 import { addNote, fieldValues, getDeck, getNoteType, modelFieldNames, modelNames, version } from './src/anki.ts';
-import { cardLine, lineAudio } from './src/lineaudio.ts';
-import { widenSentence } from './src/playback.ts';
+import { cardMedia, widenSentence } from './src/lineaudio.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
 import { getStatuses, setStatus, setStatuses } from './src/status.ts';
 import { minerrEnabled } from './src/settings.ts';
@@ -42,9 +41,7 @@ async function addCard({ card }: Message<'addCard'>, sender: chrome.runtime.Mess
   if (!sender.tab) throw new Error('Add cards from a tab.');
   const image = await capture(sender.tab.windowId);
   // After the screenshot, because the tab may play the line again to record it.
-  const tabId = sender.tab.id;
-  const line = tabId === undefined ? null : await cardLine(tabId);
-  const audio = line && tabId !== undefined ? await lineAudio(line, tabId) : null;
+  const { line, audio } = await cardMedia(sender.tab.id);
   const sentence = line?.combined ? widenSentence(line.text, card.sentence) : card.sentence;
   const { url = '', title = '' } = sender.tab;
   const noteId = await addNote({ deck: await getDeck(), noteType: await getNoteType(), card: { ...card, sentence, ...(audio ? { audio } : {}) }, page: { url, title }, jpegDataUrl: image });

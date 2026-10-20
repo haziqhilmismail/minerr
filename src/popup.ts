@@ -261,7 +261,7 @@ async function addCard(): Promise<void> {
   }
 }
 
-const isEditable = (target: EventTarget | null) => target instanceof HTMLElement
+export const isEditable = (target: EventTarget | null) => target instanceof HTMLElement
   && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
 
 const HOTKEYS: Record<string, () => void> = {

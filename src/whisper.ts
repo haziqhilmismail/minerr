@@ -15,6 +15,24 @@ export type Job =
   | { state: 'done'; segments: SubtitleSegment[] }
   | { state: 'error'; error: string };
 
+// A job that runs.
+export type RunningJob = Extract<Job, { state: 'queued' | 'downloading' | 'transcribing' }>;
+
+// Polls the job until it ends, and returns its subtitles. A failed or lost job throws its error.
+// onStatus gets each state while the job runs. It returns false to stop, for example when the user opened another video.
+export async function waitForJob(
+  id: string, get: (id: string) => Promise<Job | null>, onStatus: (job: RunningJob) => boolean, pollMs: number,
+): Promise<SubtitleSegment[] | null> {
+  for (;;) {
+    const job = await get(id);
+    if (!job) throw new Error('The WhisperX server lost the job. Generate the subtitles again.');
+    if (job.state === 'error') throw new Error(job.error);
+    if (job.state === 'done') return job.segments;
+    if (!onStatus(job)) return null;
+    await new Promise(resolve => setTimeout(resolve, pollMs));
+  }
+}
+
 // A job as the toolbar popup shows it, without the subtitles.
 export type JobStatus = Exclude<Job, { state: 'done' }> | { state: 'done' };
 
