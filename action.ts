@@ -32,6 +32,7 @@ const generate = byId('generate', HTMLButtonElement);
 const progress = byId('progress', HTMLProgressElement);
 const server = byId('server', HTMLElement);
 const elsewhere = byId('elsewhere', HTMLElement);
+const attach = byId('attach', HTMLButtonElement);
 const sourceButtons = [...document.querySelectorAll('[data-source]')].filter(button => button instanceof HTMLButtonElement);
 const isSource = (value: unknown): value is Source => value === 'youtube' || value === 'whisperx';
 
@@ -73,6 +74,7 @@ async function refresh(): Promise<void> {
   checkServer();
   if (watchTabId === undefined) {
     elsewhere.hidden = false;
+    attach.hidden = !/^https?:/.test(tab?.url ?? '');
     return;
   }
   try {
@@ -92,6 +94,10 @@ async function act(message: Message<'subsGenerate'> | Message<'subsUse'>): Promi
   }
 }
 
+attach.addEventListener('click', async () => {
+  if (tab?.id === undefined) return;
+  elsewhere.textContent = await call({ type: 'videoAttach' }, tab.id).catch((error: unknown) => messageOf(error));
+});
 generate.addEventListener('click', () => {
   generate.disabled = true;
   act({ type: 'subsGenerate' });

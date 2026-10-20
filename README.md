@@ -27,7 +27,8 @@ The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedi
 - It keeps the word statuses in the browser. A status change updates the underlines in all open tabs at once.
 - It sends cards to Anki through AnkiConnect. It makes the deck and the note type if they do not exist.
 - It can mark the words of your mature Anki cards as known.
-- On YouTube, it shows the subtitles in its own large overlay at the bottom center of the video. You can look up and mine the words in the overlay.
+- On YouTube, it shows the subtitles in its own large overlay at the bottom center of the video. You can look up and mine the words in the overlay. The overlay also works on other video sites and on video files from your computer.
+- A card from a subtitle line gets the audio of the line.
 - It can make Japanese subtitles for a YouTube video with WhisperX, in a small server on your computer.
 
 All data stays on your computer. The extension sends requests only to AnkiConnect at `http://127.0.0.1:8765` and to the optional WhisperX server at `http://127.0.0.1:8766`.
@@ -271,6 +272,27 @@ Keep the player tab open while the server works. If you close the tab, open the 
 ### Save the subtitles
 
 Click **Save subtitles** to download the WhisperX subtitles as an `.srt` file. The file gets the name of the video, for example `lesson.srt` for `lesson.mp4`. Keep the `.srt` file in the same folder as the video. Next time, open the video and the `.srt` file together. Then you do not need the server. Most video players also show an `.srt` file that has the name of the video.
+
+## Subtitles on other video sites
+
+Minerr can show its subtitle overlay on the video of a page that is not YouTube.
+
+1. Open the page with the video.
+2. Click the Minerr button in the Chrome toolbar.
+3. Click **Subtitles for the video of this page**. Minerr puts its overlay on the largest video on the screen.
+4. Click a button at the top left of the video:
+   - **Subtitle file** reads an `.srt` or `.vtt` file from your computer.
+   - **Subtitles of the site** asks the Minerr server for the Japanese subtitles of the page. The server uses `yt-dlp`, which knows many video sites.
+   - **WhisperX** makes the subtitles from the audio of the page. The server downloads the audio with `yt-dlp`.
+5. To remove the buttons, click **Hide these buttons**. The overlay stays until you reload the page.
+
+The keys, the play modes, the subtitle browser, and the sentence audio work as on YouTube.
+
+Limits:
+
+- `yt-dlp` cannot download from a site with DRM, for example Netflix. The overlay then shows the error of the server. Use a subtitle file, if you have one. The sentence audio then comes from a recording in the tab, if the site allows it.
+- The video must be in the page itself. Some sites play the video in a frame, and Minerr does not see a video in a frame.
+- Minerr does not copy the captions of Netflix or other sites. On YouTube only, it copies the captions of the player.
 
 ## Sentence audio
 
@@ -524,6 +546,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/overlay.ts` | The subtitle overlay line, for YouTube and the player. |
 | `src/playback.ts`, `src/videokeys.ts` | Pure rules for timed lines (jumps, play modes, gaps, text clean-up), and the table of the video keys. |
 | `src/videosettings.ts`, `src/videooptions.ts` | The video settings, and their part of the options page. |
+| `src/anywhere.ts` | The subtitle overlay on the largest video of a page that is not YouTube, with its buttons. |
 | `src/linelist.ts` | The subtitle browser: the list of all lines, its filters, and the bookmarks. |
 | `src/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
 | `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
@@ -536,10 +559,10 @@ Node.js runs the `.ts` test files directly, without a build. To run the tests:
 4. Run `node test/unit.ts` and `node test/video-unit.ts`.
 5. Close Anki, because the next test uses port 8765.
 6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect.
-7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it.
+7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/media.ts` and `node test/sites.ts`, which use the same ports.
 8. Run `python3 -I -B -m unittest discover -s server` to test the WhisperX server. This test does not need WhisperX.
 
-`npm test` does steps 3 to 7 in one command, after a type check.
+`npm test` does steps 3 to 7 in one command, after a type check. `node test/sites.ts` tests the overlay on a fake video site.
 
 More scripts:
 

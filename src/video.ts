@@ -68,7 +68,7 @@ let bookmarks = new Set<number>();
 // The first of two lines that J joined, for one card with both; it ends when the video leaves the two lines.
 let combined: number | null = null;
 
-export { layer };
+export { layer, toast };
 
 const video = () => target.video();
 const isEditable = (node: EventTarget | null) => node instanceof HTMLElement

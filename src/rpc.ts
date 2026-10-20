@@ -11,6 +11,7 @@ import type { Group } from './yomitan.ts';
 // The service worker handles parse to siteCaptions; it passes parse and lookup on to the offscreen document.
 // The content scripts of a YouTube tab handle subsState, subsGenerate, and subsUse.
 // The page with the video overlay (a content script, or the player page) handles videoLine and videoRecord.
+// The content scripts of a page that is not YouTube handle videoAttach.
 interface Protocol {
   parse: { request: { texts: string[] }; reply: Segment[][] };
   lookup: { request: { lemma: string }; reply: Group[] };
@@ -29,6 +30,7 @@ interface Protocol {
   subsUse: { request: { source: Source }; reply: Snapshot };
   videoLine: { request: {}; reply: CardLine | null };
   videoRecord: { request: { start: number; end: number }; reply: MediaFile | null };
+  videoAttach: { request: {}; reply: string };
 }
 
 type MessageType = keyof Protocol;
