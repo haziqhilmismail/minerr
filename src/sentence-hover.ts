@@ -62,5 +62,5 @@ export function installSentenceHover(): void {
   let wanted = true;
   const update = () => { shown = on && wanted; show(); };
   sentenceHighlight.watch(value => { wanted = value; update(); });
-  watchActive(value => { on = value; update(); });
+  watchActive(active => { on = active !== 'off'; update(); });
 }

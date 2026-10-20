@@ -12,7 +12,7 @@ import { call, messageOf } from './rpc.ts';
 import { sentenceAround } from './sentence.ts';
 import { sentenceText, wordRange } from './sentence-text.ts';
 import { setPopupWord } from './sentence-hover.ts';
-import { watchActive } from './site.ts';
+import { type Active, VIDEO, watchActive } from './site.ts';
 import { getStatuses, onStatusChange, setStatus, type Status, STATUSES } from './status.ts';
 import { parseWords, recolor, sameWord, wordFragment, wordOf, wordParts } from './words.ts';
 
@@ -138,6 +138,9 @@ function lookupSelection(): boolean {
   const text = selection?.toString().trimStart() ?? '';
   if (!selection?.rangeCount || !text) return false;
   const range = selection.getRangeAt(0).cloneRange();
+  const common = range.commonAncestorContainer;
+  // Page text that is off gives no popup; the text of the subtitle overlay does.
+  if (active !== 'on' && !(common instanceof Element ? common : common.parentElement)?.closest(VIDEO)) return false;
   call({ type: 'lookupText', text }).then(found => {
     if (!found) {
       toast(`No dictionary entry for ${text.slice(0, 10)}.`);
@@ -212,10 +215,10 @@ async function editCard(): Promise<void> {
   form.querySelector('textarea')?.focus();
 }
 
-let enabled = true;
+let active: Active = 'off';
 watchActive(value => {
-  enabled = value;
-  if (!enabled) close(0);
+  active = value;
+  if (active !== 'on') close(0);
 });
 
 let mode: HoverMode = 'hover';
@@ -224,7 +227,7 @@ hoverMode.watch(value => { mode = value; });
 function consider(span: HTMLElement, shift: boolean, buttonDown: boolean): void {
   clearTimeout(timer);
   const depth = depthOf(span);
-  if (!enabled || editing || depth >= MAX_LAYERS || sameWord(span, spanOf(layers[depth]))) return;
+  if (active === 'off' || editing || depth >= MAX_LAYERS || sameWord(span, spanOf(layers[depth]))) return;
   const delay = hoverDelay({
     // A word in a popup opens a popup only with Shift, so the mouse can cross the definitions.
     mode: depth > 0 ? 'shift' : mode,

@@ -28,15 +28,16 @@ export const listen = (server: Server, port: number) => new Promise<number>(reso
 }));
 
 // The tests of the classic note type select it, as a user can; the mock AnkiConnect servers have no Lapis note type.
-// A null noteType keeps the default of a fresh profile.
-export async function launch(profileDir: string, noteType: NoteType | null = BUILTIN) {
+// A null noteType keeps the default of a fresh profile. The page text is off on a fresh profile; the test pages on 127.0.0.1
+// get it on, so the tests of words read them. localhost is the same server with the page text off.
+export async function launch(profileDir: string, noteType: NoteType | null = BUILTIN, enabledSites = ['127.0.0.1']) {
   const context = await chromium.launchPersistentContext(profileDir, {
     channel: 'chromium',
     headless: true,
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
   });
   const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
-  if (noteType) await worker.evaluate(value => chrome.storage.local.set({ noteType: value }), noteType);
+  await worker.evaluate(value => chrome.storage.local.set(value), { enabledSites, ...(noteType ? { noteType } : {}) });
   return { context, worker, extensionId: new URL(worker.url()).host };
 }
 

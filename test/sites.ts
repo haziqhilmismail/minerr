@@ -49,7 +49,7 @@ await listen(server, 8766);
 
 const video = `data:video/webm;base64,${readFileSync(clip).toString('base64')}`;
 const page = (title: string) => `<!doctype html><meta charset="utf-8"><title>${title}</title><body style="margin:0;padding:20px;background:#111">
-  <video id="ad" src="${video}" muted style="width:160px;height:90px"></video>
+  <p id="text" style="color:#eee">猫が好き</p><video id="ad" src="${video}" muted style="width:160px;height:90px"></video>
   <div style="position:relative;width:800px;height:450px"><video id="main" src="${video}" style="width:100%;height:100%"></video></div>`;
 const { context, worker, extensionId } = await launch(join(work, 'profile'));
 await context.route('https://videos.example/**', route => route.fulfill({ contentType: 'text/html; charset=utf-8',
@@ -88,6 +88,7 @@ try {
   await tab.getByRole('button', { name: 'Subtitles of the site' }).click();
   await line.locator('.ml-word[data-ml-lemma="食べる"]').waitFor({ timeout: 20000 });
   assert.equal(await line.innerText(), '猫が魚を食べた');
+  assert.equal(await tab.locator('#text .ml-word').count(), 0, 'the page text of a site that is off gets no words');
   assert.ok(serverRequests.includes('POST /captions {"url":"https://videos.example/watch/1","lang":"ja"}'));
   await tab.keyboard.press('d');
   await line.locator('.ml-word[data-ml-lemma="雨"]').waitFor();
