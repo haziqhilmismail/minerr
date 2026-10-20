@@ -8,7 +8,7 @@ import { parseSubtitles, type SubtitleSegment, toSrt } from './src/captions.ts';
 import { byId } from './src/dom.ts';
 import { messageOf } from './src/rpc.ts';
 import { applyTheme } from './src/theme.ts';
-import { attach, layer, setLines } from './src/video.ts';
+import { attach, layer, setLines, sidebar } from './src/video.ts';
 import { getJob, uploadFile, waitForJob } from './src/whisper.ts';
 
 applyTheme();
@@ -22,6 +22,7 @@ type Subtitles =
   | { state: 'working'; text: string; progress: number | null }
   | { state: 'failed'; error: string };
 
+const watch = byId('watch', HTMLElement);
 const stage = byId('stage', HTMLElement);
 const drop = byId('drop', HTMLElement);
 const video = byId('video', HTMLVideoElement);
@@ -36,6 +37,7 @@ const subsInput = byId('subs-file', HTMLInputElement);
 const secondInput = byId('second-file', HTMLInputElement);
 
 stage.append(layer);
+watch.append(sidebar);
 attach({ video: () => video });
 
 let file: File | null = null;
@@ -175,7 +177,7 @@ secondInput.addEventListener('change', async () => {
 });
 generateButton.addEventListener('click', generate);
 saveButton.addEventListener('click', save);
-byId('fullscreen', HTMLButtonElement).addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : stage.requestFullscreen()));
+byId('fullscreen', HTMLButtonElement).addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : watch.requestFullscreen()));
 for (const input of [videoInput, subsInput]) {
   input.addEventListener('change', async () => {
     await open([...input.files ?? []]);

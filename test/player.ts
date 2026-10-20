@@ -263,6 +263,77 @@ try {
   await player.keyboard.press('Escape');
   await player.mouse.move(0, 0);
 
+  await setStorage({ 'w:魚': 'unknown' });
+  await seek(1);
+  await player.keyboard.press('g');
+  const sidebar = player.locator('.minerr-lines');
+  const cards = sidebar.locator('li');
+  await sidebar.locator('li .ml-word.ml-unknown[data-ml-lemma="魚"]').waitFor();
+  const layout = async () => {
+    const boxes = await player.evaluate(() => Object.fromEntries(['#stage', '.minerr-lines'].map(selector => {
+      const box = document.querySelector(selector)?.getBoundingClientRect();
+      if (!box) throw new Error(`The page has no ${selector}`);
+      return [selector, { left: box.left, right: box.right, top: box.top, bottom: box.bottom }];
+    })));
+    console.log('sidebar layout:', boxes);
+    const [video, side] = [boxes['#stage'], boxes['.minerr-lines']];
+    assert.ok(video && side && side.left >= video.right, 'the sidebar is at the right of the video, not over it');
+    assert.deepEqual([side.top, side.bottom], [video.top, video.bottom], 'the sidebar is as high as the video');
+  };
+  await layout();
+  await player.click('#fullscreen');
+  assert.equal(await player.evaluate(() => document.fullscreenElement?.id), 'watch');
+  await layout();
+  await player.evaluate(() => document.exitFullscreen());
+  assert.deepEqual(await cards.evaluateAll(rows => rows.map(row => `${row.querySelector('time')?.textContent} ${row.querySelector('.text')?.textContent}`)),
+    ['0:00 猫が魚を食べた', '0:03 今日は雨が降っている']);
+  console.log('sidebar: a card with its time for each line beside the video');
+
+  const currentCard = (time: string) => player.waitForFunction(t => document.querySelector('.minerr-lines li[aria-current="true"] time')?.textContent === t, time);
+  await currentCard('0:00');
+  await seek(4);
+  await currentCard('0:03');
+  await seek(1);
+  await currentCard('0:00');
+
+  const sidebarDisplay = () => sidebar.evaluate(node => getComputedStyle(node).display);
+  await setStorage({ enabled: false });
+  await player.waitForFunction(() => document.documentElement.hasAttribute('data-minerr-off'));
+  assert.equal(await sidebarDisplay(), 'none', 'Minerr off hides the sidebar');
+  await setStorage({ enabled: true });
+  await player.waitForFunction(() => !document.documentElement.hasAttribute('data-minerr-off'));
+  assert.equal(await sidebarDisplay(), 'flex');
+  await player.keyboard.press('g');
+  await sidebar.waitFor({ state: 'hidden' });
+  console.log('sidebar: Minerr off hides the sidebar');
+
+  const POOL = ['猫が魚を食べた。', '今日は雨が降っている。', '本を読む。', '彼は駅まで歩いて行った。', '明日は友達と映画を見る予定です。'];
+  const stamp = (seconds: number) => `00:${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')},000`;
+  const longTrack = join(work, 'long.srt');
+  writeFileSync(longTrack, Array.from({ length: 1500 }, (_, i) => `${i + 1}\n${stamp(i * 2)} --> ${stamp(i * 2 + 2)}\n${POOL[i % POOL.length]}\n`).join('\n'));
+  await player.setInputFiles('#subs-file', longTrack);
+  await status.filter({ hasText: 'Subtitles from long.srt: 1500 lines.' }).waitFor();
+  await player.evaluate(() => {
+    const gaps: number[] = [];
+    Object.assign(window, { gaps });
+    let last = performance.now();
+    const tick = () => {
+      const now = performance.now();
+      gaps.push(now - last);
+      last = now;
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  const opened = Date.now();
+  await player.keyboard.press('g');
+  await sidebar.locator('li').nth(1499).locator('.ml-word').first().waitFor({ state: 'attached', timeout: 60000 });
+  const parsedMs = Date.now() - opened;
+  const gaps = await player.evaluate(() => (Reflect.get(window, 'gaps') as number[]).toSorted((a, b) => b - a));
+  console.log(`sidebar with 1,500 lines: all words after ${parsedMs} ms; longest frames (ms): ${gaps.slice(0, 6).map(t => t.toFixed(0)).join(' ')}; ${gaps.filter(gap => gap > 50).length} frames over 50 ms`);
+  assert.ok((gaps[0] ?? 0) < 500, 'the sidebar opens 1,500 lines without a freeze of the tab');
+  await player.keyboard.press('g');
+
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('PLAYER E2E PASS');
 } finally {

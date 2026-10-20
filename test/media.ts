@@ -235,7 +235,7 @@ try {
   assert.deepEqual(words, ['猫=猫', '魚=魚', '食べた=食べる']);
   await waitHighlighted(player, ['猫が魚を食べた']);
   await player.click('#fullscreen');
-  assert.equal(await player.evaluate(() => document.fullscreenElement?.id), 'stage');
+  assert.equal(await player.evaluate(() => document.fullscreenElement?.id), 'watch');
   await player.evaluate(() => document.exitFullscreen());
   await shot(player, 'player-video-light.png');
   await player.emulateMedia({ colorScheme: 'dark' });
@@ -335,6 +335,11 @@ try {
   await browser.waitFor();
   const visibleRows = () => browser.locator('li:not([hidden]) .text').allInnerTexts();
   assert.deepEqual(await visibleRows(), ['猫が魚を食べた。', '今日は雨が降っている。']);
+  await browser.locator('li .ml-word[data-ml-lemma="雨"].ml-learning').first().waitFor();
+  await shot(player, 'sidebar-player-light.png');
+  await player.emulateMedia({ colorScheme: 'dark' });
+  await shot(player, 'sidebar-player-dark.png');
+  await player.emulateMedia({ colorScheme: 'light' });
   await browser.locator('li time').nth(1).click();
   assert.equal(await videoTime(), 3, 'a click on a line goes to it');
   await player.keyboard.press('b');
@@ -359,7 +364,7 @@ try {
   await player.mouse.move(0, 0);
   await player.keyboard.press('g');
   await browser.waitFor({ state: 'hidden' });
-  console.log('subtitle browser: click to seek, bookmarks, filters, and a card from a row');
+  console.log('subtitle sidebar: click to seek, bookmarks, filters, and a card from a row');
 
   const [download] = await Promise.all([player.waitForEvent('download'), player.click('#save')]);
   const saved = readFileSync(await download.path(), 'utf8');

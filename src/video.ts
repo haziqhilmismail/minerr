@@ -7,7 +7,7 @@ import { createLineList } from './linelist.ts';
 import { createOverlay, wordStatuses } from './overlay.ts';
 import { isEditable } from './chord.ts';
 import {
-  autoPause, cleanSegments, cleanText, GAP_LEAD, GAP_MODES, gapEnd, type GapMode, jumpTarget, PLAY_MODES, type PlayMode,
+  autoPause, cleanSegments, cleanText, GAP_LEAD, GAP_MODES, gapEnd, type GapMode, jumpTarget, lastStarted, PLAY_MODES, type PlayMode,
 } from './playback.ts';
 import { recordPart } from './record.ts';
 import { serve } from './rpc.ts';
@@ -39,10 +39,10 @@ const SCALE_STEP = 0.1;
 // Most video is 24 to 30 frames per second; one step of 1/30 s shows the next frame or the one after it.
 const FRAME = 1 / 30;
 const TIMED_HINT = 'This key needs subtitles with times. Generate them with WhisperX, or start the Minerr server for the YouTube subtitles.';
+const LIST_HINT = 'The subtitle sidebar needs subtitles with times. Generate them with WhisperX, or start the Minerr server for the YouTube subtitles.';
 
 const { layer, line, show, toast } = createOverlay();
-const list = createLineList(index => goTo(index), index => toggleBookmark(index));
-layer.append(list.panel);
+const list = createLineList({ seek: goTo, toast });
 let target: Target = { video: () => null };
 // The lines from the page, and the lines that the overlay uses: the same, or without bracketed text.
 let given: Lines = { kind: 'none' };
@@ -65,12 +65,13 @@ let lastTime = 0;
 // The line that the play mode paused at its end: it stays on the screen until the video plays or seeks.
 let heldIndex = -1;
 let secondShown: SecondDisplay = 'show';
-// The segments in the subtitle browser, and the start times of the bookmarked lines of the video.
+// The segments in the subtitle sidebar.
 let listed: SubtitleSegment[] | null = null;
-let bookmarks = new Set<number>();
 // The first of two lines that J joined, for one card with both; it ends when the video leaves the two lines.
 let combined: number | null = null;
 
+// The host page puts the sidebar in its place, beside the video.
+export const sidebar = list.panel;
 export { layer, toast };
 
 const video = () => target.video();
@@ -100,7 +101,8 @@ function render(): void {
   const time = lineTime();
   const second = found && !target.blocked?.() && secondShown !== 'off' ? found.second?.find(s => s.start <= time && time < s.end)?.text : '';
   show(shownLines().map(segment => segment.text).join('\n'), second ?? '');
-  list.setCurrent(shownIndex);
+  // Between two lines, the sidebar keeps the mark on the line before.
+  list.setCurrent(shownIndex >= 0 || !found ? shownIndex : lastStarted(found.segments, time));
 }
 
 function crossGap(playing: HTMLVideoElement): void {
@@ -152,15 +154,13 @@ const cleaned = (value: Lines): Lines => {
   return { ...value, segments: cleanSegments(value.segments), second: value.second && cleanSegments(value.second) };
 };
 
-const bookmarkKey = (id: string) => `bm:${id}`;
-
 function useLines(next: Lines): void {
   lines = next;
   const segments = lines.kind === 'timed' ? lines.segments : [];
   setTrack(segments);
   if (segments !== listed) {
     listed = segments;
-    list.setLines(segments, bookmarks);
+    list.setLines(segments, lines.kind === 'timed' ? lines.id : null, LIST_HINT);
   }
   follow();
 }
@@ -171,15 +171,6 @@ export function setLines(next: Lines): void {
   if (nextId !== id(given)) {
     offset = 0;
     hinted = false;
-    bookmarks = new Set();
-    if (nextId) {
-      chrome.storage.local.get(bookmarkKey(nextId)).then(stored => {
-        const starts: unknown = stored[bookmarkKey(nextId)];
-        if (id(given) !== nextId || !Array.isArray(starts)) return;
-        bookmarks = new Set(starts.filter(start => typeof start === 'number'));
-        list.setBookmarks(bookmarks);
-      });
-    }
   }
   given = next;
   useLines(cleaned(next));
@@ -190,18 +181,10 @@ function goTo(index: number): void {
   if (segment) seek(segment.start + offset);
 }
 
-function toggleBookmark(index: number): void {
-  const found = timed();
-  const segment = found?.segments[index];
-  if (!found || !segment) return void toast('Go to a line first, then bookmark it.');
-  if (!bookmarks.delete(segment.start)) bookmarks.add(segment.start);
-  chrome.storage.local.set({ [bookmarkKey(found.id)]: [...bookmarks] });
-  toast(bookmarks.has(segment.start) ? 'Bookmarked the line.' : 'Removed the bookmark.');
-  list.setBookmarks(bookmarks);
-}
-
 function toggleList(): void {
   list.toggle();
+  const full = document.fullscreenElement;
+  if (!list.panel.hidden && full && !full.contains(list.panel)) toast('The subtitle sidebar shows when you leave full screen.');
   follow();
 }
 
@@ -274,7 +257,7 @@ const ACTIONS: Record<VideoAction, () => boolean | void> = {
   // render first: a seek just now changed the time, and the seeked event that renders comes later.
   bookmark: () => {
     render();
-    toggleBookmark(shownIndex);
+    toast(list.toggleBookmark(shownIndex));
   },
   second: () => {
     const next = secondShown === 'off' ? 'show' : 'off';
@@ -360,11 +343,13 @@ function syncHolds(): void {
   const playing = video();
   if (!playing || recording) return;
   setHold(playing, 'hover', line.matches(':hover'));
-  setHold(playing, 'popup', layer.querySelector('.ml-word[data-ml-active]') !== null);
+  setHold(playing, 'popup', [layer, list.panel].some(root => root.querySelector('.ml-word[data-ml-active]') !== null));
 }
 line.addEventListener('mouseenter', syncHolds);
 line.addEventListener('mouseleave', syncHolds);
-new MutationObserver(syncHolds).observe(layer, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-ml-active'] });
+for (const root of [layer, list.panel]) {
+  new MutationObserver(syncHolds).observe(root, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-ml-active'] });
+}
 
 subScale.watch(value => {
   scale = value;

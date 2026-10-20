@@ -9,7 +9,7 @@ export const VIDEO_KEYS = [
   { action: 'forward5', keys: ['alt+d'], label: 'Go forward 5 seconds', timed: false },
   { action: 'copy', keys: ['c'], label: 'Copy the current line', timed: false },
   { action: 'combine', keys: ['j'], label: 'Join the next line to the current line, for one card with both', timed: true },
-  { action: 'browser', keys: ['g'], label: 'Open or close the subtitle browser, a list of all lines', timed: true },
+  { action: 'browser', keys: ['g'], label: 'Open or close the subtitle sidebar, a card for each line', timed: false },
   { action: 'bookmark', keys: ['b'], label: 'Bookmark the current line, or remove its bookmark', timed: true },
   { action: 'frameForward', keys: ['.'], label: 'Go one frame forward (pauses the video)', timed: true },
   { action: 'frameBack', keys: [','], label: 'Go one frame back (pauses the video)', timed: true },
