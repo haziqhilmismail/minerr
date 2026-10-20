@@ -11,11 +11,13 @@ export const DEFAULT_KNOWN_QUERY = `deck:"${DEFAULT_DECK}" prop:ivl>=21`;
 export const DEFAULT_KNOWN_FIELD = 'Word';
 
 // The word of a new note and its HTML: sentence has the word in <b>, definition is from definitionHtml.
+// audio is the audio of the subtitle line of the word; the service worker adds it for a word in video subtitles.
 export interface CardFields {
   word: string;
   reading: string;
   sentence: string;
   definition: string;
+  audio?: MediaFile;
 }
 
 export async function getDeck(): Promise<string> {
@@ -237,17 +239,6 @@ export interface MediaFile {
   data: string;
 }
 
-async function builtinNote(card: CardFields, picture: MediaFile, audio: MediaFile | null) {
-  modelReady ??= ensureModel().catch(error => { modelReady = null; throw error; });
-  await modelReady;
-  return {
-    modelName: MODEL,
-    fields: { Word: card.word, Reading: card.reading, Sentence: card.sentence, Definition: card.definition, Image: '', SentenceAudio: '' },
-    picture: [{ ...picture, fields: ['Image'] }],
-    ...(audio ? { audio: [{ ...audio, fields: ['SentenceAudio'] }] } : {}),
-  };
-}
-
 // Stores file in the media folder of Anki and returns the name that Anki gave it.
 async function store(file: MediaFile): Promise<string> {
   const stored = await invoke('storeMediaFile', file);
@@ -255,12 +246,25 @@ async function store(file: MediaFile): Promise<string> {
   return stored;
 }
 
+const soundTag = async (audio: MediaFile | undefined) => (audio ? `[sound:${await store(audio)}]` : '');
+
+async function builtinNote(card: CardFields, picture: MediaFile) {
+  modelReady ??= ensureModel().catch(error => { modelReady = null; throw error; });
+  await modelReady;
+  const SentenceAudio = await soundTag(card.audio);
+  return {
+    modelName: MODEL,
+    fields: { Word: card.word, Reading: card.reading, Sentence: card.sentence, Definition: card.definition, Image: '', SentenceAudio },
+    picture: [{ ...picture, fields: ['Image'] }],
+  };
+}
+
 // A file goes to the media folder only if a field uses its marker: {image} becomes an <img>, {audio} a [sound:...] tag.
-async function customNote({ model, fields }: Extract<NoteType, { kind: 'custom' }>, card: CardFields, page: PageInfo, picture: MediaFile, audio: MediaFile | null) {
+async function customNote({ model, fields }: Extract<NoteType, { kind: 'custom' }>, card: CardFields, page: PageInfo, picture: MediaFile) {
   const templates = Object.entries(fields);
   const uses = (marker: Marker) => templates.some(([, template]) => template.includes(`{${marker}}`));
   const image = uses('image') ? `<img src="${escapeHtml(await store(picture))}">` : '';
-  const sound = audio && uses('audio') ? `[sound:${await store(audio)}]` : '';
+  const sound = uses('audio') ? await soundTag(card.audio) : '';
   const values = markerValues(card, page, image, sound);
   return { modelName: model, fields: Object.fromEntries(templates.map(([name, template]) => [name, renderField(template, values)])) };
 }
@@ -272,15 +276,13 @@ export interface NewNote {
   page: PageInfo;
   // From captureVisibleTab.
   jpegDataUrl: string;
-  // The audio of the subtitle line of the word, when the word is in a video subtitle.
-  audio: MediaFile | null;
 }
 
 // Returns the ID of the new note.
-export async function addNote({ deck, noteType, card, page, jpegDataUrl, audio }: NewNote): Promise<number> {
+export async function addNote({ deck, noteType, card, page, jpegDataUrl }: NewNote): Promise<number> {
   await invoke('createDeck', { deck });
   const picture = { data: jpegDataUrl.split(',')[1] ?? '', filename: `minerr-${Date.now()}.jpg` };
-  const note = noteType.kind === 'builtin' ? await builtinNote(card, picture, audio) : await customNote(noteType, card, page, picture, audio);
+  const note = noteType.kind === 'builtin' ? await builtinNote(card, picture) : await customNote(noteType, card, page, picture);
   const noteId = await invoke('addNote', { note: { deckName: deck, ...note, tags: ['minerr'] } });
   if (typeof noteId !== 'number') unexpected('addNote');
   return noteId;

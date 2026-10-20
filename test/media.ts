@@ -30,7 +30,9 @@ const dictionary = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
 ]);
 
 const ankiRequests: unknown[] = [];
-const ankiReplies: Record<string, () => unknown> = { createDeck: () => 1, modelNames: () => ['Basic'], createModel: () => ({}), addNote: () => 1700000000000 };
+const ankiReplies: Record<string, (params: unknown) => unknown> = {
+  createDeck: () => 1, modelNames: () => ['Basic'], createModel: () => ({}), addNote: () => 1700000000000, storeMediaFile: params => at(params, 'filename'),
+};
 const anki = createServer((req, res) => {
   let body = '';
   req.on('data', chunk => { body += chunk; });
@@ -41,7 +43,7 @@ const anki = createServer((req, res) => {
     const handler = typeof action === 'string' ? ankiReplies[action] : undefined;
     if (!handler) throw new Error(`The mock has no action ${String(action)}`);
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ result: handler(), error: null }));
+    res.end(JSON.stringify({ result: handler(at(request, 'params')), error: null }));
   });
 });
 await listen(anki, 8765);
@@ -247,11 +249,11 @@ try {
   console.log('player card sentence:', at(note, 'fields', 'Sentence'), 'picture:', `${picture.length} base64 chars, saved to`, join(out, 'player-card.jpg'));
   assert.equal(at(note, 'fields', 'Sentence'), '猫が<b>魚</b>を食べた');
   assert.ok(picture.startsWith('/9j/'), 'picture is base64 JPEG');
-  const recorded = at(note, 'audio', 0);
+  const recorded = at(ankiRequests.find(r => at(r, 'action') === 'storeMediaFile'), 'params');
   console.log('player card audio without the server:', at(recorded, 'filename'), String(at(recorded, 'data')).length, 'base64 chars');
   assert.match(String(at(recorded, 'filename')), /^minerr-\d+\.webm$/);
   assert.ok(String(at(recorded, 'data')).startsWith('GkXf'), 'the recorded line audio is a WebM file');
-  assert.deepEqual(at(recorded, 'fields'), ['SentenceAudio']);
+  assert.equal(at(note, 'fields', 'SentenceAudio'), `[sound:${String(at(recorded, 'filename'))}]`);
   const webm = join(out, 'player-line.webm');
   writeFileSync(webm, Buffer.from(String(at(recorded, 'data')), 'base64'));
   const pcm = execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', webm, '-ac', '1', '-ar', '8000', '-f', 's16le', 'pipe:1']);
@@ -328,8 +330,10 @@ try {
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
   const clipNote = at(ankiRequests.filter(r => at(r, 'action') === 'addNote').at(-1), 'params', 'note');
   assert.deepEqual(clips, [{ sha256: uploads[0]?.sha256, start: 2.5, end: 7 }], 'the server cuts the line with 0.5 s on each side');
-  assert.match(String(at(clipNote, 'audio', 0, 'filename')), /^minerr-\d+\.mp3$/);
-  assert.equal(at(clipNote, 'audio', 0, 'data'), CLIP.toString('base64'));
+  const stored = at(ankiRequests.filter(r => at(r, 'action') === 'storeMediaFile').at(-1), 'params');
+  assert.match(String(at(stored, 'filename')), /^minerr-\d+\.mp3$/);
+  assert.equal(at(stored, 'data'), CLIP.toString('base64'));
+  assert.equal(at(clipNote, 'fields', 'SentenceAudio'), `[sound:${String(at(stored, 'filename'))}]`);
   console.log('player card audio from the server:', clips);
   await player.keyboard.press('Escape');
   await player.mouse.move(0, 0);

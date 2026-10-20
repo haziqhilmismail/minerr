@@ -27,7 +27,9 @@ const dictionary = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
 ]);
 
 const ankiRequests: unknown[] = [];
-const ankiReplies: Record<string, () => unknown> = { createDeck: () => 1, modelNames: () => ['Basic'], createModel: () => ({}), addNote: () => 1700000000000 };
+const ankiReplies: Record<string, (params: unknown) => unknown> = {
+  createDeck: () => 1, modelNames: () => ['Basic'], createModel: () => ({}), addNote: () => 1700000000000, storeMediaFile: params => at(params, 'filename'),
+};
 const anki = createServer((req, res) => {
   let body = '';
   req.on('data', chunk => { body += chunk; });
@@ -38,7 +40,7 @@ const anki = createServer((req, res) => {
     const handler = typeof action === 'string' ? ankiReplies[action] : undefined;
     if (!handler) throw new Error(`The mock has no action ${String(action)}`);
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ result: handler(), error: null }));
+    res.end(JSON.stringify({ result: handler(at(request, 'params')), error: null }));
   });
 });
 await listen(anki, 8765);
@@ -279,9 +281,12 @@ try {
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
   assert.ok(whisperRequests.includes('POST /clip {"url":"https://www.youtube.com/watch?v=timedvideo","start":1.5,"end":6.5}'));
   const lastNote = at(ankiRequests.filter(r => at(r, 'action') === 'addNote').at(-1), 'params', 'note');
-  assert.deepEqual(at(lastNote, 'audio', 0, 'data'), Buffer.from('ID3 clip').toString('base64'));
+  const stored = ankiRequests.filter(r => at(r, 'action') === 'storeMediaFile');
+  assert.equal(stored.length, 1, 'only the card from the timed line stores audio');
+  assert.equal(at(stored[0], 'params', 'data'), Buffer.from('ID3 clip').toString('base64'));
+  assert.equal(at(lastNote, 'fields', 'SentenceAudio'), `[sound:${String(at(stored[0], 'params', 'filename'))}]`);
   const firstNote = at(ankiRequests.find(r => at(r, 'action') === 'addNote'), 'params', 'note');
-  assert.equal(at(firstNote, 'audio'), undefined, 'a card from mirrored captions has no line audio');
+  assert.equal(at(firstNote, 'fields', 'SentenceAudio'), '', 'a card from mirrored captions has no line audio');
   console.log('YouTube card: the server cut the line audio from the video');
   await tab.keyboard.press('Escape');
 

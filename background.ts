@@ -43,7 +43,7 @@ async function addCard({ card }: Message<'addCard'>, sender: chrome.runtime.Mess
   // After the screenshot, because the tab may play the line again to record it.
   const audio = sender.tab.id === undefined ? null : await lineAudio(sender.tab.id);
   const { url = '', title = '' } = sender.tab;
-  const noteId = await addNote({ deck: await getDeck(), noteType: await getNoteType(), card, page: { url, title }, jpegDataUrl: image, audio });
+  const noteId = await addNote({ deck: await getDeck(), noteType: await getNoteType(), card: audio ? { ...card, audio } : card, page: { url, title }, jpegDataUrl: image });
   const statuses = await getStatuses([card.word]);
   if (statuses.get(card.word) === 'unknown') await setStatus(card.word, 'learning');
   return noteId;
