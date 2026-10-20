@@ -4,14 +4,15 @@
   "version": "0.1.0",
   "description": "Colors Japanese words by status, shows dictionary definitions on hover, and adds Anki cards.",
   "permissions": ["storage", "offscreen", "unlimitedStorage"],
-  "host_permissions": ["<all_urls>", "http://127.0.0.1:8765/*"],
+  "host_permissions": ["<all_urls>", "http://127.0.0.1:8765/*", "http://127.0.0.1:8766/*"],
   "background": { "service_worker": "background.js", "type": "module" },
   "content_scripts": [
     { "matches": ["<all_urls>"], "js": ["content.js"] }
   ],
   "web_accessible_resources": [
-    { "resources": ["src/anki.js", "src/page.js", "src/popup.js", "src/rpc.js", "src/sentence.js", "src/status.js", "src/switch.js", "src/tags.js"], "matches": ["<all_urls>"] }
+    { "resources": ["src/anki.js", "src/captions.js", "src/page.js", "src/popup.js", "src/rpc.js", "src/sentence.js", "src/status.js", "src/subtitles.js", "src/switch.js", "src/tags.js"], "matches": ["<all_urls>"] }
   ],
+  "action": { "default_title": "Minerr", "default_popup": "action.html" },
   "commands": {
     "toggle-minerr": { "suggested_key": { "default": "Alt+Shift+M" }, "description": "Turn Minerr on or off in all tabs" }
   },
