@@ -1,4 +1,5 @@
 import { type CardFields, definitionHtml, escapeHtml } from './anki.ts';
+import { blockOf } from './dom.ts';
 import { call, messageOf } from './rpc.ts';
 import { sentenceAround } from './sentence.ts';
 import { getStatuses, onStatusChange, setStatus, type Status, STATUS_NAMES, STATUSES } from './status.ts';
@@ -81,17 +82,9 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function blockAncestor(node: Element): Element {
-  let element = node.parentElement ?? node;
-  while (element.parentElement && /^(inline|contents)/.test(getComputedStyle(element).display)) {
-    element = element.parentElement;
-  }
-  return element;
-}
-
 // The sentence around the word inside its nearest block ancestor, with the word in <b>.
 function sentenceHtml(span: HTMLElement): string {
-  const block = blockAncestor(span);
+  const block = blockOf(span.parentElement ?? span);
   const range = document.createRange();
   range.selectNodeContents(block);
   range.setEndBefore(span);
