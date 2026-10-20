@@ -4,6 +4,7 @@ import { call, type Message, messageOf, serve } from './rpc.ts';
 import { attach, layer, setLines, sidebar } from './video.ts';
 import { secondDisplay } from './videosettings.ts';
 import { type JobStatus, waitForJob } from './whisper.ts';
+import { tabCaptions } from './youtube-captions.ts';
 
 const POLL_MS = 2000;
 const RETRY_MS = 3000;
@@ -26,7 +27,7 @@ const STYLE = `
   ${SIDE_OPEN} ytd-watch-flexy #secondary { display: none !important; }
 `;
 
-// 'youtube' shows the YouTube subtitles: with times when the server downloaded them, else a mirror of YouTube's own captions.
+// 'youtube' shows the YouTube subtitles: with times when the server or the tab got them, else a mirror of YouTube's own captions.
 // 'whisperx' shows the WhisperX segments from the local server.
 export type Source = 'youtube' | 'whisperx';
 
@@ -44,8 +45,8 @@ interface TrackedJob {
   status: JobStatus;
 }
 
-// The subtitle tracks of the video, each null until the server has it.
-// whisperx is from WhisperX; youtube is the Japanese YouTube subtitles with times, which the server downloads with yt-dlp;
+// The subtitle tracks of the video, each null until it loads.
+// whisperx is from WhisperX; youtube is the Japanese YouTube subtitles with times, from the server (yt-dlp) or from the player in the tab;
 // english is the English YouTube subtitles, the secondary track.
 interface Tracks {
   whisperx: SubtitleSegment[] | null;
@@ -89,7 +90,10 @@ const captions = new MutationObserver(() => {
 function changeVideo(videoId: string | null): void {
   state = { videoId, source: 'youtube', tracks: noTracks(), job: null };
   render();
-  if (videoId) loadTracks(videoId);
+  if (!videoId) return;
+  loadTracks(videoId);
+  // The second track waits for the first, which gets the token of the player.
+  loadFromTab(videoId, 'youtube').then(() => secondDisplay.get()).then(display => { if (display !== 'off') loadFromTab(videoId, 'english'); });
 }
 
 // The server can start after the video opened, so the tab asks for the cached WhisperX subtitles until the server answers,
@@ -99,31 +103,38 @@ function loadTracks(videoId: string, wait = RETRY_MS): void {
   call({ type: 'whisperCached', videoId }).then(segments => {
     if (state.videoId !== videoId) return;
     if (segments) useSegments(segments);
-    loadSiteCaptions(videoId);
+    loadFromServer(videoId, 'youtube');
+    secondDisplay.get().then(display => { if (display !== 'off') loadFromServer(videoId, 'english'); });
   }, () => setTimeout(() => { if (state.videoId === videoId) loadTracks(videoId, Math.min(wait * 2, MAX_RETRY_MS)); }, wait));
 }
 
-function loadSiteCaptions(videoId: string): void {
-  const url = watchUrl(videoId);
-  call({ type: 'siteCaptions', url, lang: 'ja' }).then(segments => {
-    if (!segments?.length || state.videoId !== videoId) return;
-    state.tracks.youtube = segments;
-    render();
-  }, () => undefined);
-  secondDisplay.get().then(display => { if (display !== 'off') loadEnglish(videoId); });
+type YoutubeTrack = 'youtube' | 'english';
+const LANG: Record<YoutubeTrack, string> = { youtube: 'ja', english: 'en' };
+
+// The server and the tab read the same YouTube track, so the first one wins and the lines do not change under the user.
+function useYoutube(videoId: string, track: YoutubeTrack, segments: SubtitleSegment[] | null): void {
+  if (!segments?.length || state.videoId !== videoId || state.tracks[track]) return;
+  state.tracks[track] = segments;
+  render();
+}
+
+function loadFromServer(videoId: string, track: YoutubeTrack): void {
+  if (state.tracks[track]) return;
+  call({ type: 'siteCaptions', url: watchUrl(videoId), lang: LANG[track] }).then(segments => useYoutube(videoId, track, segments), () => undefined);
+}
+
+// Works without the server. YouTube can refuse the tab, and then only the server has the track.
+function loadFromTab(videoId: string, track: YoutubeTrack): Promise<void> {
+  return tabCaptions(videoId, LANG[track], () => state.videoId === videoId)
+    .then(segments => useYoutube(videoId, track, segments), error => console.warn('minerr: no YouTube captions from the tab', error));
 }
 
 // The second track loads only while it can show: when the video opens, or when the user turns it on (Shift+W, options).
-function loadEnglish(videoId: string): void {
-  call({ type: 'siteCaptions', url: watchUrl(videoId), lang: 'en' }).then(segments => {
-    if (!segments?.length || state.videoId !== videoId) return;
-    state.tracks.english = segments;
-    render();
-  }, () => undefined);
-}
-
 secondDisplay.onChange(display => {
-  if (display !== 'off' && state.videoId && !state.tracks.english) loadEnglish(state.videoId);
+  const { videoId } = state;
+  if (display === 'off' || !videoId || state.tracks.english) return;
+  loadFromServer(videoId, 'english');
+  loadFromTab(videoId, 'english');
 });
 
 function useSegments(segments: SubtitleSegment[]): void {
