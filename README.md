@@ -117,7 +117,7 @@ Each word of the page then gets an underline. The Minerr subtitle overlay and th
 | Known | Thin green | You know the word. |
 | Ignored | None | You do not want to study the word, for example a name. |
 
-Move the mouse onto a word and stop it there. The popup of the word opens after 0.3 seconds. To open the popup at once, hold `Shift` while the mouse is on a word. To change when the popup opens, see [Word popup](#word-popup). The popup does not open while text is selected or a mouse button is down.
+The words that Minerr reads have the hand cursor. Move the mouse onto a word and stop it there. The popup of the word opens after 0.3 seconds. To open the popup at once, hold `Shift` while the mouse is on a word. To change when the popup opens, see [Word popup](#word-popup). The popup does not open while text is selected or a mouse button is down.
 
 When the popup is open, use these keys:
 
@@ -468,6 +468,7 @@ To bookmark the current line, press `B`, or click **★** in the list. Press `B`
 
 Open the options page and go to **Video** to change these settings. They apply to the subtitle overlay on all video pages.
 
+- **Subtitle size.** Move the slider to make the subtitles larger or smaller. On a video, `Alt+=` and `Alt+-` change the same size.
 - **Obscure the subtitles.** The overlay blurs or hides the text while the video plays. The text shows when you move the mouse onto it or pause the video. Select **Blur** or **Hide**. Press `W` on a video to turn this on or off.
 - **Second subtitles.** A second subtitle track, for example English, shows under the Japanese line. Select **Show**, **On hover or pause**, or **Off**. Press `Shift+W` on a video to show or hide it. On YouTube, the server gets the English subtitles of the video, as it does for the Japanese subtitles. In the video player, click **Add second subtitle file**.
 - **Remove bracketed text.** Minerr removes text in brackets, for example （笑）, (laughs), [音楽], and 【拍手】. A line with only bracketed text does not show.
@@ -480,7 +481,7 @@ These keys work on a video with the Minerr subtitle overlay: on YouTube, in the 
 | Key | Action | Note |
 | --- | --- | --- |
 | `→` or `D` | Go to the next line. | Needs subtitles with times. |
-| `←` | Go to the previous line. | Needs subtitles with times. |
+| `←` or `A` | Go to the previous line. If a word popup is open, `A` adds the card of the word. | Needs subtitles with times. |
 | `↓` or `S` | Play the current line again. | Needs subtitles with times. |
 | `Alt+A` | Go back 5 seconds. | |
 | `Alt+D` | Go forward 5 seconds. | |
@@ -494,8 +495,8 @@ These keys work on a video with the Minerr subtitle overlay: on YouTube, in the 
 | `Alt+I` | Show the subtitles 0.1 seconds earlier. | Needs subtitles with times. |
 | `Alt+=` | Make the subtitles larger. | |
 | `Alt+-` | Make the subtitles smaller. | |
-| `Shift+W` | Show or hide the second subtitle track. | Needs subtitles with times. |
-| `W` | Blur or hide the subtitles until you move the mouse onto them or pause, or show them again. | |
+| `Shift+W` or `Shift+↑` | Show or hide the second subtitle track. | Needs subtitles with times. |
+| `W` or `↑` | Blur or hide the subtitles until you move the mouse onto them or pause, or show them again. | |
 
 Subtitles with times come from WhisperX, from a subtitle file, or from the YouTube subtitles that the Minerr server downloads. The YouTube captions that Minerr copies from the player have no times. With these captions, a key that needs times shows a hint, and YouTube gets the key.
 
