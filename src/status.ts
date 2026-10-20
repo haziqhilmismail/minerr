@@ -25,6 +25,8 @@ export const WORD_CSS = [
   ...Object.values(STATUSES).filter(s => s.underline)
     .map(s => `.${s.className} { text-decoration: underline ${s.underline} ${s.color}; }`),
   ':root[data-minerr-off] .ml-word { text-decoration: none; background-color: transparent; }',
+  // The page text is on only where the user turned it on, so the hand cursor marks the words that open a popup.
+  ':root:not([data-minerr-off]) .ml-word { cursor: pointer; }',
 ].join('\n');
 
 const PREFIX = 'w:';

@@ -165,6 +165,7 @@ try {
   await other.waitForSelector('#line .ml-word[data-ml-lemma="食べる"].ml-unknown');
 
   await tab.bringToFront();
+  assert.equal(await tab.$eval('#line .ml-word[data-ml-lemma="食べる"]', span => getComputedStyle(span).cursor), 'pointer', 'a word has the hand cursor');
   await tab.hover('#line .ml-word[data-ml-lemma="食べる"]');
   const popup = tab.locator('minerr-popup .popup');
   await popup.locator('li').first().waitFor();
