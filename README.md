@@ -890,7 +890,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/db.ts` | The dictionary storage in IndexedDB. |
 | `src/entry.ts` | The dictionary entry and the status key of each word, and the join of compound nouns. |
 | `src/group.ts`, `src/sentence.ts`, `src/yomitan.ts`, `src/zip.ts` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
-| `src/theme.ts`, `theme.css` | The theme setting, and the palette of the extension pages. |
+| `src/theme.ts`, `src/tokens.ts` | The theme setting, and the design tokens of every surface (see `docs/design.md`). The build writes the tokens to `dist/theme.css` for the extension pages. |
 | `src/hover.ts` | The word popup setting, and the rule that decides when the popup opens. |
 | `action.html`, `action.ts` | The toolbar popup. |
 | `player.html`, `player.ts` | The video player page. Content scripts do not run on extension pages, so the page loads `src/page.ts`, `src/popup.ts`, `src/iplusone.ts`, and `src/stats.ts` itself. |

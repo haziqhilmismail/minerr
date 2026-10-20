@@ -2,7 +2,7 @@ import { iPlusOneSentences, type Piece, type Point } from './sentence.ts';
 import type { Status } from './status.ts';
 
 // Migaku's labels for the comprehension score, with the lowest score of each (from the Migaku 1.31 extension).
-// color is a variable of theme.css.
+// color is a token of src/tokens.ts.
 export const RATINGS = [
   { label: 'Exceptional', min: 99, color: 'var(--ok)' },
   { label: 'Excellent', min: 95, color: 'var(--ok)' },
