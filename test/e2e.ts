@@ -262,6 +262,52 @@ try {
   await tab.keyboard.press('Escape');
   console.log('theme System: follows the system color scheme live');
 
+  const hoverMode = async (mode: string) => {
+    await options.click(`label:has(input[name="hoverMode"][value="${mode}"])`);
+    assert.deepEqual(await options.evaluate(() => chrome.storage.local.get('hoverMode')), { hoverMode: mode });
+  };
+  const noPopupAfterRest = async (message: string) => {
+    await tab.waitForTimeout(500);
+    assert.equal(await popup.isVisible(), false, message);
+  };
+  assert.equal(await options.isChecked('input[name="hoverMode"][value="hover"]'), true);
+  await tab.mouse.move(0, 0);
+  const fish = await tab.locator('#line .ml-word[data-ml-lemma="魚"]').boundingBox();
+  assert.ok(fish, 'the word 魚 has a box');
+  await tab.mouse.move(fish.x + fish.width / 2, fish.y + fish.height / 2);
+  await tab.mouse.move(0, 0);
+  await noPopupAfterRest('hover mode: a quick pass over a word opens no popup');
+  await tab.hover('#line .ml-word[data-ml-lemma="魚"]');
+  await popup.locator('.lemma', { hasText: '魚' }).waitFor();
+  console.log('hover mode: a quick pass opens no popup, a rest opens it');
+
+  await tab.keyboard.press('Escape');
+  await hoverMode('unknown');
+  await tab.mouse.move(0, 0);
+  await tab.hover('#line .ml-word.ml-known[data-ml-lemma="食べる"]');
+  await noPopupAfterRest('unknown mode: a rest on a known word opens no popup');
+  await tab.hover('.caption .ml-word.ml-unknown[data-ml-lemma="好き"]');
+  await popup.locator('.lemma', { hasText: '好き' }).waitFor();
+  console.log('unknown mode: a rest opens the popup on an unknown word only');
+
+  await tab.keyboard.press('Escape');
+  await hoverMode('shift');
+  await tab.mouse.move(0, 0);
+  await tab.hover('#line .ml-word[data-ml-lemma="魚"]');
+  await noPopupAfterRest('shift mode: a rest without Shift opens no popup');
+  await tab.keyboard.down('Shift');
+  await popup.locator('.lemma', { hasText: '魚' }).waitFor();
+  await tab.keyboard.press('Escape');
+  await tab.keyboard.up('Shift');
+  await tab.mouse.move(0, 0);
+  await tab.keyboard.down('Shift');
+  await tab.hover('#line .ml-word[data-ml-lemma="食べる"]');
+  await popup.locator('.lemma', { hasText: '食べる' }).waitFor();
+  await tab.keyboard.up('Shift');
+  await tab.keyboard.press('Escape');
+  await hoverMode('hover');
+  console.log('shift mode: a rest opens no popup; Shift on a word and Shift + hover open it');
+
   const created = at(added[2], 'params');
   const Front = at(created, 'cardTemplates', 0, 'Front');
   const Back = at(created, 'cardTemplates', 0, 'Back');

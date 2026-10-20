@@ -1,5 +1,6 @@
 import { type CardFields, definitionHtml, escapeHtml } from './anki.ts';
 import { blockOf } from './dom.ts';
+import { getHoverMode, type HoverMode, hoverDelay, onHoverModeChange } from './hover.ts';
 import { call, messageOf } from './rpc.ts';
 import { sentenceAround } from './sentence.ts';
 import { getStatuses, onStatusChange, setStatus, type Status, STATUS_NAMES, STATUSES } from './status.ts';
@@ -108,6 +109,9 @@ interface View {
 }
 
 let current: View | null = null;
+// The word under the mouse, so that Shift can open it, and the timer of a popup that waits for the mouse to stop.
+let hovered: HTMLElement | null = null;
+let timer: ReturnType<typeof setTimeout> | undefined;
 let message: HTMLDivElement | null = null;
 let addButton: HTMLButtonElement | null = null;
 const statusButtons = new Map<Status, HTMLButtonElement>();
@@ -217,6 +221,7 @@ async function open(span: HTMLElement): Promise<void> {
 }
 
 function close(): void {
+  clearTimeout(timer);
   current = null;
   box.hidden = true;
   markActive(null);
@@ -269,13 +274,39 @@ onEnabledChange(value => {
   if (!enabled) close();
 });
 
+let hoverMode: HoverMode = 'hover';
+getHoverMode().then(value => { hoverMode = value; });
+onHoverModeChange(value => { hoverMode = value; });
+
+function consider(span: HTMLElement, shift: boolean, buttons: number): void {
+  clearTimeout(timer);
+  if (!enabled || span === current?.span) return;
+  const delay = hoverDelay({
+    mode: hoverMode,
+    shift,
+    unknownWord: span.classList.contains(STATUSES.unknown.className),
+    popupOpen: current !== null,
+    textSelected: !(getSelection()?.isCollapsed ?? true),
+    buttonDown: buttons !== 0,
+  });
+  if (delay !== null) timer = setTimeout(() => open(span), delay);
+}
+
 document.addEventListener('mouseover', event => {
   const span = event.target instanceof Element ? event.target.closest<HTMLElement>('.ml-word') : null;
-  if (enabled && span && span !== current?.span) open(span);
+  if (span === hovered) return;
+  hovered = span;
+  if (span) consider(span, event.shiftKey, event.buttons);
+  else clearTimeout(timer);
 });
 
 document.addEventListener('mousedown', event => {
+  clearTimeout(timer);
   if (current && event.target !== host && !(event.target instanceof Element && event.target.closest('.ml-word'))) close();
+});
+
+window.addEventListener('keydown', event => {
+  if (event.key === 'Shift' && !event.repeat && hovered) consider(hovered, true, 0);
 });
 
 // Capture on window so page shortcuts (YouTube uses 1-4 to seek) do not also fire.

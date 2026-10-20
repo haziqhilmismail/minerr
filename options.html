@@ -92,9 +92,9 @@
     border-radius: 6px; background: var(--field); font: 600 13px/1.5 system-ui, sans-serif; text-align: center; }
   .swatch { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; }
 
-  .segmented { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; margin: 0; padding: 3px;
+  .segmented { display: inline-grid; grid-auto-flow: column; grid-auto-columns: auto; gap: 2px; margin: 0; padding: 3px;
     border: 0; border-radius: 8px; background: var(--raised); }
-  .segmented label { position: relative; min-width: 88px; padding: 5px 14px; border-radius: 6px; color: var(--muted);
+  .segmented label { position: relative; min-width: 88px; padding: 5px 14px; border-radius: 6px; color: var(--muted); white-space: nowrap;
     text-align: center; cursor: pointer; }
   .segmented label:hover { color: var(--text); }
   .segmented input { position: absolute; width: 1px; height: 1px; opacity: 0; }
@@ -197,7 +197,7 @@
 
   <section aria-labelledby="keys-heading">
     <h2 id="keys-heading">Colors and shortcuts</h2>
-    <p class="help">Move the mouse over a word to open its popup. These keys work while the popup is open, but not in a text field.</p>
+    <p class="help">Stop the mouse on a word, or hold Shift on it, to open its popup. These keys work while the popup is open, but not in a text field.</p>
     <table>
       <thead><tr><th scope="col">Key</th><th scope="col">Action</th><th scope="col">On a page</th></tr></thead>
       <tbody id="legend">
@@ -205,6 +205,16 @@
         <tr><td><kbd>Esc</kbd></td><td>Close the popup</td><td></td></tr>
       </tbody>
     </table>
+  </section>
+
+  <section aria-labelledby="hover-heading">
+    <h2 id="hover-heading">Word popup</h2>
+    <p class="help">Choose when the word popup opens. Hover opens it when the mouse stops on a word. Hover on unknown words opens it only on unknown words. Hold Shift to open the popup at once in all modes.</p>
+    <div class="segmented" role="radiogroup" aria-labelledby="hover-heading">
+      <label><input type="radio" name="hoverMode" value="hover">Hover</label>
+      <label><input type="radio" name="hoverMode" value="unknown">Hover on unknown words</label>
+      <label><input type="radio" name="hoverMode" value="shift">Shift + hover</label>
+    </div>
   </section>
 
   <section aria-labelledby="theme-heading">

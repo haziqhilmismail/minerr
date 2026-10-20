@@ -266,6 +266,23 @@ test('resolveTheme follows the system only for the system theme', async () => {
   ]);
 });
 
+test('hoverDelay opens on Shift at once, waits for the mouse to stop on plain hover, and never opens during a selection or a drag', async () => {
+  const { hoverDelay, HOVER_MODES } = await import('../src/hover.ts');
+  const base = { shift: false, unknownWord: false, popupOpen: false, textSelected: false, buttonDown: false };
+  const row = (extra: Partial<typeof base>) => HOVER_MODES.map(mode => hoverDelay({ ...base, ...extra, mode }));
+  assert.deepEqual(HOVER_MODES, ['hover', 'unknown', 'shift']);
+  assert.deepEqual(row({}), [300, null, null]);
+  assert.deepEqual(row({ unknownWord: true }), [300, 300, null]);
+  assert.deepEqual(row({ unknownWord: true, popupOpen: true }), [50, 50, null]);
+  assert.deepEqual(row({ popupOpen: true }), [50, null, null]);
+  assert.deepEqual(row({ shift: true }), [0, 0, 0]);
+  assert.deepEqual(row({ shift: true, popupOpen: true }), [0, 0, 0]);
+  assert.deepEqual(row({ shift: true, unknownWord: true, textSelected: true }), [null, null, null]);
+  assert.deepEqual(row({ shift: true, unknownWord: true, buttonDown: true }), [null, null, null]);
+  assert.deepEqual(row({ unknownWord: true, textSelected: true }), [null, null, null]);
+  assert.deepEqual(row({ unknownWord: true, buttonDown: true }), [null, null, null]);
+});
+
 test('renderField fills each marker in one pass and escapes the plain text values one time', async () => {
   const { markerValues, renderField } = await import('../src/anki.ts');
   const card = { word: '食べる', reading: 'たべる', sentence: '猫が魚を<b>食べなかった</b>。', definition: '<ol><li>to eat</li></ol>' };

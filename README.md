@@ -101,7 +101,9 @@ Open a page with Japanese text. Each word gets an underline:
 | Known | Thin green | You know the word. |
 | Ignored | None | You do not want to study the word, for example a name. |
 
-Move the mouse over a word to open its popup. Then use these keys:
+Move the mouse onto a word and stop it there. The popup of the word opens after 0.3 seconds. To open the popup at once, hold `Shift` while the mouse is on a word. To change when the popup opens, see [Word popup](#word-popup). The popup does not open while text is selected or a mouse button is down.
+
+When the popup is open, use these keys:
 
 | Key | Action |
 | --- | --- |
@@ -354,6 +356,21 @@ The file is JSON:
 }
 ```
 
+## Word popup
+
+You can choose when the word popup opens.
+
+1. Open the options page.
+2. In **Word popup**, click **Hover**, **Hover on unknown words**, or **Shift + hover**.
+
+| Mode | The popup opens when |
+| --- | --- |
+| **Hover** | The mouse stops on a word for 0.3 seconds. This is the default. |
+| **Hover on unknown words** | The mouse stops on an unknown word for 0.3 seconds. For other words, hold `Shift`. |
+| **Shift + hover** | You hold `Shift` and the mouse is on a word. |
+
+In all modes, `Shift` opens the popup at once. You can press `Shift` before or after you move the mouse onto the word. If a popup is open, the popup of the next word opens after 0.05 seconds. A quick pass of the mouse over a word does not open a popup. The change applies at once in all tabs.
+
 ## Theme
 
 The options page, the toolbar menu, and the word popup have a light theme and a dark theme.
@@ -385,6 +402,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/db.ts` | The dictionary storage in IndexedDB. |
 | `src/group.ts`, `src/sentence.ts`, `src/yomitan.ts`, `src/zip.ts` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
 | `src/theme.ts`, `theme.css` | The theme setting, and the palette of the extension pages. |
+| `src/hover.ts` | The word popup setting, and the rule that decides when the popup opens. |
 | `action.html`, `action.ts` | The toolbar popup. |
 | `player.html`, `player.ts` | The video player page. Content scripts do not run on extension pages, so the page loads `src/page.ts`, `src/popup.ts`, and `src/iplusone.ts` itself. |
 | `src/iplusone.ts` | The i+1 highlight. The pure part is `iPlusOneSentences` in `src/sentence.ts`. |
