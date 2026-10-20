@@ -1,5 +1,6 @@
 import { call } from './rpc.js';
 import { getStatuses, onStatusChange, STATUSES, WORD_CSS } from './status.js';
+import { isEnabled, onEnabledChange } from './switch.js';
 
 const JAPANESE = /[぀-ヿ一-鿿]/;
 const SKIP = 'script, style, noscript, textarea, input, select, svg, .ml-word';
@@ -97,5 +98,8 @@ onStatusChange(changed => {
 });
 
 document.head.append(Object.assign(document.createElement('style'), { textContent: WORD_CSS }));
+const showEnabled = enabled => document.documentElement.toggleAttribute('data-minerr-off', !enabled);
+isEnabled().then(showEnabled);
+onEnabledChange(showEnabled);
 collect(document.body);
 schedule();

@@ -2,6 +2,9 @@ import { definitionHtml, escapeHtml } from './anki.js';
 import { call } from './rpc.js';
 import { sentenceAround } from './sentence.js';
 import { getStatuses, onStatusChange, setStatus, STATUSES } from './status.js';
+import { isEnabled, onEnabledChange, setEnabled } from './switch.js';
+
+const POWER_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>';
 
 const STYLE = `
   .popup {
@@ -25,6 +28,13 @@ const STYLE = `
   header { padding: 12px 16px; border-bottom: 1px solid var(--line); }
   .title { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; }
   .lemma { font-size: 28px; font-weight: 700; line-height: 1.25; }
+  header { position: relative; }
+  .title { padding-right: 64px; }
+  .corner { position: absolute; top: 8px; right: 8px; display: flex; gap: 2px; }
+  .corner button { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent;
+    color: var(--muted); font: inherit; font-size: 16px; line-height: 28px; cursor: pointer; }
+  .corner svg { vertical-align: -3px; }
+  .corner button:hover { background: var(--raised); color: var(--text); }
   .reading { font-size: 16px; color: var(--muted); }
   .surface { font-size: 12px; color: var(--muted); }
   .statuses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: 10px; padding: 3px;
@@ -148,7 +158,10 @@ function render(view) {
         el('span', { className: 'lemma', textContent: lemma }),
         reading !== lemma ? el('span', { className: 'reading', textContent: reading }) : ''),
       surface !== lemma ? el('div', { className: 'surface', textContent: `On the page: ${surface}` }) : '',
-      statusRow),
+      statusRow,
+      el('div', { className: 'corner' },
+        el('button', { className: 'off', innerHTML: POWER_ICON, title: 'Turn Minerr off in all tabs (Alt+Shift+M turns it on)', ariaLabel: 'Turn Minerr off', onclick: () => setEnabled(false) }),
+        el('button', { className: 'close', textContent: '✕', title: 'Close (Esc)', ariaLabel: 'Close', onclick: close }))),
     el('div', { className: 'definitions' }, definitions),
     el('footer', {}, addButton, message),
   );
@@ -221,9 +234,16 @@ const HOTKEYS = {
   Escape: close,
 };
 
+let enabled = true;
+isEnabled().then(value => { enabled = value; });
+onEnabledChange(value => {
+  enabled = value;
+  if (!enabled) close();
+});
+
 document.addEventListener('mouseover', event => {
   const span = event.target.closest?.('.ml-word');
-  if (span && span !== current?.span) open(span);
+  if (enabled && span && span !== current?.span) open(span);
 });
 
 document.addEventListener('mousedown', event => {

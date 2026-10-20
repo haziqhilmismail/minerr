@@ -102,6 +102,14 @@ Move the mouse over a word to open its popup. Then use these keys:
 
 The keys do not work when the focus is in a text field.
 
+### Close the popup or turn Minerr off
+
+- To close the popup, press `Esc`, click outside it, or click **✕** in its top-right corner.
+- To turn Minerr off in all tabs, click the power button in the popup, or press `Alt+Shift+M`. The underlines and the popup stop at once.
+- To turn Minerr on again, press `Alt+Shift+M`.
+
+Use this when you want to compare Minerr with another dictionary extension, for example Yomitan. To change the shortcut, open `chrome://extensions/shortcuts`.
+
 ### Mine a sentence
 
 1. Find an unknown word in a sentence.

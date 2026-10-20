@@ -13,6 +13,7 @@ export const WORD_CSS = [
   '.ml-word:hover, .ml-word[data-ml-active] { background-color: color-mix(in srgb, currentColor 16%, transparent); }',
   ...Object.values(STATUSES).filter(s => s.underline)
     .map(s => `.${s.className} { text-decoration: underline ${s.underline} ${s.color}; }`),
+  ':root[data-minerr-off] .ml-word { text-decoration: none; background-color: transparent; cursor: inherit; }',
 ].join('\n');
 
 const PREFIX = 'w:';

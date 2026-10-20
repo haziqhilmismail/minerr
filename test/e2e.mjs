@@ -102,6 +102,29 @@ try {
   assert.equal(await popup.locator('button[aria-pressed="true"]').innerText(), 'Known 3');
   console.log('after key 3: known in this tab and in the second tab');
 
+  await popup.locator('button.close').click();
+  await popup.waitFor({ state: 'hidden' });
+  await tab.mouse.move(0, 0);
+  await tab.hover('#line .ml-word[data-ml-lemma="食べる"]');
+  await popup.locator('button.off').click();
+  await popup.waitFor({ state: 'hidden' });
+  assert.deepEqual(await options.evaluate(() => chrome.storage.local.get('enabled')), { enabled: false });
+  await other.waitForFunction(() => document.documentElement.hasAttribute('data-minerr-off'));
+  const offWord = '#line .ml-word[data-ml-lemma="食べる"]';
+  assert.equal(await tab.$eval(offWord, el => getComputedStyle(el).textDecorationLine), 'none');
+  await tab.mouse.move(0, 0);
+  await tab.hover('#line .ml-word[data-ml-lemma="猫"]');
+  await tab.waitForTimeout(500);
+  assert.equal(await popup.isVisible(), false);
+  console.log('turned off: no underline, no popup, in both tabs');
+  await options.evaluate(() => chrome.storage.local.set({ enabled: true }));
+  await tab.waitForFunction(() => !document.documentElement.hasAttribute('data-minerr-off'));
+  assert.equal(await tab.$eval(offWord, el => getComputedStyle(el).textDecorationLine), 'underline');
+  await tab.mouse.move(0, 0);
+  await tab.hover('#line .ml-word[data-ml-lemma="食べる"]');
+  await popup.locator('li').first().waitFor();
+  console.log('turned on again: underline and popup back');
+
   await popup.getByRole('button', { name: 'Add to Anki A' }).click();
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
   const actions = ankiRequests.map(r => r.action);

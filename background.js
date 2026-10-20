@@ -1,5 +1,6 @@
 import { addNote, DEFAULT_DECK, fieldValues, version } from './src/anki.js';
 import { call, serve } from './src/rpc.js';
+import { isEnabled, setEnabled } from './src/switch.js';
 import { getStatuses, setStatus, setStatuses } from './src/status.js';
 
 let creating = null;
@@ -48,6 +49,10 @@ async function importKnown({ query, field }) {
   await setStatuses(words, 'known');
   return words.length;
 }
+
+chrome.commands.onCommand.addListener(async command => {
+  if (command === 'toggle-minerr') await setEnabled(!(await isEnabled()));
+});
 
 serve(
   { parse: toOffscreen, lookup: toOffscreen, addCard, importKnown, ankiVersion: version },
