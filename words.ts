@@ -72,6 +72,8 @@ const bulkButtons = STATUS_NAMES.map(status => {
     if (status === 'unknown' && !confirm(`Set ${lemmas.length} words to unknown? They go out of the list.`)) return;
     selected.clear();
     await setStatuses(lemmas, status);
+    // No storage change event comes when no status changed, and the selection still needs to clear.
+    render();
   });
   return button;
 });

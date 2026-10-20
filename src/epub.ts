@@ -78,7 +78,13 @@ export async function readEpub(bytes: Bytes, fallbackTitle: string): Promise<Boo
     const item = items.get(ref.getAttribute('idref'));
     const href = item?.getAttribute('href');
     if (!href || !HTML_TYPES.has(item?.getAttribute('media-type') ?? '')) continue;
-    const doc = parseChapter(await readText(members, zipPath(opfPath, href)));
+    // A missing chapter or a bad link (a raw % in the href) drops only that chapter.
+    let doc: Document;
+    try {
+      doc = parseChapter(await readText(members, zipPath(opfPath, href)));
+    } catch {
+      continue;
+    }
     const body = byTag(doc, 'body')[0];
     if (!body?.textContent?.trim()) continue;
     const content = document.createDocumentFragment();

@@ -22,7 +22,7 @@ export function setting<T>(key: string, isValue: (value: unknown) => value is T,
 
 export type Setting<T> = ReturnType<typeof setting<T>>;
 
-const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+export const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 
 // Minerr on or off. When off, words keep their spans but lose underlines and the popup, so turning it on again is instant.
 export const minerrEnabled = setting('enabled', isBoolean, true);

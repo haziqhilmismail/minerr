@@ -136,7 +136,7 @@ async function showTabStats(): Promise<void> {
   const tabId = tab?.id;
   const stats = tabId === undefined ? null : await call({ type: 'pageStats' }, tabId).catch(() => null);
   if (stats && tabId !== undefined) showStats(stats, tabId);
-  else scoreEmpty.textContent = 'Minerr cannot read this tab. If the tab was open before Minerr started, reload it.';
+  else scoreEmpty.textContent = 'Minerr cannot read this tab. Pages of Chrome and of extensions have no score. If the tab was open before Minerr started, reload it.';
 }
 
 async function act(message: Message<'subsGenerate'> | Message<'subsUse'>): Promise<void> {

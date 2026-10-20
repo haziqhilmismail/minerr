@@ -9,12 +9,11 @@ import { parseSubtitles } from './src/captions.ts';
 import { byId } from './src/dom.ts';
 import { type Book, type Chapter, readEpub } from './src/epub.ts';
 import { messageOf } from './src/rpc.ts';
-import { setting } from './src/settings.ts';
+import { isBoolean, setting } from './src/settings.ts';
 import { applyTheme } from './src/theme.ts';
 
 applyTheme();
 
-const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 const verticalText = setting('readerVertical', isBoolean, false);
 const autoPaste = setting('readerAutoPaste', isBoolean, false);
 const CLIPBOARD: chrome.permissions.Permissions = { permissions: ['clipboardRead'] };
@@ -57,7 +56,8 @@ function scrollToOffset(offset: number): void {
 
 function progress(): number {
   const { offset, size, total } = viewport();
-  return total > size ? offset / (total - size) : 0;
+  // At a zoom other than 100% the offset can pass the end by a fraction of a pixel.
+  return total > size ? Math.min(1, offset / (total - size)) : 0;
 }
 
 function scrollToProgress(fraction: number): void {
