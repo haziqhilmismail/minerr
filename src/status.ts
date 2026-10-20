@@ -18,11 +18,11 @@ export const STATUS_NAMES: Status[] = Object.keys(STATUSES).filter(isStatus);
 
 // currentColor keeps the hover highlight visible on light text over video and on dark text over a light page.
 export const WORD_CSS = [
-  '.ml-word { border-radius: 2px; cursor: pointer; text-underline-offset: 0.2em; text-decoration-skip-ink: none; }',
+  '.ml-word { border-radius: 2px; text-underline-offset: 0.2em; text-decoration-skip-ink: none; }',
   '.ml-word:hover, .ml-word[data-ml-active] { background-color: color-mix(in srgb, currentColor 16%, transparent); }',
   ...Object.values(STATUSES).filter(s => s.underline)
     .map(s => `.${s.className} { text-decoration: underline ${s.underline} ${s.color}; }`),
-  ':root[data-minerr-off] .ml-word { text-decoration: none; background-color: transparent; cursor: inherit; }',
+  ':root[data-minerr-off] .ml-word { text-decoration: none; background-color: transparent; }',
 ].join('\n');
 
 const PREFIX = 'w:';
