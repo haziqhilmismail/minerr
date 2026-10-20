@@ -13,6 +13,11 @@ const STYLE = `
     text-align: center; white-space: pre-line; overflow-wrap: anywhere; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
   }
   .minerr-subs-line[hidden], .minerr-subs-toast[hidden] { display: none; }
+  .minerr-subs[data-obscure="blur"]:not([data-paused]) .minerr-subs-line:not(:hover) { filter: blur(0.3em); }
+  .minerr-subs[data-obscure="hide"]:not([data-paused]) .minerr-subs-line:not(:hover),
+  .minerr-subs[data-obscure="hide"]:not([data-paused]) .minerr-subs-line:not(:hover) * {
+    color: transparent; text-shadow: none; text-decoration-color: transparent;
+  }
   .minerr-subs-toast {
     position: absolute; top: 12px; left: 50%; transform: translateX(-50%); max-width: 80cqw; padding: 6px 12px;
     border-radius: 6px; background: rgba(10, 10, 14, 0.85); color: #fff; font: 600 14px/1.4 system-ui, sans-serif; text-align: center;

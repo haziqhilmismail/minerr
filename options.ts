@@ -12,7 +12,7 @@ import {
 } from './src/status.ts';
 import { TAG_CSS } from './src/tags.ts';
 import { applyTheme, theme } from './src/theme.ts';
-import './src/videooptions.ts';
+import { bindVideoOptions } from './src/videooptions.ts';
 
 applyTheme();
 
@@ -303,6 +303,6 @@ async function bindRadios<T extends string>(name: string, { get, set, isValue }:
   }
 }
 
-await Promise.all([bindRadios('hoverMode', hoverMode), bindRadios('theme', theme)]);
+await Promise.all([bindRadios('hoverMode', hoverMode), bindRadios('theme', theme), bindVideoOptions(bindRadios)]);
 
 await Promise.all([showDictionaries(), showModels(), showCounts()]);

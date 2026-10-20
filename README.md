@@ -285,6 +285,14 @@ The sentence audio needs subtitles with times. A card from the YouTube captions 
 
 Anki on a computer plays MP3 and WebM files. If a phone app does not play a WebM file, start the server before you add the card. Then the card gets an MP3 file.
 
+## Subtitle display
+
+Open the options page and go to **Video** to change these settings. They apply to the subtitle overlay on all video pages.
+
+- **Obscure the subtitles.** The overlay blurs or hides the text while the video plays. The text shows when you move the mouse onto it or pause the video. Select **Blur** or **Hide**. Press `W` on a video to turn this on or off.
+- **Remove bracketed text.** Minerr removes text in brackets, for example （笑）, (laughs), [音楽], and 【拍手】. A line with only bracketed text does not show.
+- **Parts with no subtitles.** For a part of 1.5 seconds or more with no line, the video plays at 2× or 4× speed, or skips the part. The last 0.5 seconds before the next line play at the normal speed. This needs subtitles with times.
+
 ## Video keys
 
 These keys work on a video with the Minerr subtitle overlay: on YouTube, in the video player, and on other sites. They do not work when the focus is in a text field.
@@ -303,6 +311,7 @@ These keys work on a video with the Minerr subtitle overlay: on YouTube, in the 
 | `Alt+I` | Show the subtitles 0.1 seconds earlier. | Needs subtitles with times. |
 | `Alt+=` | Make the subtitles larger. | |
 | `Alt+-` | Make the subtitles smaller. | |
+| `W` | Blur or hide the subtitles until you move the mouse onto them or pause, or show them again. | |
 
 Subtitles with times come from WhisperX, from a subtitle file, or from the YouTube subtitles that the Minerr server downloads. The YouTube captions that Minerr copies from the player have no times. With these captions, a key that needs times shows a hint, and YouTube gets the key.
 

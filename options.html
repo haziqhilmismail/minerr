@@ -18,6 +18,7 @@
   section > .help:first-of-type { margin: -8px 0 16px; }
   .field { margin-bottom: 16px; }
   .field > label { display: block; margin-bottom: 4px; font-weight: 600; }
+  .check { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
   input[type="number"] { width: 8em; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
     background: var(--field); color: inherit; font: inherit; }
   input[type="text"] { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
@@ -223,6 +224,28 @@
       <label for="audio-padding">Sentence audio padding (ms)</label>
       <input id="audio-padding" type="number" min="0" max="3000" step="100" aria-describedby="audio-padding-help">
       <p id="audio-padding-help" class="help">A card from a subtitle line gets the audio of the line, and this much audio before and after it.</p>
+    </div>
+    <div class="field">
+      <label class="check"><input id="sub-obscured" type="checkbox" aria-describedby="sub-obscured-help">Obscure the subtitles</label>
+      <p id="sub-obscured-help" class="help">The text shows when you move the mouse onto it or pause the video. Press W on a video to turn this on or off.</p>
+      <div class="segmented" role="radiogroup" aria-label="Obscure effect" style="margin-top: 8px">
+        <label><input type="radio" name="subEffect" value="blur">Blur</label>
+        <label><input type="radio" name="subEffect" value="hide">Hide</label>
+      </div>
+    </div>
+    <div class="field">
+      <label class="check"><input id="clean-subs" type="checkbox" aria-describedby="clean-subs-help">Remove bracketed text</label>
+      <p id="clean-subs-help" class="help">Removes text in brackets, for example （笑） or [音楽], from the lines. A line with only bracketed text does not show.</p>
+    </div>
+    <div class="field">
+      <p id="gap-heading" style="font-weight: 600">Parts with no subtitles</p>
+      <div class="segmented" role="radiogroup" aria-labelledby="gap-heading" aria-describedby="gap-help" style="margin-top: 4px">
+        <label><input type="radio" name="gapMode" value="off">Normal speed</label>
+        <label><input type="radio" name="gapMode" value="x2">2× speed</label>
+        <label><input type="radio" name="gapMode" value="x4">4× speed</label>
+        <label><input type="radio" name="gapMode" value="skip">Skip</label>
+      </div>
+      <p id="gap-help" class="help">For a part of 1.5 seconds or more with no line. The last 0.5 seconds before the next line play at the normal speed. Needs subtitles with times.</p>
     </div>
   </section>
 

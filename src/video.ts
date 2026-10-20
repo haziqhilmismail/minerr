@@ -2,11 +2,11 @@
 import type { SubtitleSegment } from './captions.ts';
 import type { CardLine } from './lineaudio.ts';
 import { createOverlay } from './overlay.ts';
-import { jumpTarget } from './playback.ts';
+import { cleanSegments, cleanText, GAP_LEAD, GAP_MODES, gapEnd, type GapMode, jumpTarget } from './playback.ts';
 import { recordPart } from './record.ts';
 import { serve } from './rpc.ts';
 import { type VideoAction, videoKey } from './videokeys.ts';
-import { subScale } from './videosettings.ts';
+import { cleanSubs, gapMode, type SubEffect, subEffect, subObscured, subScale } from './videosettings.ts';
 import type { AudioSource } from './whisper.ts';
 
 // What the overlay shows. 'timed' lines have times (WhisperX, a subtitle file, the subtitles of the site from the server).
@@ -31,7 +31,15 @@ const TIMED_HINT = 'This key needs subtitles with times. Generate them with Whis
 
 const { layer, line, show, toast } = createOverlay();
 let target: Target = { video: () => null };
-let lines: Lines = { kind: 'none' };
+// The lines from the page, and the lines that the overlay uses: the same, or without bracketed text.
+let given: Lines = { kind: 'none' };
+let lines: Lines = given;
+let clean = false;
+let gap: GapMode = 'off';
+// The speed of the video before a gap made it faster, while it is faster.
+let gapRate: number | null = null;
+// True while the tab records a line, so no gap rule changes the playback.
+let recording = false;
 // Seconds added to every line time: a positive offset shows the lines later.
 let offset = 0;
 let scale = 1;
@@ -59,12 +67,30 @@ function render(): void {
   else show(found?.segments[shownIndex]?.text ?? '');
 }
 
+function crossGap(playing: HTMLVideoElement): void {
+  const found = timed();
+  const mode = GAP_MODES[gap];
+  const end = found && mode !== 1 && !recording ? gapEnd(found.segments, lineTime()) : null;
+  if (end === null) {
+    if (gapRate !== null) playing.playbackRate = gapRate;
+    gapRate = null;
+  } else if (mode === 'jump') {
+    seek(end - GAP_LEAD + offset);
+  } else if (gapRate === null) {
+    gapRate = playing.playbackRate;
+    playing.playbackRate = mode;
+  }
+}
+
 let frame = 0;
 function follow(): void {
   cancelAnimationFrame(frame);
   render();
   const playing = video();
-  if (timed() && playing && !playing.paused) frame = requestAnimationFrame(follow);
+  layer.toggleAttribute('data-paused', !playing || playing.paused);
+  if (!timed() || !playing || playing.paused) return;
+  crossGap(playing);
+  frame = requestAnimationFrame(follow);
 }
 
 export function attach(next: Target): void {
@@ -72,13 +98,19 @@ export function attach(next: Target): void {
   follow();
 }
 
+const cleaned = (value: Lines): Lines => {
+  if (!clean || value.kind === 'none') return value;
+  return value.kind === 'mirror' ? { ...value, text: cleanText(value.text) } : { ...value, segments: cleanSegments(value.segments) };
+};
+
 export function setLines(next: Lines): void {
   const id = (value: Lines) => (value.kind === 'timed' ? value.id : null);
-  if (id(next) !== id(lines)) {
+  if (id(next) !== id(given)) {
     offset = 0;
     hinted = false;
   }
-  lines = next;
+  given = next;
+  lines = cleaned(next);
   follow();
 }
 
@@ -125,6 +157,13 @@ function copy(): boolean {
   return true;
 }
 
+function toggleObscured(): void {
+  subObscured.get().then(on => {
+    subObscured.set(!on);
+    toast(on ? 'Subtitles shown.' : 'Subtitles obscured until you hover them or pause the video.');
+  });
+}
+
 // Each action returns false when it did nothing, so the page gets the key.
 const ACTIONS: Record<VideoAction, () => boolean | void> = {
   next: () => jump('next'),
@@ -139,6 +178,7 @@ const ACTIONS: Record<VideoAction, () => boolean | void> = {
   offsetDown: () => shift(-OFFSET_STEP),
   bigger: () => resize(SCALE_STEP),
   smaller: () => resize(-SCALE_STEP),
+  obscure: toggleObscured,
 };
 
 // Capture on window, so the keys of the site (YouTube binds c, j, l, ., and the arrows) do not also fire.
@@ -168,10 +208,31 @@ function cardLine(): CardLine | null {
 
 async function record({ start, end }: { start: number; end: number }) {
   const playing = video();
-  return playing ? recordPart(playing, start, end) : null;
+  if (!playing) return null;
+  recording = true;
+  try {
+    return await recordPart(playing, start, end);
+  } finally {
+    recording = false;
+  }
 }
 
 serve({ videoLine: cardLine, videoRecord: record }, target => target === undefined);
+
+let effect: SubEffect = 'blur';
+let obscured = false;
+const showObscured = () => {
+  if (obscured) layer.dataset.obscure = effect;
+  else delete layer.dataset.obscure;
+};
+subEffect.watch(value => { effect = value; showObscured(); });
+subObscured.watch(value => { obscured = value; showObscured(); });
+cleanSubs.watch(value => {
+  clean = value;
+  lines = cleaned(given);
+  follow();
+});
+gapMode.watch(value => { gap = value; });
 
 subScale.watch(value => {
   scale = value;
@@ -179,7 +240,7 @@ subScale.watch(value => {
 });
 
 // Media events do not bubble, but the capture phase on the document sees them for any video element.
-for (const type of ['play', 'seeked', 'timeupdate']) {
+for (const type of ['play', 'pause', 'seeked', 'timeupdate']) {
   document.addEventListener(type, event => {
     if (event.target === video()) follow();
   }, true);

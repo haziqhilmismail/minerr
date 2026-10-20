@@ -57,6 +57,8 @@ const JSON3 = JSON.stringify({ events: [
   { tStartMs: 0, dDurationMs: 2500, segs: [{ utf8: '猫が' }, { utf8: '魚を', tOffsetMs: 400 }, { utf8: '食べた' }] },
   { tStartMs: 1900, dDurationMs: 600, aAppend: 1, segs: [{ utf8: '\n' }] },
   { tStartMs: 2000, dDurationMs: 4000, segs: [{ utf8: '今日は雨' }] },
+  { tStartMs: 6000, dDurationMs: 1000, segs: [{ utf8: '［音楽］' }] },
+  { tStartMs: 10000, dDurationMs: 1000, segs: [{ utf8: '雨が降る' }] },
 ] });
 const whisperRequests: string[] = [];
 let cached = false;
@@ -289,6 +291,64 @@ try {
   assert.equal(at(firstNote, 'fields', 'SentenceAudio'), '', 'a card from mirrored captions has no line audio');
   console.log('YouTube card: the server cut the line audio from the video');
   await tab.keyboard.press('Escape');
+  await tab.mouse.move(0, 0);
+
+  const setStorage = (items: Record<string, unknown>) => worker.evaluate(value => chrome.storage.local.set(value), items);
+  const lineStyle = () => line.evaluate(node => ({ filter: getComputedStyle(node).filter, color: getComputedStyle(node).color }));
+  const playVideo = (time: number) => tab.evaluate(t => {
+    const video = document.querySelector('video');
+    if (!video) throw new Error('The page has no video');
+    video.currentTime = t;
+    return video.play();
+  }, time);
+  const pauseVideo = () => tab.evaluate(() => document.querySelector('video')?.pause());
+  await setStorage({ subObscured: true });
+  await tab.locator('.minerr-subs[data-obscure="blur"][data-paused]').waitFor();
+  assert.equal((await lineStyle()).filter, 'none', 'a paused video shows the text');
+  await playVideo(2.2);
+  await tab.locator('.minerr-subs[data-obscure="blur"]:not([data-paused])').waitFor();
+  assert.match((await lineStyle()).filter, /^blur/);
+  await line.hover();
+  assert.equal((await lineStyle()).filter, 'none', 'hover shows the text');
+  await tab.mouse.move(0, 0);
+  await setStorage({ subEffect: 'hide' });
+  await tab.locator('.minerr-subs[data-obscure="hide"]').waitFor();
+  assert.deepEqual(await lineStyle(), { filter: 'none', color: 'rgba(0, 0, 0, 0)' });
+  await tab.keyboard.press('w');
+  await tab.locator('.minerr-subs:not([data-obscure])').waitFor();
+  assert.deepEqual(await worker.evaluate(() => chrome.storage.local.get('subObscured')), { subObscured: false });
+  await pauseVideo();
+  console.log('obscured subtitles: blurred or hidden while the video plays, shown on hover and pause; W turns it off');
+
+  await tab.evaluate(() => { const video = document.querySelector('video'); if (video) video.currentTime = 6.5; });
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '［音楽］');
+  await setStorage({ cleanSubs: true });
+  await line.waitFor({ state: 'hidden' });
+  console.log('bracketed text removed: the line ［音楽］ does not show');
+
+  const crossGap = async () => {
+    const started = Date.now();
+    await playVideo(6.5);
+    await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '雨が降る', null, { timeout: 8000 });
+    const rate = await tab.evaluate(() => document.querySelector('video')?.playbackRate);
+    await pauseVideo();
+    return { seconds: (Date.now() - started) / 1000, rate };
+  };
+  await setStorage({ gapMode: 'skip' });
+  const skipped = await crossGap();
+  await setStorage({ gapMode: 'x4' });
+  await tab.evaluate(() => { const video = document.querySelector('video'); if (video) video.currentTime = 6.5; });
+  await playVideo(6.5);
+  await tab.waitForFunction(() => document.querySelector('video')?.playbackRate === 4);
+  await pauseVideo();
+  const fast = await crossGap();
+  await setStorage({ gapMode: 'off' });
+  const normal = await crossGap();
+  console.log('a 4 s gap with no line: skip', skipped, 'x4', fast, 'normal', normal);
+  assert.ok(skipped.seconds < 1.5, 'skip jumps to 0.5 s before the next line');
+  assert.ok(fast.seconds < 2.5 && fast.rate === 1, 'x4 crosses the gap faster and plays the line at the normal speed');
+  assert.ok(normal.seconds > 3.2, 'without a gap mode the gap plays at the normal speed');
+  await setStorage({ cleanSubs: false });
 
   await new Promise(resolve => whisper.close(resolve));
   whisper.closeAllConnections();

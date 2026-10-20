@@ -22,3 +22,32 @@ export function jumpTarget(segments: SubtitleSegment[], time: number, jump: Jump
   const index = jump === 'next' ? i + 1 : jump === 'previous' ? i - 1 : i;
   return segments[index]?.start ?? null;
 }
+
+// Removes bracketed text such as （笑）, [音楽], and 【拍手】; a line with nothing else left drops out.
+const BRACKETED = /（[^（）]*）|\([^()]*\)|\[[^[\]]*\]|［[^［］]*］|【[^【】]*】|〔[^〔〕]*〕/g;
+export const cleanText = (text: string): string =>
+  text.replace(BRACKETED, '').split('\n').map(line => line.trim()).filter(Boolean).join('\n');
+
+export const cleanSegments = (segments: SubtitleSegment[]): SubtitleSegment[] =>
+  segments.flatMap(segment => {
+    const text = cleanText(segment.text);
+    return text ? [{ ...segment, text }] : [];
+  });
+
+// How the video crosses a part with no line: at the normal speed, at a higher speed, or with a jump to the next line.
+export const GAP_MODES = { off: 1, x2: 2, x4: 4, skip: 'jump' } as const;
+export type GapMode = keyof typeof GAP_MODES;
+export const isGapMode = (value: unknown): value is GapMode => typeof value === 'string' && Object.hasOwn(GAP_MODES, value);
+
+// Only a gap of this length or more counts, and its last GAP_LEAD seconds play at the normal speed, so the next line starts clean.
+const MIN_GAP = 1.5;
+export const GAP_LEAD = 0.5;
+
+// The start of the next line when time is in a long enough gap and before its lead, else null.
+export function gapEnd(segments: SubtitleSegment[], time: number): number | null {
+  if (segments.some(segment => segment.start <= time && time < segment.end)) return null;
+  const before = segments.filter(segment => segment.end <= time).at(-1);
+  const next = segments.find(segment => segment.start > time);
+  if (!next || next.start - (before?.end ?? 0) < MIN_GAP || time >= next.start - GAP_LEAD) return null;
+  return next.start;
+}

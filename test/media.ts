@@ -191,6 +191,18 @@ try {
   await options.fill('#audio-padding', '500');
   await options.press('#audio-padding', 'Tab');
   await options.waitForFunction(async () => (await chrome.storage.local.get('audioPadding')).audioPadding === 500);
+  const storedValue = (key: string) => options.evaluate(async name => (await chrome.storage.local.get(name))[name], key);
+  await options.click('#clean-subs');
+  await options.waitForFunction(async () => (await chrome.storage.local.get('cleanSubs')).cleanSubs === true);
+  await options.click('#clean-subs');
+  await options.locator('label', { hasText: '4× speed' }).click();
+  await options.locator('label', { hasText: 'Hide' }).click();
+  await options.waitForFunction(async () => (await chrome.storage.local.get('subEffect')).subEffect === 'hide');
+  assert.deepEqual([await storedValue('cleanSubs'), await storedValue('gapMode')], [false, 'x4']);
+  await worker.evaluate(() => chrome.storage.local.set({ subObscured: true }));
+  await options.locator('#sub-obscured:checked').waitFor();
+  await worker.evaluate(() => chrome.storage.local.remove(['subObscured', 'gapMode', 'subEffect']));
+  await options.locator('#sub-obscured:not(:checked)').waitFor();
   await options.close();
 
   const player = await context.newPage();

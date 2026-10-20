@@ -1,7 +1,7 @@
 // Unit tests of the pure video rules: line jumps, keys, play modes, gaps, text clean-up, and card lines.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { jumpTarget, lastStarted } from '../src/playback.ts';
+import { cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted } from '../src/playback.ts';
 import { keyLabel, keyName, videoKey } from '../src/videokeys.ts';
 
 const LINES = [{ start: 1, end: 3, text: '一' }, { start: 3, end: 5, text: '二' }, { start: 8, end: 10, text: '三' }];
@@ -85,4 +85,16 @@ test('addNote adds a missing SentenceAudio field to an old Minerr note type and 
   } finally {
     globalThis.fetch = saved;
   }
+});
+
+test('cleanText removes bracketed text, and cleanSegments drops a line with nothing else', () => {
+  assert.equal(cleanText('（笑）そうだね(laughs)\n[音楽]\n【拍手】本当［注］に〔小声〕'), 'そうだね\n本当に');
+  assert.deepEqual(cleanSegments([{ start: 0, end: 1, text: '♪～（音楽）' }, { start: 1, end: 2, text: '［拍手］' }]),
+    [{ start: 0, end: 1, text: '♪～' }]);
+});
+
+test('gapEnd is the next start inside a gap of 1.5 s or more, before its last 0.5 s', () => {
+  assert.deepEqual([0.5, 2, 3.5, 4, 5.4, 6, 7.6, 9].map(time => gapEnd(LINES, time)), [null, null, null, null, 8, 8, null, null]);
+  assert.equal(gapEnd([{ start: 3, end: 4, text: '一' }], 1), 3, 'the part before the first line is a gap too');
+  assert.equal(gapEnd([{ start: 1, end: 2, text: '一' }, { start: 3, end: 4, text: '二' }], 2.2), null, 'a 1 s gap does not count');
 });
