@@ -126,7 +126,8 @@ async function open(anchor: Anchor, { lemma, word, headword }: Pick<View, 'lemma
 export async function openWord(span: HTMLElement): Promise<void> {
   const { mlLemma: lemma, mlHeadword: text, mlHeadwordReading: reading = '' } = span.dataset;
   const depth = depthOf(span);
-  if (lemma === undefined || depth >= MAX_LAYERS) return;
+  // An open card form keeps its popup: a play-mode pause would otherwise throw away the edits.
+  if (lemma === undefined || depth >= MAX_LAYERS || editing) return;
   const headword = text === undefined ? undefined : { text, reading };
   await open({ kind: 'word', span }, { lemma, word: wordOf(span), headword }, depth, call({ type: 'lookup', lemma }));
 }
@@ -188,7 +189,7 @@ async function busy<T>(layer: Layer, label: string, hide: boolean, work: () => P
 }
 
 async function send(layer: Layer, card: CardFields, hide: boolean, draft?: NoteDraft): Promise<void> {
-  const added = await busy(layer, 'Adding to Anki…', hide, () => call({ type: 'addCard', card, word: view.word, ...(draft ? { draft } : {}) }));
+  const added = await busy(layer, 'Adding to Anki…', hide, () => call({ type: 'addCard', card, word: layer.view.word, ...(draft ? { draft } : {}) }));
   if (added !== null && layers.includes(layer)) showMessage(layer, 'Added to Anki.');
 }
 
@@ -267,6 +268,8 @@ document.addEventListener('mousedown', event => {
   const path = event.composedPath();
   const inside = layers.findIndex(layer => path.includes(layer.box));
   if (inside >= 0) closeFrom(inside + 1);
+  // A click outside does not close a popup with a card form: only Send, Cancel, or Esc do.
+  else if (editing) return;
   else if (layers.length && !isPopup(event.target) && !wordAt(event)) close(0);
 });
 

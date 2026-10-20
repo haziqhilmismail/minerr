@@ -143,6 +143,8 @@ try {
   await tab.keyboard.press('3');
   await tab.waitForTimeout(300);
   assert.equal(await tab.$eval('#line .ml-word[data-ml-lemma="猫"]', span => span.className), 'ml-word ml-unknown', 'keys in the form do not change the status');
+  await tab.mouse.click(5, 5);
+  assert.equal(await sentence.inputValue(), '<b>猫</b>が魚を食べなかった。3a', 'a click outside keeps the form and its edits');
   await sentence.press('Escape');
   await form.waitFor({ state: 'detached' });
   assert.equal(await popup.isVisible(), true, 'Esc closes the form first');
