@@ -283,6 +283,22 @@ try {
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '今日は雨');
   assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 2);
   console.log('YouTube subtitles with times from the server: the overlay follows them, and ArrowRight goes to the next line');
+  await tab.evaluate(() => {
+    const keys: string[] = [];
+    Object.assign(window, { pageKeys: keys });
+    document.addEventListener('keydown', event => keys.push(event.key));
+  });
+  const pageKeys = () => tab.evaluate(() => Reflect.get(window, 'pageKeys'));
+  await tab.evaluate(() => document.querySelector('#movie_player')?.classList.add('ad-showing'));
+  await tab.keyboard.press('ArrowRight');
+  assert.deepEqual(await pageKeys(), ['ArrowRight'], 'during an ad, YouTube gets the line keys');
+  assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 2);
+  await tab.evaluate(() => document.querySelector('#movie_player')?.classList.remove('ad-showing'));
+  await line.locator('.ml-word[data-ml-lemma="雨"]').waitFor();
+  await tab.keyboard.press('Shift+N');
+  assert.deepEqual(await pageKeys(), ['ArrowRight', 'Shift', 'N'], 'YouTube gets Shift+N (next video) while no popup is open');
+  assert.equal(await popup.isVisible(), false);
+  console.log('YouTube keys: the line keys go to YouTube during an ad, and Shift+N always goes to YouTube without a popup');
   await tab.hover('.minerr-subs-line .ml-word[data-ml-lemma="雨"]');
   await popup.locator('.add').waitFor();
   await tab.keyboard.press('a');

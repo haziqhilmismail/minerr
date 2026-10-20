@@ -26,8 +26,13 @@ const pitches = makeDictionary(join(work, 'pitches.zip'), 'Pitches', [], [], [
   ['食べる', 'pitch', { reading: 'たべる', pitches: [{ position: 2 }] }],
 ]);
 
+const BIG_LINES = 15000;
 const site = createServer((req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  if (req.url === '/big') {
+    return res.end('<!doctype html><meta charset="utf-8"><title>big</title><body><script>window.tasks = []; new PerformanceObserver(list => '
+      + `window.tasks.push(...list.getEntries().map(e => e.duration))).observe({ type: "longtask" });</script><div>${'猫が魚を食べた。<br>'.repeat(BIG_LINES)}</div></body>`);
+  }
   res.end('<!doctype html><meta charset="utf-8"><title>reading</title><body><p id="line">猫が魚を食べなかった。</p>'
     + '<p id="wrap" style="width: 6em; font-size: 20px; line-height: 1.2">猫が魚を食べた。猫が魚を食べた。猫が魚を食べた。</p></body>');
 });
@@ -234,6 +239,51 @@ try {
   await tab.keyboard.press('Escape');
   console.log('sentence highlight: the sentence of the hovered or popup word; Alt+Shift+S turns it off and on; popup shows the count on the page; saved', join(work, 'sentence.png'));
 
+  await tab.evaluate(() => {
+    const big = document.body.appendChild(Object.assign(document.createElement('div'), { id: 'big' }));
+    for (let i = 0; i < 4000; i++) big.append('猫が魚を食べた。', document.createElement('br'));
+  });
+  await tab.waitForFunction(() => document.querySelectorAll('#big .ml-word').length >= 12000, null, { timeout: 60000 });
+  const hoverTimes = await tab.evaluate(() => {
+    const block = document.querySelector('#big');
+    const walker = document.createTreeWalker(block ?? document.body, NodeFilter.SHOW_TEXT);
+    let textNodes = 0;
+    while (walker.nextNode()) textNodes++;
+    const spans = [...document.querySelectorAll<HTMLElement>('#big .ml-word')].slice(-10);
+    const times = spans.map(span => {
+      const start = performance.now();
+      span.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      return performance.now() - start;
+    });
+    return { textNodes, times, sentence: [...(CSS.highlights.get('minerr-sentence') ?? [])].map(range => range.toString()) };
+  });
+  console.log('sentence highlight in a block of', hoverTimes.textNodes, 'text nodes: hover ms', hoverTimes.times.map(t => t.toFixed(2)).join(' '));
+  assert.ok(hoverTimes.textNodes >= 20000);
+  assert.deepEqual(hoverTimes.sentence, ['猫が魚を食べた。']);
+  const median = [...hoverTimes.times].sort((a, b) => a - b)[5] ?? Infinity;
+  assert.ok(median < 1, `a hover in a big block walks only its sentence: median ${median} ms`);
+  await tab.evaluate(() => document.querySelector('#big')?.remove());
+  await tab.mouse.move(0, 0);
+  await tab.evaluate(() => document.body.insertAdjacentHTML('beforeend', '<p id="ruby-line"><ruby>猫<rp>（</rp><rt>ねこ。</rt><rp>）</rp></ruby>が魚を食べた。</p>'));
+  await tab.hover('#ruby-line .ml-word[data-ml-lemma="魚"]');
+  assert.deepEqual(await sentence(), ['猫（ねこ。）が魚を食べた。'], 'the 。 of a reading in <rt> does not end the sentence');
+  await tab.mouse.move(0, 0);
+  await tab.keyboard.press('Escape');
+  await tab.evaluate(() => document.querySelector('#ruby-line')?.remove());
+  console.log('sentence highlight: the walk stays in the sentence of a big block, and skips ruby text');
+
+  await tab.evaluate(() => document.body.insertAdjacentHTML('beforeend', '<p id="badges"><span style="display: inline-block">食</span>'
+    + '<span style="display: inline-block">べた</span></p><p id="image">食<img alt="">べた</p>'
+    + '<p id="buttons"><button style="display: inline">食</button><button style="display: inline">べた</button></p><p id="inline"><b>食</b>べた</p>'));
+  await tab.waitForSelector('#inline .ml-word');
+  const words = (selector: string) => tab.$$eval(`${selector} .ml-word`, spans => spans.map(span => `${span.textContent}${span.hasAttribute('data-ml-cont') ? ' cont' : ''}`));
+  assert.deepEqual(await words('#inline'), ['食', 'べた cont'], 'an inline element joins its text with the next');
+  for (const id of ['#badges', '#image', '#buttons']) {
+    assert.equal((await words(id)).filter(word => word.endsWith(' cont')).length, 0, `${id}: no word crosses an inline-block, an <img>, or a <button>`);
+  }
+  await tab.evaluate(() => { for (const id of ['badges', 'image', 'buttons', 'inline']) document.getElementById(id)?.remove(); });
+  console.log('words: text joins across inline elements only, not across inline-block boxes, images, or buttons');
+
   const select = (from: string, to: string) => tab.evaluate(([start, end]) => {
     const range = new Range();
     range.setStartBefore(document.querySelector(start ?? '') ?? document.body);
@@ -287,6 +337,17 @@ try {
   assert.equal(await popup.isVisible(), false, 'N with no unknown word in the line opens no popup');
   await options.evaluate(() => chrome.storage.local.remove(['w:猫', 'w:魚', 'w:食べる']));
   console.log('subtitle line with one unknown word: a status key sets it with no popup');
+  await tab.evaluate(() => {
+    const host = document.body.appendChild(Object.assign(document.createElement('div'), { id: 'shadow-field' }));
+    host.attachShadow({ mode: 'open' }).append(document.createElement('input'));
+  });
+  const field = tab.locator('#shadow-field input');
+  await field.focus();
+  await tab.keyboard.type('n');
+  assert.equal(await field.inputValue(), 'n', 'a key in a field in a shadow root goes to the field');
+  assert.equal(await popup.isVisible(), false);
+  await field.blur();
+  console.log('a field in a shadow root: the page keys do not fire there');
 
   const popups = tab.locator('minerr-popup .popup');
   const lemmas = () => popups.locator('.lemma').allTextContents();
@@ -345,6 +406,16 @@ try {
   await popups.locator('.surface', { hasText: 'On the page: 食べ ·' }).waitFor();
   assert.deepEqual(await lemmas(), ['食べる'], 'the longest dictionary word at the start of 食べなか is 食べ, the verb 食べる');
   await tab.keyboard.press('Escape');
+  await select('#line .ml-word[data-ml-lemma="猫"]', '#line .ml-word[data-ml-lemma="魚"]');
+  await tab.keyboard.press('Alt+S');
+  await popups.locator('.lemma', { hasText: '猫' }).waitFor();
+  assert.equal(await tab.evaluate(() => getSelection()?.toString()), '', 'Alt+S clears the selection when it opens the popup');
+  await tab.keyboard.press('3');
+  await popups.locator('button[aria-pressed="true"]', { hasText: 'Known' }).waitFor();
+  assert.deepEqual(await options.evaluate(() => chrome.storage.local.get(['w:猫', 'w:魚'])), { 'w:猫': 'known' },
+    'after Alt+S, a status key sets the popup word, not the words of the selection');
+  await options.evaluate(() => chrome.storage.local.remove('w:猫'));
+  await tab.keyboard.press('Escape');
   await lookUp('#line .ml-word[data-ml-lemma="魚"]', 0, 1);
   await popups.locator('.lemma', { hasText: '魚' }).waitFor();
   await tab.keyboard.press('a');
@@ -366,6 +437,15 @@ try {
   await toast.filter({ hasText: 'No dictionary entry for xyz.' }).waitFor();
   await tab.evaluate(() => getSelection()?.removeAllRanges());
   console.log('Alt+S: the longest dictionary word at the start of the selection, with the card sentence around it');
+
+  const big = await context.newPage();
+  const loaded = Date.now();
+  await big.goto(pageUrl.replace('/page', '/big'));
+  await big.waitForFunction(n => document.querySelectorAll('.ml-word[data-ml-lemma="食べる"]').length === n, BIG_LINES, { timeout: 120000, polling: 500 });
+  const longest = Math.max(0, ...await big.evaluate(() => Reflect.get(window, 'tasks') as number[]));
+  console.log(`first parse of ${BIG_LINES} text nodes: ${(Date.now() - loaded) / 1000} s, longest task ${longest.toFixed(0)} ms`);
+  assert.ok(longest < 300, 'the first parse of a big page gives the page a turn between parts of its work');
+  await big.close();
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('READING E2E PASS');

@@ -50,7 +50,7 @@ let clean = false;
 let gap: GapMode = 'off';
 // The speed of the video before a gap made it faster, while it is faster.
 let gapRate: number | null = null;
-// True while the tab records a line, so no gap rule changes the playback.
+// True while the tab records a line: no gap rule, play-mode pause, line change, or hold changes the playback.
 let recording = false;
 // Seconds added to every line time: a positive offset shows the lines later.
 let offset = 0;
@@ -88,7 +88,9 @@ function shownLines(): SubtitleSegment[] {
   return (timed()?.segments ?? []).slice(from, from + (combined === null ? 1 : 2));
 }
 
+// The line stays as it is during a recording, so the word of the open popup stays in the overlay.
 function render(): void {
+  if (recording) return;
   const found = timed();
   const held = heldIndex >= 0 && video()?.paused;
   shownIndex = found && !target.blocked?.() ? (held ? heldIndex : currentIndex()) : -1;
@@ -282,9 +284,9 @@ const ACTIONS: Record<VideoAction, () => boolean | void> = {
 // Capture on window, so the keys of the site (YouTube binds c, j, l, ., and the arrows) do not also fire.
 // The overlay takes a key only while it has lines; a key that needs times gets a hint on mirrored captions, once per video.
 window.addEventListener('keydown', event => {
-  if (event.ctrlKey || event.metaKey || isEditable(event.target) || !video()) return;
+  if (event.ctrlKey || event.metaKey || isEditable(event) || !video()) return;
   const entry = videoKey(event);
-  if (!entry || lines.kind === 'none') return;
+  if (!entry || lines.kind === 'none' || target.blocked?.()) return;
   if (entry.timed && !timed()) {
     if (lines.kind === 'mirror' && !hinted) toast(TIMED_HINT);
     hinted = true;
@@ -316,6 +318,7 @@ function combine(): void {
   follow();
 }
 
+// The holds do not change during a recording, which plays and pauses the video itself. After it, they follow the mouse and the popup again.
 async function record({ start, end }: { start: number; end: number }) {
   const playing = video();
   if (!playing) return null;
@@ -324,6 +327,7 @@ async function record({ start, end }: { start: number; end: number }) {
     return await recordPart(playing, start, end);
   } finally {
     recording = false;
+    syncHolds();
   }
 }
 
@@ -349,14 +353,16 @@ secondDisplay.watch(value => {
   follow();
 });
 
-// No hold starts during a recording: a pause would cut the recording short.
-line.addEventListener('mouseenter', () => { const playing = video(); if (playing && !recording) setHold(playing, 'hover', true); });
-line.addEventListener('mouseleave', () => { const playing = video(); if (playing) setHold(playing, 'hover', false); });
 // popup.ts marks the word of the open popup with data-ml-active.
-new MutationObserver(() => {
+function syncHolds(): void {
   const playing = video();
-  if (playing) setHold(playing, 'popup', !recording && layer.querySelector('.ml-word[data-ml-active]') !== null);
-}).observe(layer, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-ml-active'] });
+  if (!playing || recording) return;
+  setHold(playing, 'hover', line.matches(':hover'));
+  setHold(playing, 'popup', layer.querySelector('.ml-word[data-ml-active]') !== null);
+}
+line.addEventListener('mouseenter', syncHolds);
+line.addEventListener('mouseleave', syncHolds);
+new MutationObserver(syncHolds).observe(layer, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-ml-active'] });
 
 subScale.watch(value => {
   scale = value;
@@ -367,7 +373,7 @@ subScale.watch(value => {
 for (const type of ['play', 'pause', 'seeked', 'timeupdate']) {
   document.addEventListener(type, event => {
     if (event.target !== video()) return;
-    if (type === 'play') played();
+    if (type === 'play' && !recording) played();
     if (type === 'play' || type === 'seeked') heldIndex = -1;
     if (type !== 'timeupdate') lastTime = lineTime();
     follow();
