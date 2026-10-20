@@ -43,7 +43,9 @@ function show(text) {
 
 function render() {
   if (state.source === 'whisperx') {
-    show(segmentAt(state.segments, video()?.currentTime ?? 0)?.text ?? '');
+    // An ad plays in the same video element, and its time is not the time of the video.
+    const ad = player?.classList.contains('ad-showing');
+    show(ad ? '' : segmentAt(state.segments, video()?.currentTime ?? 0)?.text ?? '');
   } else {
     show(captionText([...(player?.querySelectorAll('.caption-visual-line') ?? [])].map(l => l.textContent)));
   }
