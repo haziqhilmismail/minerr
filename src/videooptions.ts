@@ -3,7 +3,7 @@ import { byId } from './dom.ts';
 import type { Setting } from './settings.ts';
 import { keyLabel, VIDEO_KEYS } from './videokeys.ts';
 import {
-  audioPadding, autoLookup, autoResume, cleanSubs, gapMode, pauseOnHover, playMode, secondDisplay, subEffect, subObscured,
+  audioPadding, autoLookup, autoResume, cleanSubs, gapMode, pauseOnHover, playMode, secondDisplay, subEffect, subObscured, subScale,
 } from './videosettings.ts';
 
 // bindRadios of options.ts, which binds a radio group to a setting.
@@ -30,6 +30,14 @@ function bindCheckbox(id: string, { watch, set }: Setting<boolean>): void {
 }
 
 export async function bindVideoOptions(bindRadios: BindRadios): Promise<void> {
+  // The slider is in percent; the setting is a factor. The keys on a video change it too.
+  const size = byId('sub-scale', HTMLInputElement);
+  const sizeValue = byId('sub-scale-value', HTMLOutputElement);
+  subScale.watch(value => {
+    size.value = String(Math.round(value * 100));
+    sizeValue.value = `${size.value}%`;
+  });
+  size.addEventListener('input', () => subScale.set(size.valueAsNumber / 100));
   const padding = byId('audio-padding', HTMLInputElement);
   padding.value = String(await audioPadding.get());
   padding.addEventListener('change', () => {

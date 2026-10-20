@@ -57,8 +57,15 @@ const WATCH = `<!doctype html><meta charset="utf-8"><title>Fake YouTube</title>
 </div>`;
 
 const anki = await mockAnki();
-const { context, worker, extensionId } = await launch(join(work, 'profile'));
+// Lapis, the default note type: it has the word audio field, for the check of one audio per card.
+anki.replies.modelNames = () => ['Basic', 'Lapis'];
+const { context, worker, extensionId } = await launch(join(work, 'profile'), null);
 await context.route('https://www.youtube.com/**', route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: WATCH }));
+const jpod: string[] = [];
+await context.route('https://assets.languagepod101.com/**', route => {
+  jpod.push(route.request().url());
+  return route.fulfill({ contentType: 'audio/mpeg', body: Buffer.from('ID3 word audio of the mock') });
+});
 const failures: string[] = [];
 context.on('weberror', error => failures.push(error.error().message));
 const lastNote = () => at(anki.requests.filter(r => at(r, 'action') === 'addNote').at(-1), 'params', 'note', 'fields');
@@ -99,7 +106,8 @@ try {
 
   const mirrored = await add(0, 'a');
   assert.deepEqual([at(mirrored, 'Sentence'), at(mirrored, 'SentenceAudio')], ['だけ<b>登山口</b>こっちだ。', '']);
-  console.log('server down when the video opened: the YouTube caption rows give the card of the bug report', mirrored);
+  assert.match(String(at(mirrored, 'ExpressionAudio')), /^\[sound:minerr-word-[0-9a-f]+\.mp3\]$/, 'a card with no line audio gets the word audio');
+  console.log('server down when the video opened: the joined YouTube caption rows give the whole sentence, without audio', mirrored);
 
   await listen(whisper, 8766);
   await tab.waitForFunction(text => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === text, TEXT, { timeout: 15000 });
@@ -109,11 +117,15 @@ try {
   assert.deepEqual(clips.at(-1), { url: VIDEO, start: 188.75, end: 217.077 + 0.5 }, 'the server cuts the whole line with 0.5 s on each side');
   assert.equal(at(first, 'Sentence'), `かっこいいやけだけ<b>登山口</b>${TEXT.slice(12)}`);
   assert.equal(storedAudio(first).length, 1, 'A: the card has the line audio');
+  const asked = jpod.length;
+  assert.equal(at(first, 'ExpressionAudio'), '', 'one audio per card: a card with the line audio gets no word audio');
   const second = await add(1, 'e');
   assert.equal(clips.length, 2);
   assert.equal(at(second, 'Sentence'), `${TEXT.slice(0, 37)}<b>登山口</b>${TEXT.slice(40)}`);
   assert.equal(storedAudio(second).length, 1, 'E then Send: the card has the line audio');
-  console.log('WhisperX line: A on the first and E on the second 登山口 give the server audio', clips);
+  assert.equal(at(second, 'ExpressionAudio'), '');
+  assert.equal(jpod.length, asked, 'Minerr asks JapanesePod101 only for a card with no line audio');
+  console.log('WhisperX line: A on the first and E on the second 登山口 give the server audio and no word audio', clips);
 
   await new Promise(resolve => { whisper.close(resolve); whisper.closeAllConnections(); });
   await tab.evaluate(() => { const video = document.querySelector('video'); if (video) video.playbackRate = 4; });

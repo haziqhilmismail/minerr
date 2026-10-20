@@ -43,4 +43,4 @@ export const autoLookup = setting('autoLookup', isBoolean, false);
 // The secondary track under the line: always, only on hover or while paused, or never.
 export const SECOND_DISPLAYS = ['show', 'hover', 'off'] as const;
 export type SecondDisplay = (typeof SECOND_DISPLAYS)[number];
-export const secondDisplay = setting('secondDisplay', (value: unknown): value is SecondDisplay => SECOND_DISPLAYS.some(v => v === value), 'show');
+export const secondDisplay = setting('secondDisplay', (value: unknown): value is SecondDisplay => SECOND_DISPLAYS.some(v => v === value), 'off');

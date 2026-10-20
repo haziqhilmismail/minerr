@@ -107,12 +107,12 @@ try {
   assert.equal(at(note, 'deckName'), 'Minerr');
   const fields = at(note, 'fields');
   assert.deepEqual(Object.keys(fields ?? {}), [...LAPIS_FIELDS]);
-  const definition = '<div style="text-align: left;" class="yomitan-glossary"><ol><li data-dictionary="Fixture"><i>(v1, Fixture)</i> to eat (fixture)</li></ol></div>';
+  const definition = '<div style="text-align: left;" class="yomitan-glossary"><ol><li data-dictionary="Fixture"><i>(v1)</i> to eat (fixture)</li></ol></div>';
   assert.deepEqual(fields, {
     Expression: '食べる', ExpressionFurigana: '食[た]べる', ExpressionReading: 'たべる', ExpressionAudio: `[sound:${wordFile}]`, SelectionText: '',
     MainDefinition: definition, DefinitionPicture: '', Sentence: '猫が魚を<b>食べなかった</b>。', SentenceFurigana: '', SentenceAudio: '',
-    Picture: `<img src="${String(at(picture, 'filename'))}">`, Glossary: definition, Hint: '', IsWordAndSentenceCard: '', IsClickCard: '',
-    IsSentenceCard: '', IsAudioCard: '', PitchPosition: '[2]', PitchCategories: 'kifuku',
+    Picture: `<img src="${String(at(picture, 'filename'))}">`, Glossary: '', Hint: '', IsWordAndSentenceCard: '', IsClickCard: '',
+    IsSentenceCard: 'x', IsAudioCard: '', PitchPosition: '[2]', PitchCategories: 'kifuku',
     Frequency: '<ul style="text-align: left;"><li>Fixture: 1200</li></ul>', FreqSort: '1200',
     MiscInfo: `猫 &amp; 魚<br><a href="${pageUrl}">${pageUrl}</a>`,
   });

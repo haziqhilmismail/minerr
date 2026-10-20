@@ -31,7 +31,6 @@ let started: Promise<void> | null = null;
 
 async function start(video: HTMLVideoElement): Promise<void> {
   const { attach, layer, setLines, toast } = await import('./video.ts');
-  const { secondDisplay } = await import('./videosettings.ts');
   const url = location.href;
   let primary: SubtitleSegment[] = [];
   let second: SubtitleSegment[] | null = null;
@@ -71,7 +70,7 @@ async function start(video: HTMLVideoElement): Promise<void> {
       const found = await call({ type: 'siteCaptions', url, lang: 'ja' });
       if (!found?.length) return toast('This page has no Japanese subtitles that yt-dlp can find. Try WhisperX or a file.');
       primary = found;
-      if (await secondDisplay.get() !== 'off') second = await call({ type: 'siteCaptions', url, lang: 'en' }).catch(() => null);
+      second = await call({ type: 'siteCaptions', url, lang: 'en' }).catch(() => null);
       use();
       toast(`Subtitles of the site: ${found.length} lines.`);
     } catch (error) {

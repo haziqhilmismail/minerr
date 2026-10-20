@@ -165,6 +165,12 @@ export async function entrySegments(tokens: kuromoji.Token[], words: Words): Pro
     const segments = groupTokens(joinCompounds(tokens, await words.headwords(texts)));
     return await Promise.all(segments.map(async segment => {
       const entry = segment.lemma ? await words.entry(segment.lemma, lemmaReading(segment)) : null;
+      // kuromoji reads some suru verbs as the old 五段 verb: 接し -> 接す. JMdict has 接する, so the word takes that lemma.
+      if (!entry && segment.lemma?.endsWith('す')) {
+        const suru = `${segment.lemma}る`;
+        const found = await words.entry(suru, null);
+        if (found) return { ...segment, lemma: suru, entry: found };
+      }
       if (!entry) return segment;
       const headword = segment.reading && segment.text === entry.headword;
       return { ...segment, ...(headword ? { reading: toHiragana(entry.reading) } : {}), entry };

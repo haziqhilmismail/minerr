@@ -193,6 +193,8 @@ if (siteHost) {
   siteSwitch.addEventListener('change', async () => {
     pageTextOn = await toggleSiteOf(siteHost);
     show();
+    // The tab parses its text after the switch, so the score comes a moment later.
+    setTimeout(showTabStats, 1500);
   });
   byId('site-toggle', HTMLElement).hidden = false;
 }

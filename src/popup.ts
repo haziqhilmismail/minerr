@@ -287,8 +287,10 @@ window.addEventListener('keydown', event => {
   if (event.key === 'Shift' && !event.repeat && hovered) consider(hovered, true, false);
 }, true);
 
+export const isPopupOpen = (): boolean => layers.length > 0;
+
 installKeys({
-  isOpen: () => layers.length > 0,
+  isOpen: isPopupOpen,
   isEditing: () => editing !== null,
   setStatus: (status: Status) => {
     const layer = top();

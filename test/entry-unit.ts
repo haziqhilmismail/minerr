@@ -55,6 +55,7 @@ const JMDICT_ROWS: [string, string, number, number][] = [
   ['ネコ属', 'ネコぞく', -200, 1900510], ['猫族', 'ねこぞく', -10200, 1900510],
   ['目', 'もく', -200, 2021500],
   ['猫', 'ねこま', -200, 2698030],
+  ['出す', 'だす', 1999800, 1338180], ['接する', 'せっする', 1999800, 1385350], ['面する', 'めんする', 1999800, 1533400],
 ];
 const rows = JMDICT_ROWS.map(([expression, reading, score, sequence]) => ({ dict: 'JMdict', expression, reading, score, sequence }));
 const words = dictionaryWords(memoryIndex(rows));
@@ -63,6 +64,12 @@ const keys = async (text: string, dict = words) => (await parse(text, dict))
   .flatMap(({ text: surface, lemma, entry }) => (lemma ? [`${surface}=${lemma}=${entry?.key ?? lemma}`] : []));
 
 const CAT = { key: '猫', headword: '猫', reading: 'ねこ' };
+
+test('a verb that kuromoji reads as the old 五段 form 接す gets the entry of 接する; a real す verb keeps its own', async () => {
+  assert.deepEqual(await keys('国境線で接しており'), ['国境=国境=国境', '線=線=線', '接しており=接する=接する']);
+  assert.deepEqual(await keys('海に面して'), ['海=海=海', '面して=面する=面する']);
+  assert.deepEqual(await keys('本を出して'), ['本=本=本', '出して=出す=出す']);
+});
 
 test('猫, ねこ and ネコ are one JMdict entry, so they share the key 猫', async () => {
   assert.deepEqual(await words.entry('猫', 'ねこ'), CAT);

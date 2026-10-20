@@ -54,9 +54,9 @@ async function cardDraft({ card }: Message<'cardDraft'>, sender: chrome.runtime.
   const image = await capture(sender.tab.windowId);
   const noteType = await getNoteType();
   // After the screenshot, because the tab may play the line again to record it.
-  const [{ line, audio }, word] = await Promise.all([
-    cardMedia(sender.tab.id), usesWordAudio(noteType) ? wordAudio(card.word, card.reading) : null,
-  ]);
+  const { line, audio } = await cardMedia(sender.tab.id);
+  // One audio per card, so Anki plays one: the line audio of a video, else the audio of the word.
+  const word = !audio && usesWordAudio(noteType) ? await wordAudio(card.word, card.reading) : null;
   const sentence = line?.combined ? widenSentence(line.text, card.sentence) : card.sentence;
   const { url = '', title = '' } = sender.tab;
   return noteDraft(noteType, { ...card, sentence, ...(audio ? { audio } : {}), ...(word ? { wordAudio: word } : {}) }, { url, title }, image);

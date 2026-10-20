@@ -132,6 +132,16 @@ try {
   await toast.filter({ hasText: 'Subtitle size: 110%' }).waitFor();
   await player.waitForFunction(size => parseFloat(getComputedStyle(document.querySelector('.minerr-subs-line') ?? document.body).fontSize) > size, before);
   assert.ok(Math.abs(await fontSize() - before * 1.1) < 0.5, 'Alt+= makes the text 10% larger');
+  const sizes = await context.newPage();
+  await sizes.goto(`chrome-extension://${extensionId}/options.html`);
+  assert.deepEqual([await sizes.inputValue('#sub-scale'), await sizes.textContent('#sub-scale-value')], ['110', '110%'], 'the slider shows the size of the keys');
+  await sizes.locator('#sub-scale').fill('200');
+  await player.waitForFunction(size => Math.abs(parseFloat(getComputedStyle(document.querySelector('.minerr-subs-line') ?? document.body).fontSize) - size * 2) < 0.5, before);
+  assert.equal(await sizes.textContent('#sub-scale-value'), '200%');
+  await sizes.locator('#sub-scale').fill('110');
+  await sizes.close();
+  await player.bringToFront();
+  console.log('options: the subtitle size slider follows the keys and sets the size');
   await player.keyboard.press('Alt+-');
   await player.waitForFunction(size => parseFloat(getComputedStyle(document.querySelector('.minerr-subs-line') ?? document.body).fontSize) === size, before);
   assert.deepEqual(await worker.evaluate(() => chrome.storage.local.get('subScale')), { subScale: 1 });
@@ -140,6 +150,8 @@ try {
   await status.filter({ hasText: 'Second subtitles from clip.en.srt.' }).waitFor();
   const secondLine = player.locator('.minerr-subs-second');
   await seek(1);
+  assert.equal(await secondLine.isVisible(), false, 'the second subtitles are off by default');
+  await player.keyboard.press('Shift+W');
   await secondLine.filter({ hasText: 'The cat ate the fish.' }).waitFor();
   const stackOrder = await player.evaluate(() => {
     const [first, next] = [...document.querySelectorAll('.minerr-subs-line, .minerr-subs-second')].map(el => el.getBoundingClientRect());
@@ -159,7 +171,7 @@ try {
   await player.mouse.move(0, 0);
   await player.evaluate(() => document.querySelector('video')?.pause());
   await setStorage({ secondDisplay: 'show', pauseOnHover: true });
-  console.log('second subtitle file: shown under the line, Shift+W hides it, hover mode shows it on hover');
+  console.log('second subtitle file: off by default, Shift+W shows it under the line and hides it, hover mode shows it on hover');
 
   const playFrom = (time: number) => player.evaluate(t => {
     const video = document.querySelector('video');
