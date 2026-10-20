@@ -63,13 +63,15 @@ try {
   await tab.waitForSelector('#taxon .ml-word');
   await tab.waitForSelector('#cats .ml-word');
   const lemmas = (selector: string) => tab.$$eval(`${selector} .ml-word`, spans => spans.map(span => `${span.textContent}=${span.dataset.mlLemma}`));
+  const readings = (selector: string) => tab.$$eval(`${selector} .ml-word`, spans => spans.map(span => span.dataset.mlReading));
   const statuses = () => tab.$$eval('#cats .ml-word', spans => spans.map(span => `${span.textContent} ${span.className.replace('ml-word ml-', '')}`));
 
-  assert.deepEqual({ taxon: await lemmas('#taxon'), cats: await statuses() }, {
+  assert.deepEqual({ taxon: await lemmas('#taxon'), furigana: await readings('#taxon'), cats: await statuses() }, {
     taxon: ['食肉目=食肉目', 'ネコ科=ネコ科', 'ネコ属=ネコ属'],
+    furigana: ['しょくにくもく', 'ねこか', 'ねこぞく'],
     cats: ['猫 known', 'ねこ known', 'ネコ known', 'かみ unknown', '紙 unknown'],
   });
-  console.log('食肉目ネコ科ネコ属 is three words; 猫, ねこ, and ネコ show the status of w:猫');
+  console.log('食肉目ネコ科ネコ属 is three words with the JMdict readings; 猫, ねこ, and ネコ show the status of w:猫');
 
   const popup = tab.locator('minerr-popup .popup');
   const word = (text: string) => tab.locator('#cats .ml-word', { hasText: text });

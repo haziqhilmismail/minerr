@@ -105,6 +105,7 @@ test('an inflected verb is matched by the reading of its dictionary form', async
 
 test('runs of nouns join by the longest dictionary headword', async () => {
   assert.deepEqual(await keys('食肉目ネコ科ネコ属'), ['食肉目=食肉目=食肉目', 'ネコ科=ネコ科=ネコ科', 'ネコ属=ネコ属=ネコ属']);
+  assert.deepEqual((await parse('食肉目ネコ科ネコ属')).map(({ reading }) => reading), ['しょくにくもく', 'ねこか', 'ねこぞく']);
   assert.deepEqual(await words.entry('猫科', 'ねこか'), { key: 'ネコ科', headword: 'ネコ科', reading: 'ネコか' });
   const noCompound = dictionaryWords(memoryIndex(rows.filter(row => row.expression !== '食肉目')));
   assert.deepEqual(await keys('食肉目', noCompound), ['食肉=食肉=食肉', '目=目=目']);
