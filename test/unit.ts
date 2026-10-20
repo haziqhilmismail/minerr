@@ -217,8 +217,8 @@ test('readYomitan returns index metadata, tags, and flattened terms per bank', a
   assert.ok(bank);
   assert.equal(more.length, 0);
   assert.deepEqual(await bank(), [
-    { expression: '猫', reading: 'ねこ', definitionTags: ['1', 'n'], termTags: ['⭐', 'ichi'], glossary: ['cat', 'feline'], score: 10 },
-    { expression: 'ねこ', reading: 'ねこ', definitionTags: [], termTags: [], glossary: ['cat (kana)'], score: 5 },
+    { expression: '猫', reading: 'ねこ', definitionTags: ['1', 'n'], termTags: ['⭐', 'ichi'], glossary: ['cat', 'feline'], score: 10, sequence: 1 },
+    { expression: 'ねこ', reading: 'ねこ', definitionTags: [], termTags: [], glossary: ['cat (kana)'], score: 5, sequence: 2 },
   ]);
   const untagged = makeZip([`index.json=stored:${JSON.stringify({ title: 'Bare', revision: 'r1', format: 3 })}`]);
   assert.deepEqual((await readYomitan(untagged)).tags, []);

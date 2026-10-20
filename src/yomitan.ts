@@ -20,6 +20,8 @@ export interface Term {
   termTags: string[];
   glossary: string[];
   score: number;
+  // The entry of the term in a sequenced dictionary (JMdict): the terms of one word share it.
+  sequence?: number;
 }
 
 // A term of one dictionary. A term imported before Minerr stored tags has no tag names.
@@ -82,7 +84,7 @@ export function flattenGlossaryItem(item: unknown): string {
 const splitTags = (names: string | null | undefined) => (names ?? '').split(' ').filter(Boolean);
 
 // An empty reading means the expression is its own reading.
-export function toTerm([expression, reading, definitionTags, , score, glossary, , termTags]: TermRow): Term {
+export function toTerm([expression, reading, definitionTags, , score, glossary, sequence, termTags]: TermRow): Term {
   return {
     expression,
     reading: reading || expression,
@@ -90,6 +92,7 @@ export function toTerm([expression, reading, definitionTags, , score, glossary, 
     termTags: splitTags(termTags),
     glossary: glossary.map(flattenGlossaryItem).filter(Boolean),
     score,
+    ...(typeof sequence === 'number' ? { sequence } : {}),
   };
 }
 
