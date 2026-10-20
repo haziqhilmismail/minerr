@@ -802,6 +802,7 @@ More scripts:
 
 - `node test/screenshots.ts` saves screenshots of the page, the popup, and the options page to `/tmp/minerr-ui`.
 - `node test/card-preview.ts` saves screenshots of the card to `/tmp/minerr-card`.
+- `node test/page-perf.ts [lines]` measures the first parse of a page with many lines of Japanese text, 50000 by default. It prints the time until all the words show and the longest tasks of the page.
 - `node test/readme-shots.ts` saves the two screenshots at the top of this README to `docs/`. It needs the network and a WhisperX server that has the subtitles of the video.
 - If the system has no Japanese font, set `CJK_FONT_DIR` to a folder that contains one. Put an emoji font in the same folder, for example `seguiemj.ttf` from Windows. Without it, the `⭐` tag shows as a box.
 - If Chromium cannot start because a library such as `libnss3.so` is missing, set `LD_LIBRARY_PATH` to a folder with the missing libraries.

@@ -26,8 +26,13 @@ const pitches = makeDictionary(join(work, 'pitches.zip'), 'Pitches', [], [], [
   ['食べる', 'pitch', { reading: 'たべる', pitches: [{ position: 2 }] }],
 ]);
 
+const BIG_LINES = 15000;
 const site = createServer((req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  if (req.url === '/big') {
+    return res.end('<!doctype html><meta charset="utf-8"><title>big</title><body><script>window.tasks = []; new PerformanceObserver(list => '
+      + `window.tasks.push(...list.getEntries().map(e => e.duration))).observe({ type: "longtask" });</script><div>${'猫が魚を食べた。<br>'.repeat(BIG_LINES)}</div></body>`);
+  }
   res.end('<!doctype html><meta charset="utf-8"><title>reading</title><body><p id="line">猫が魚を食べなかった。</p>'
     + '<p id="wrap" style="width: 6em; font-size: 20px; line-height: 1.2">猫が魚を食べた。猫が魚を食べた。猫が魚を食べた。</p></body>');
 });
@@ -432,6 +437,15 @@ try {
   await toast.filter({ hasText: 'No dictionary entry for xyz.' }).waitFor();
   await tab.evaluate(() => getSelection()?.removeAllRanges());
   console.log('Alt+S: the longest dictionary word at the start of the selection, with the card sentence around it');
+
+  const big = await context.newPage();
+  const loaded = Date.now();
+  await big.goto(pageUrl.replace('/page', '/big'));
+  await big.waitForFunction(n => document.querySelectorAll('.ml-word[data-ml-lemma="食べる"]').length === n, BIG_LINES, { timeout: 120000, polling: 500 });
+  const longest = Math.max(0, ...await big.evaluate(() => Reflect.get(window, 'tasks') as number[]));
+  console.log(`first parse of ${BIG_LINES} text nodes: ${(Date.now() - loaded) / 1000} s, longest task ${longest.toFixed(0)} ms`);
+  assert.ok(longest < 300, 'the first parse of a big page gives the page a turn between parts of its work');
+  await big.close();
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('READING E2E PASS');
