@@ -4,6 +4,9 @@ import type { SubtitleSegment } from './captions.ts';
 // A seek lands on the start of a line, but the video can report a time a little before it.
 const EPSILON = 0.05;
 
+// True while time is on the line; a seek to its start counts.
+export const onLine = (segment: SubtitleSegment, time: number): boolean => segment.start <= time + EPSILON && time < segment.end;
+
 // The index of the last line that started at or before time, or -1 before the first line.
 export const lastStarted = (segments: SubtitleSegment[], time: number): number =>
   segments.findLastIndex(segment => segment.start <= time + EPSILON);

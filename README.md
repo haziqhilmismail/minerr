@@ -183,6 +183,8 @@ To turn the page text on for a site:
 - Press `Alt+Shift+D` on a page of the site. A short message at the bottom of the page confirms the change, for example `Minerr page text on for ja.wikipedia.org.`
 - Or click the Minerr button in the Chrome toolbar, then click the **Page text on this site** switch at the top of the menu. The switch fills with color and shows **On**.
 
+A site includes its subdomains, and Minerr ignores `www.`. For example, if you turn the page text on at `www.youtube.com`, it is on for all of `youtube.com`, also `m.youtube.com`.
+
 Minerr keeps the choice for all pages of that site, also after a restart of Chrome. The other sites do not change. To turn the page text off again, press `Alt+Shift+D` again or click the switch again. Minerr then removes its underlines from the page text at once.
 
 Earlier versions of Minerr were on for each site, and kept a list of the sites that were off. Minerr does not read that list now. Thus each site starts with the page text off.
@@ -404,7 +406,7 @@ Minerr can show its subtitle overlay on the video of a page that is not YouTube.
    - **WhisperX** makes the subtitles from the audio of the page. The server downloads the audio with `yt-dlp`.
 5. To remove the buttons, click **Hide these buttons**. The overlay stays until you reload the page.
 
-The keys, the play modes, the subtitle browser, and the sentence audio work as on YouTube.
+The keys, the play modes, the subtitle sidebar, and the sentence audio work as on YouTube. On these sites, the sidebar is a column at the right side of the window.
 
 Limits:
 
@@ -448,25 +450,40 @@ More settings in **Video**:
 - **Open the first unknown word after a pause of the play mode.** The popup of the first unknown word of the line opens.
 - **Pause while the mouse is on the subtitles.** The video pauses when the mouse moves onto the subtitle line. It also stays paused while the popup of a subtitle word is open. The video plays again when the mouse goes away and the popup closes. This setting is on by default.
 
-## Subtitle browser
+## Subtitle sidebar
 
-The subtitle browser is a list of all lines of the video, at the right side of the video. It needs subtitles with times.
+The subtitle sidebar shows all lines of the video as cards, beside the video. It does not cover the video. It needs subtitles with times.
 
-1. Press `G` on the video. The list opens.
-2. Click a line, or its time, to go to that line.
-3. Move the mouse over a word in the list to open its popup. A card from a word in the list gets the sentence and the audio of that line.
-4. Press `G` again to close the list.
+- On YouTube, the sidebar is in the column of the recommended videos. The recommended videos come back when you close the sidebar. In theater mode, the column is below the video.
+- In the video player, the sidebar is a column at the right side of the video. It stays there in full screen.
 
-Click a filter at the top of the list:
+1. Press `G` on the video. The sidebar opens.
+2. Find a line. Each card shows the time and the line. The words have their status colors, and a word opens its popup on hover, as in the overlay.
+3. Do one of these steps on the card:
+   - Click the card, or its time, to go to the line.
+   - Click **▶** to play the line one time. The video pauses at the end of the line.
+   - Click **+** to add a card for the unknown word of the line. The card gets the line as the sentence, the audio of the line, and a screenshot of the line. The video pauses at the start of the line for the screenshot.
+   - Click **★** to bookmark the line.
+4. Press `G` again, or click **×**, to close the sidebar.
 
-| Filter | The list shows |
+The **+** button works only on a line with exactly one unknown word. On a line with no unknown word or with two or more, **+** is gray. To add a word from such a line, move the mouse over the word and press `A`. The card also gets the sentence and the audio of that line.
+
+The sidebar follows the video. The card of the current line has a colored bar at its left side, and the list scrolls to keep that card in view. If you scroll the list, the list stays where you put it for 3 seconds.
+
+With only the YouTube captions that Minerr copies from the player, the sidebar shows a message. These captions have no times.
+
+Click a filter at the top of the sidebar:
+
+| Filter | The sidebar shows |
 | --- | --- |
 | **All** | All lines. |
 | **1 unknown word** | The lines with exactly one unknown word, as the i+1 highlight counts them. |
 | **Learning** | The lines with a word that has the status learning. |
 | **Bookmarks** | The lines that you bookmarked. |
 
-To bookmark the current line, press `B`, or click **★** in the list. Press `B` again to remove the bookmark. Minerr keeps the bookmarks of each video. The bookmarks of a YouTube video belong to its video ID, and the bookmarks of a file belong to its name and size.
+To bookmark the current line, press `B`, or click **★** on its card. Press `B` again to remove the bookmark. Minerr keeps the bookmarks of each video. The bookmarks of a YouTube video belong to its video ID, and the bookmarks of a file belong to its name and size.
+
+When Minerr is off, the sidebar is hidden.
 
 ## Subtitle display
 
@@ -491,7 +508,7 @@ These keys work on a video with the Minerr subtitle overlay: on YouTube, in the 
 | `Alt+D` | Go forward 5 seconds. | |
 | `C` | Copy the current line. | |
 | `J` | Join the next line to the current line. A card then gets both lines as the sentence, and the audio of both. Press `J` again to stop. | Needs subtitles with times. |
-| `G` | Open or close the subtitle browser. | Needs subtitles with times. |
+| `G` | Open or close the subtitle sidebar. On YouTube captions with no times, the sidebar shows a message. | |
 | `B` | Bookmark the current line, or remove its bookmark. | Needs subtitles with times. |
 | `.` | Go one frame forward. The video pauses. | Needs subtitles with times. |
 | `,` | Go one frame back. The video pauses. | Needs subtitles with times. |
@@ -900,7 +917,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/playback.ts`, `src/videokeys.ts` | Pure rules for timed lines (jumps, play modes, gaps, text clean-up), and the table of the video keys. |
 | `src/videosettings.ts`, `src/videooptions.ts` | The video settings, and their part of the options page. |
 | `src/anywhere.ts` | The subtitle overlay on the largest video of a page that is not YouTube, with its buttons. |
-| `src/linelist.ts` | The subtitle browser: the list of all lines, its filters, and the bookmarks. |
+| `src/linelist.ts` | The subtitle sidebar: a card for each line, its filters, and the bookmarks. The host page puts it beside the video. |
 | `src/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
 | `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 | `server/whisper_server.py`, `server/media.py` | The local server: WhisperX jobs and the HTTP routes, and the video side (cache keys, `yt-dlp`, the audio cache, and line clips). |

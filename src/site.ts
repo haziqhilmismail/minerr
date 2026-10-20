@@ -6,25 +6,30 @@ import { minerrEnabled, setting } from './settings.ts';
 // 'off': Minerr is off. 'video': only the subtitles over a video and their line list. 'on': the page text too.
 export type Active = 'off' | 'video' | 'on';
 
-// The subtitle overlay with its line list (src/overlay.ts). Its words show while Minerr is on, on every site.
-export const VIDEO = '.minerr-subs';
+// The subtitle overlay (src/overlay.ts) and the subtitle sidebar (src/linelist.ts). Their words show while Minerr is on, on every site.
+export const VIDEO = '.minerr-subs, .minerr-lines';
 
-// The hostnames where Minerr reads the page text. The old disabledSites key (off on a list of sites) is not read.
+// The sites where Minerr reads the page text. The old disabledSites key (off on a list of sites) is not read.
 export const enabledSites = setting('enabledSites', isStringList, []);
 
 export const isMinerrPage = (url: Pick<Location, 'protocol'>) => url.protocol === 'chrome-extension:';
 
+// A site is a hostname without www.; it covers its subdomains, so youtube.com covers www.youtube.com and m.youtube.com.
+export const siteOf = (host: string): string => host.replace(/^www\./, '');
+const covers = (site: string, host: string) => host === site || host.endsWith(`.${site}`);
+export const siteIsOn = (sites: string[], host: string): boolean => sites.some(site => covers(site, host));
+
 export const activeOf = (enabled: boolean, sites: string[], url: Pick<Location, 'protocol' | 'hostname'>): Active =>
-  (!enabled ? 'off' : isMinerrPage(url) || sites.includes(url.hostname) ? 'on' : 'video');
+  (!enabled ? 'off' : isMinerrPage(url) || siteIsOn(sites, url.hostname) ? 'on' : 'video');
 
 export const toggleSite = (sites: string[], host: string): string[] =>
-  (sites.includes(host) ? sites.filter(site => site !== host) : [...sites, host]);
+  (siteIsOn(sites, host) ? sites.filter(site => !covers(site, host)) : [...sites, siteOf(host)]);
 
-// Turns the page text on for host, or off again. Returns true if the page text is now on for host.
+// Turns the page text on for the site of host, or off again. Returns true if the page text is now on for host.
 export async function toggleSiteOf(host: string): Promise<boolean> {
   const sites = toggleSite(await enabledSites.get(), host);
   await enabledSites.set(sites);
-  return sites.includes(host);
+  return siteIsOn(sites, host);
 }
 
 const listeners = new Set<(active: Active) => void>();
