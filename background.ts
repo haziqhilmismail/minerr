@@ -1,9 +1,9 @@
 import {
-  addDraft, fieldValues, getDeck, getNoteType, installLapis, modelFieldNames, modelNames, type NoteDraft, noteDraft, usesWordAudio, version,
+  addDraft, fieldValues, getDeck, getNoteType, installLapis, type MediaFile, modelFieldNames, modelNames, type NoteDraft, noteDraft, usesWordAudio, version,
 } from './src/anki.ts';
 import { isPageCommand } from './src/chord.ts';
 import { listDictionaries } from './src/db.ts';
-import { cardMedia, widenSentence } from './src/lineaudio.ts';
+import { cardLine, lineAudio, widenSentence } from './src/lineaudio.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
 import { getStatuses, moveStatusKeys, setStatus, setStatuses } from './src/status.ts';
 import { minerrEnabled, wordAudioEnabled, wordJoins } from './src/settings.ts';
@@ -42,25 +42,30 @@ async function toOffscreen<K extends 'segments' | 'lookup' | 'inflection' | 'pit
 const CAPTURE_GAP_MS = 600;
 let nextCaptureAt = 0;
 
-async function capture(windowId: number): Promise<string> {
+async function capture(windowId: number): Promise<MediaFile> {
   const wait = Math.max(0, nextCaptureAt - Date.now());
   nextCaptureAt = Date.now() + wait + CAPTURE_GAP_MS;
   await new Promise(resolve => setTimeout(resolve, wait));
-  return chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 80 });
+  const jpegDataUrl = await chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 80 });
+  return { data: jpegDataUrl.split(',')[1] ?? '', filename: `minerr-${Date.now()}.jpg` };
 }
 
 // The note of a card with its media: the screenshot of the tab, the audio of the subtitle line, and the audio of the word.
+// A protected video (DRM) gives neither the screenshot nor the line audio.
 async function cardDraft({ card }: Message<'cardDraft'>, sender: chrome.runtime.MessageSender): Promise<NoteDraft> {
-  if (!sender.tab) throw new Error('Add cards from a tab.');
-  const image = await capture(sender.tab.windowId);
+  if (!sender.tab || sender.tab.id === undefined) throw new Error('Add cards from a tab.');
+  const line = await cardLine(sender.tab.id);
+  const guarded = line?.protected ?? false;
+  const image = guarded ? null : await capture(sender.tab.windowId);
   const noteType = await getNoteType();
   // After the screenshot, because the tab may play the line again to record it.
-  const { line, audio } = await cardMedia(sender.tab.id);
+  const audio = line && !guarded ? await lineAudio(line, sender.tab.id) : null;
   // One audio per card, so Anki plays one: the line audio of a video, else the audio of the word if the user did not turn it off.
   const word = !audio && usesWordAudio(noteType) && await wordAudioEnabled.get() ? await wordAudio(card.word, card.reading) : null;
   const sentence = line?.combined ? widenSentence(line.text, card.sentence) : card.sentence;
   const { url = '', title = '' } = sender.tab;
-  return noteDraft(noteType, { ...card, sentence, ...(audio ? { audio } : {}), ...(word ? { wordAudio: word } : {}) }, { url, title }, image);
+  const media = { ...(image ? { image } : {}), ...(audio ? { audio } : {}), ...(word ? { wordAudio: word } : {}) };
+  return noteDraft(noteType, { ...card, sentence, ...media }, { url, title });
 }
 
 // A draft is the note of the edit form; without one, the card goes to Anki at once.

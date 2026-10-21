@@ -27,7 +27,7 @@ function seconds(stamp: string): number | null {
 }
 
 // The text of a cue without furigana (<rt>), tags, and SRT position codes such as {\an8}.
-const cueText = (lines: string[]) => lines.join('\n')
+export const cueText = (lines: string[]) => lines.join('\n')
   .replace(/<rt>[\s\S]*?<\/rt>/g, '').replace(/<[^>]*>/g, '').replace(/\{\\[^}]*\}/g, '')
   .replace(/&(amp|lt|gt|nbsp|lrm|rlm);/g, (_, name: string) => ENTITIES[name] ?? '').trim();
 

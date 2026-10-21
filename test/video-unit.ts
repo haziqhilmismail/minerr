@@ -89,7 +89,7 @@ test('addNote adds a missing SentenceAudio field to an old Minerr note type and 
     const card = { ...plain, audio };
     const page = { url: 'https://example.com/', title: 'Cats' };
     const add = (noteType: Parameters<typeof noteDraft>[0], fields: Parameters<typeof noteDraft>[1]) =>
-      addDraft('Minerr', noteDraft(noteType, fields, page, 'data:image/jpeg;base64,/9j/'));
+      addDraft('Minerr', noteDraft(noteType, { ...fields, image: { filename: 'minerr-1.jpg', data: '/9j/' } }, page));
     assert.equal(await add(BUILTIN, card), 42);
     assert.deepEqual(requests.filter(r => r.action === 'modelFieldAdd').map(r => r.params),
       [{ modelName: 'Minerr', fieldName: 'SentenceAudio', index: 5 }]);

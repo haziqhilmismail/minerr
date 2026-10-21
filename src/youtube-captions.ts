@@ -1,5 +1,6 @@
 // The YouTube captions of a video with their times, read in the tab without the Minerr server, as asbplayer and Migaku do.
 // src/youtube-main.ts, in the page of YouTube, tells the caption tracks of the player and the token of its caption requests.
+import { askPage } from './askpage.ts';
 import { parseCaptions, type SubtitleSegment } from './captions.ts';
 import { at, isList, isString } from './parse.ts';
 
@@ -70,9 +71,9 @@ const dubbedLanguage = (audioTrack: unknown): string[] => {
   return at(audioTrack, 'isAutoDubbed') === true && isString(id) ? [id.split(/[.-]/)[0] ?? id] : [];
 };
 
-function toPlayerState(event: MessageEvent): PlayerState | null {
-  if (event.source !== window || event.origin !== location.origin || at(event.data, 'minerr') !== 'player') return null;
-  const [videoId, tracks, audioTracks, pot] = ['videoId', 'tracks', 'audioTracks', 'pot'].map(key => at(event.data, key));
+function toPlayerState(data: unknown): PlayerState | null {
+  if (at(data, 'minerr') !== 'player') return null;
+  const [videoId, tracks, audioTracks, pot] = ['videoId', 'tracks', 'audioTracks', 'pot'].map(key => at(data, key));
   return {
     videoId: isString(videoId) ? videoId : null,
     tracks: isList(tracks) ? tracks.flatMap(toTrack) : [],
@@ -84,22 +85,7 @@ function toPlayerState(event: MessageEvent): PlayerState | null {
 const post = (message: YoutubePageMessage) => window.postMessage(message, location.origin);
 
 // The state of the player, or null when src/youtube-main.ts does not answer.
-function ask(): Promise<PlayerState | null> {
-  return new Promise(resolve => {
-    const done = (state: PlayerState | null) => {
-      clearTimeout(timer);
-      window.removeEventListener('message', onMessage);
-      resolve(state);
-    };
-    const onMessage = (event: MessageEvent) => {
-      const state = toPlayerState(event);
-      if (state) done(state);
-    };
-    const timer = setTimeout(() => done(null), WAIT_MS);
-    window.addEventListener('message', onMessage);
-    post({ minerr: 'ask' });
-  });
-}
+const ask = (): Promise<PlayerState | null> => askPage<PlayerState>({ minerr: 'ask' } satisfies YoutubePageMessage, toPlayerState, WAIT_MS);
 
 // The player of the video, or null if the video has no Japanese track. wanted() is false when the user opened another video.
 // Without a token yet (the captions are off), the tab makes the player show the Japanese track: the player then asks for it with a token.

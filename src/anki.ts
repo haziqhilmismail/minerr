@@ -26,6 +26,8 @@ export interface CardFields {
   definition: string;
   entry: Entry | null;
   selection: string;
+  // The media of the card, which the service worker adds: the screenshot of the tab, the line audio, and the word audio.
+  image?: MediaFile;
   audio?: MediaFile;
   wordAudio?: MediaFile;
 }
@@ -327,11 +329,10 @@ export interface NoteDraft {
 
 const soundTag = (file: MediaFile | undefined) => (file ? `[sound:${file.filename}]` : '');
 
-// The note of a card for the note type. jpegDataUrl is the screenshot, from captureVisibleTab.
-export function noteDraft(noteType: NoteType, card: CardFields, page: PageInfo, jpegDataUrl: string): NoteDraft {
-  const picture = { data: jpegDataUrl.split(',')[1] ?? '', filename: `minerr-${Date.now()}.jpg` };
-  const media = [picture, ...(card.audio ? [card.audio] : []), ...(card.wordAudio ? [card.wordAudio] : [])];
-  const html: MediaHtml = { image: `<img src="${escapeHtml(picture.filename)}">`, audio: soundTag(card.audio), wordaudio: soundTag(card.wordAudio) };
+// The note of a card for the note type.
+export function noteDraft(noteType: NoteType, card: CardFields, page: PageInfo): NoteDraft {
+  const media = [card.image, card.audio, card.wordAudio].filter((file): file is MediaFile => file !== undefined);
+  const html: MediaHtml = { image: card.image ? `<img src="${escapeHtml(card.image.filename)}">` : '', audio: soundTag(card.audio), wordaudio: soundTag(card.wordAudio) };
   switch (noteType.kind) {
     case 'lapis':
       return { modelName: LAPIS_MODEL, fields: lapisFields(card, page, html), media };

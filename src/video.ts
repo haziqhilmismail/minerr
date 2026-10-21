@@ -33,7 +33,16 @@ export interface Target {
   video: () => HTMLVideoElement | null;
   // True while the video element plays something else, for example an ad on YouTube.
   blocked?: () => boolean;
+  // Seeks through the player of the site, when a direct currentTime write upsets it (Netflix). Without it, the video element seeks.
+  seek?: (time: number) => void;
 }
+
+// A video with DRM (Netflix and other sites): Chrome gives no sound to a recording of it and no picture to a screenshot of it.
+// The page sets mediaKeys on such a video, and the video fires encrypted when its data is encrypted.
+const encrypted = new WeakSet<EventTarget>();
+document.addEventListener('encrypted', event => { if (event.target) encrypted.add(event.target); }, true);
+const isProtected = (video: HTMLVideoElement): boolean => video.mediaKeys !== null || encrypted.has(video);
+const PROTECTED_HINT = 'Protected video: the card gets no line audio and no screenshot.';
 
 const OFFSET_STEP = 0.1;
 const SCALE_STEP = 0.1;
@@ -220,7 +229,10 @@ function toggleList(): void {
 
 function seek(time: number): void {
   const playing = video();
-  if (playing) playing.currentTime = Math.max(0, time);
+  if (!playing) return;
+  const to = Math.max(0, time);
+  if (target.seek) target.seek(to);
+  else playing.currentTime = to;
 }
 
 function jump(kind: 'next' | 'previous' | 'replay'): void {
@@ -321,7 +333,10 @@ function cardLine(): CardLine | null {
   const last = shown.at(-1);
   if (!found || !first || !last || !word || (row === null && !line.contains(word))) return null;
   const text = shown.map(segment => segment.text).join('\n');
-  return { start: first.start + offset, end: last.end + offset, text, combined: shown.length > 1, audio: found.audio };
+  const playing = video();
+  const guarded = playing !== null && isProtected(playing);
+  if (guarded) toast(PROTECTED_HINT);
+  return { start: first.start + offset, end: last.end + offset, text, combined: shown.length > 1, audio: found.audio, protected: guarded };
 }
 
 function combine(): void {
