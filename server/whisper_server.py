@@ -20,12 +20,14 @@
 """Local WhisperX subtitle server for Minerr. Run: uv run server/whisper_server.py"""
 
 import argparse
+import errno
 import hashlib
 import json
 import os
 import queue
 import re
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -34,7 +36,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote
 
+# No __pycache__ in the folder of this file: the launcher runs the server in the extension folder. The flag goes back after
+# the import, so WhisperX and torch still get their bytecode cache (uv installs them without .pyc files).
+dont_write_bytecode = sys.dont_write_bytecode
+sys.dont_write_bytecode = True
 import media
+sys.dont_write_bytecode = dont_write_bytecode
 
 PORT = 8766
 CACHE = Path.home() / '.cache' / 'minerr' / 'subs'
@@ -330,15 +337,20 @@ def handler(jobs, health, port=PORT):
     return Handler
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--model', default='large-v3-turbo', help='faster-whisper model name (default: %(default)s)')
     parser.add_argument('--threads', type=int, default=max(1, (os.cpu_count() or 2) // 2), help='CPU threads (default: %(default)s)')
     parser.add_argument('--batch-size', type=int, default=8)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     jobs = Jobs(Transcriber(args.model, args.threads, args.batch_size))
     health = {'ok': True, 'model': args.model, 'device': 'cpu', 'compute_type': 'int8'}
-    server = ThreadingHTTPServer(('127.0.0.1', PORT), handler(jobs, health))
+    try:
+        server = ThreadingHTTPServer(('127.0.0.1', PORT), handler(jobs, health))
+    except OSError as error:
+        if error.errno != errno.EADDRINUSE:
+            raise
+        sys.exit(f'Port {PORT} is in use: the WhisperX server already runs, or another program uses the port.')
     print(f'Minerr WhisperX server on http://127.0.0.1:{PORT} (model {args.model}, {args.threads} threads)', flush=True)
     server.serve_forever()
 
