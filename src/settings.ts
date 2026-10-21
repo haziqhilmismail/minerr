@@ -34,3 +34,6 @@ export const iPlusOne = setting('iPlusOne', isBoolean, true);
 
 // The texts that the user made one word with the word override key (src/keys.ts). The parse joins their tokens (src/entry.ts).
 export const wordJoins = setting('wordJoins', isStringList, []);
+
+// The word audio from JapanesePod101 (src/wordaudio.ts). When off, a card sends no request to JapanesePod101 and has no word audio.
+export const wordAudioEnabled = setting('wordAudio', isBoolean, true);
