@@ -364,6 +364,7 @@ Some videos have no Japanese captions, or captions of low quality. For these vid
 - Linux, or WSL on Windows.
 - [uv](https://docs.astral.sh/uv/). uv installs Python 3.12, WhisperX, and PyTorch for the server.
 - `yt-dlp` and `ffmpeg` in your `PATH`. `yt-dlp` uses Node.js for the YouTube JavaScript challenges.
+- On Windows, `Start WhisperX server.cmd` finds `uv`, `yt-dlp`, and `ffmpeg` in the `PATH` that `~/.profile` sets in WSL. It runs a login shell that is not interactive, so the `PATH` changes in `~/.bashrc` do not apply.
 - About 4 GB of free memory and 5 GB of free disk space. The server uses about 3.5 GB of memory with the default model.
 
 The server uses the CPU. It does not need a GPU, so it also works on a computer with an AMD GPU or with no CUDA.
@@ -382,7 +383,7 @@ The first start installs about 2.6 GB of packages. The first job also downloads 
 
 Chrome on Windows connects to the server in WSL at `http://127.0.0.1:8766`, because WSL forwards localhost ports to Windows.
 
-If the window or the terminal says that port 8766 is in use, the server already runs.
+If the window or the terminal shows `Port 8766 is in use: the WhisperX server already runs, or another program uses the port.`, the server already runs, or another program uses the port.
 
 To start the server when you log in to Windows, put a shortcut to `Start WhisperX server.cmd` in the Startup folder:
 
