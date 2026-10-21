@@ -2,3 +2,4 @@ node_modules
 test/fixtures
 dist
 CLAUDE.md
+__pycache__/

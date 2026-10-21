@@ -36,12 +36,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote
 
-# No __pycache__ in the folder of this file: the launcher runs the server in the extension folder. The flag goes back after
-# the import, so WhisperX and torch still get their bytecode cache (uv installs them without .pyc files).
-dont_write_bytecode = sys.dont_write_bytecode
-sys.dont_write_bytecode = True
 import media
-sys.dont_write_bytecode = dont_write_bytecode
 
 PORT = 8766
 CACHE = Path.home() / '.cache' / 'minerr' / 'subs'

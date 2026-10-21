@@ -4,7 +4,6 @@ import hashlib
 import io
 import json
 import os
-import shutil
 import socket
 import subprocess
 import sys
@@ -402,17 +401,6 @@ class Files(unittest.TestCase):
 
 
 class Start(unittest.TestCase):
-    def test_media_writes_no_pycache_in_the_server_folder_and_later_imports_keep_their_bytecode(self):
-        folder = Path(tempfile.mkdtemp(prefix='minerr-server-'))
-        self.addCleanup(shutil.rmtree, folder)
-        for name in ('whisper_server.py', 'media.py'):
-            shutil.copy(Path(__file__).with_name(name), folder)
-        # -E: no PYTHON* variable of the test run, such as PYTHONDONTWRITEBYTECODE, turns the bytecode off.
-        run = subprocess.run([sys.executable, '-E', '-c', 'import runpy, sys; runpy.run_path("whisper_server.py"); print(sys.dont_write_bytecode)'],
-                             cwd=folder, check=True, capture_output=True, text=True)
-        self.assertEqual(sorted(path.name for path in folder.iterdir()), ['media.py', 'whisper_server.py'])
-        self.assertEqual(run.stdout, 'False\n', 'the imports after media, such as WhisperX, write their bytecode cache')
-
     def test_main_exits_with_a_clear_message_when_the_port_is_in_use(self):
         with socket.socket() as taken:
             taken.bind(('127.0.0.1', 0))
