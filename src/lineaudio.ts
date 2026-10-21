@@ -10,16 +10,21 @@ import { type AudioSource, clipAudio } from './whisper.ts';
 // The subtitle line of the word of a new card, as the tab reports it: times in seconds of the video.
 // combined: the user joined two lines (J), so the card sentence is the text of both.
 // audio is the audio that the server can have of the video, or null for a local file that the server never got.
+// protected: the video has DRM, so the tab can record no audio and the screenshot shows no picture.
 export interface CardLine {
   start: number;
   end: number;
   text: string;
   combined: boolean;
   audio: AudioSource | null;
+  protected: boolean;
 }
 
-// Null when neither the server nor the tab could give the audio.
-async function lineAudio(line: CardLine, tabId: number): Promise<MediaFile | null> {
+// The subtitle line of the word of a new card in the tab, or null for a word that is not in a subtitle line.
+export const cardLine = (tabId: number): Promise<CardLine | null> => call({ type: 'videoLine' }, tabId).catch(() => null);
+
+// The audio of the line, or null when neither the server nor the tab could give it.
+export async function lineAudio(line: CardLine, tabId: number): Promise<MediaFile | null> {
   const padding = (await audioPadding.get()) / 1000;
   const start = Math.max(0, line.start - padding);
   const end = line.end + padding;
@@ -31,12 +36,6 @@ async function lineAudio(line: CardLine, tabId: number): Promise<MediaFile | nul
     }
   }
   return call({ type: 'videoRecord', start, end }, tabId).catch(() => null);
-}
-
-// The subtitle line of the word of a new card in the tab, and its audio. Both are null for a word that is not in a subtitle line.
-export async function cardMedia(tabId: number | undefined): Promise<{ line: CardLine | null; audio: MediaFile | null }> {
-  const line = tabId === undefined ? null : await call({ type: 'videoLine' }, tabId).catch(() => null);
-  return { line, audio: line && tabId !== undefined ? await lineAudio(line, tabId) : null };
 }
 
 const UNESCAPES: Record<string, string> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"' };
