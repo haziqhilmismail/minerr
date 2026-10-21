@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { isPosition, pageMove, positionKey, textChapters, textParagraphs, turn, zipPath } from '../src/book.ts';
-import { comprehension, iPlusOneTexts, ratingOf } from '../src/score.ts';
-import { keysOf, listWords, wordsOfLines } from '../src/wordlist.ts';
+import { isPosition, pageMove, positionKey, textChapters, textParagraphs, turn, zipPath } from '../src/reader/book.ts';
+import { comprehension, iPlusOneTexts, ratingOf } from '../src/status/score.ts';
+import { keysOf, listWords, wordsOfLines } from '../src/status/wordlist.ts';
 
 test('ratingOf gives the Migaku label for each score band', () => {
   assert.deepEqual([0, 59, 60, 69, 70, 79, 80, 89, 90, 94, 95, 98, 99, 100].map(percent => ratingOf(percent).label), [

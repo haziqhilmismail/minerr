@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { at } from '../src/parse.ts';
+import { at } from '../src/shared/guards.ts';
 import { launch, makeDictionary, mockAnki, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-sidebar-'));
@@ -34,14 +34,14 @@ const setStorage = (items: Record<string, unknown>) => worker.evaluate(value => 
 try {
   await setStorage({ 'w:猫': 'known', 'w:食べる': 'known', 'w:読む': 'known', 'w:好き': 'known', 'w:降る': 'known' });
   const options = await context.newPage();
-  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
   await options.setInputFiles('#dict-file', dictionary);
   await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'));
   await options.close();
 
   const player = await context.newPage();
   await player.setViewportSize({ width: 1000, height: 720 });
-  await player.goto(`chrome-extension://${extensionId}/player.html`);
+  await player.goto(`chrome-extension://${extensionId}/pages/player.html`);
   await player.setInputFiles('#video-file', clip);
   await player.setInputFiles('#subs-file', srt);
   await player.locator('#status').filter({ hasText: `Subtitles from clip.srt: ${LINES} lines.` }).waitFor();

@@ -1,14 +1,14 @@
 import {
   addDraft, fieldValues, getDeck, getNoteType, installLapis, type MediaFile, modelFieldNames, modelNames, type NoteDraft, noteDraft, usesWordAudio, version,
-} from './src/anki.ts';
-import { isPageCommand } from './src/chord.ts';
-import { listDictionaries } from './src/db.ts';
-import { cardLine, lineAudio, widenSentence } from './src/lineaudio.ts';
-import { call, type Message, type Reply, serve } from './src/rpc.ts';
-import { getStatuses, moveStatusKeys, setStatus, setStatuses } from './src/status.ts';
-import { minerrEnabled, wordAudioEnabled, wordJoins } from './src/settings.ts';
-import { cachedSegments, getJob, health, siteCaptions, startJob } from './src/whisper.ts';
-import { wordAudio } from './src/wordaudio.ts';
+} from './src/anki/anki.ts';
+import { isPageCommand } from './src/popup/chord.ts';
+import { listDictionaries } from './src/dictionary/db.ts';
+import { cardLine, lineAudio, widenSentence } from './src/anki/lineaudio.ts';
+import { call, type Message, type Reply, serve } from './src/shared/rpc.ts';
+import { getStatuses, moveStatusKeys, setStatus, setStatuses } from './src/status/status.ts';
+import { minerrEnabled, wordAudioEnabled, wordJoins } from './src/shared/settings.ts';
+import { cachedSegments, getJob, health, siteCaptions, startJob } from './src/video/whisper.ts';
+import { wordAudio } from './src/anki/wordaudio.ts';
 
 let creating: Promise<void> | null = null;
 
@@ -18,7 +18,7 @@ async function ensureOffscreen(): Promise<void> {
   if (existing.length) return;
   creating ??= chrome.offscreen
     .createDocument({
-      url: 'offscreen.html',
+      url: 'pages/offscreen.html',
       reasons: ['LOCAL_STORAGE'],
       justification: 'Runs the kuromoji parser and reads the IndexedDB dictionaries.',
     })
@@ -26,7 +26,7 @@ async function ensureOffscreen(): Promise<void> {
   await creating;
 }
 
-// A dictionary import moves the statuses to their keys (options.ts). The first offscreen call after a service worker start
+// A dictionary import moves the statuses to their keys (pages/options.ts). The first offscreen call after a service worker start
 // finishes a move that stopped. It starts there, not at the top of this file, so a worker that only runs a command does not open IndexedDB.
 let moved: Promise<void> | undefined;
 

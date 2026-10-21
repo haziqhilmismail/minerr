@@ -51,7 +51,7 @@ const shot = async (target: Page | Locator, name: string, fullPage = false) => {
 try {
   const options = await context.newPage();
   await options.setViewportSize({ width: 900, height: 900 });
-  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
   await options.setInputFiles('#dict-file', jmdict);
   await options.waitForFunction(() => (document.querySelector<HTMLProgressElement>('#dict-progress')?.value ?? 0) >= 2, null, { timeout: 60000 });
   await shot(options.locator('#dictionaries'), 'options-importing-light.png');
@@ -130,7 +130,7 @@ try {
   const tabId = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, tab.url());
   const menu = await context.newPage();
   await menu.setViewportSize({ width: 340, height: 600 });
-  await menu.goto(`chrome-extension://${extensionId}/action.html?tab=${tabId}`);
+  await menu.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${tabId}`);
   await menu.locator('#sentences li').first().waitFor();
   for (const scheme of ['light', 'dark'] as const) {
     await menu.emulateMedia({ colorScheme: scheme });
@@ -143,7 +143,7 @@ try {
   writeFileSync(srt, `1\n00:00:00,000 --> 00:00:06,000\n${TEXT.split('。')[0]}。\n`);
   const player = await context.newPage();
   await player.setViewportSize({ width: 1000, height: 720 });
-  await player.goto(`chrome-extension://${extensionId}/player.html`);
+  await player.goto(`chrome-extension://${extensionId}/pages/player.html`);
   await player.setInputFiles('#video-file', clip);
   await player.setInputFiles('#subs-file', srt);
   await player.evaluate(() => new Promise(resolve => {

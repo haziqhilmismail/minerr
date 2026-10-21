@@ -9,13 +9,13 @@
   "background": { "service_worker": "background.js", "type": "module" },
   "content_scripts": [
     { "matches": ["<all_urls>"], "js": ["content.js"] },
-    { "matches": ["https://www.youtube.com/*", "https://m.youtube.com/*"], "js": ["src/youtube-main.js"], "run_at": "document_start", "world": "MAIN" },
-    { "matches": ["https://www.netflix.com/*"], "js": ["src/netflix-main.js"], "run_at": "document_start", "world": "MAIN" }
+    { "matches": ["https://www.youtube.com/*", "https://m.youtube.com/*"], "js": ["src/video/youtube/youtube-main.js"], "run_at": "document_start", "world": "MAIN" },
+    { "matches": ["https://www.netflix.com/*"], "js": ["src/video/netflix/netflix-main.js"], "run_at": "document_start", "world": "MAIN" }
   ],
   "web_accessible_resources": [
-    { "resources": ["src/anki.js", "src/anywhere.js", "src/askpage.js", "src/autopause.js", "src/captions.js", "src/cardform.js", "src/chord.js", "src/dom.js", "src/furigana.js", "src/group.js", "src/hover.js", "src/iplusone.js", "src/keys.js", "src/lapis.js", "src/linefilter.js", "src/linelist.js", "src/lineselect.js", "src/meta.js", "src/netflix-captions.js", "src/netflix.js", "src/overlay.js", "src/page.js", "src/parse.js", "src/pitch-colors.js", "src/playback.js", "src/popup-view.js", "src/popup.js", "src/record.js", "src/rpc.js", "src/score.js", "src/sentence-hover.js", "src/sentence-text.js", "src/sentence.js", "src/settings.js", "src/site.js", "src/stats.js", "src/status.js", "src/subtitles.js", "src/tags.js", "src/theme.js", "src/tokens.js", "src/video.js", "src/videokeys.js", "src/videosettings.js", "src/whisper.js", "src/words.js", "src/youtube-captions.js"], "matches": ["<all_urls>"] }
+    { "resources": ["src/*.js"], "matches": ["<all_urls>"] }
   ],
-  "action": { "default_title": "Minerr", "default_popup": "action.html" },
+  "action": { "default_title": "Minerr", "default_popup": "pages/action.html" },
   "commands": {
     "toggle-minerr": { "suggested_key": { "default": "Alt+Shift+M" }, "description": "Turn Minerr on or off in all tabs" },
     "lookup-selection": { "suggested_key": { "default": "Alt+S" }, "description": "Look up the selected text" },
@@ -23,5 +23,5 @@
     "toggle-site": { "suggested_key": { "default": "Alt+Shift+D" }, "description": "Turn the page text of this site on or off" },
     "toggle-sentence-highlight": { "description": "Turn the sentence highlight on or off. Alt+Shift+S on a page also does this." }
   },
-  "options_page": "options.html"
+  "options_page": "pages/options.html"
 }

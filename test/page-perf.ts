@@ -5,7 +5,7 @@ import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readYomitan } from '../src/yomitan.ts';
+import { readYomitan } from '../src/dictionary/yomitan.ts';
 import { launch, listen } from './harness.ts';
 
 const paragraphs = Number(process.argv[2] ?? 2000);
@@ -81,7 +81,7 @@ const median = (values: number[]) => values.toSorted((a, b) => a - b)[Math.floor
 try {
   if (hasJmdict) {
     const options = await context.newPage();
-    await options.goto(`chrome-extension://${extensionId}/options.html`);
+    await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
     await options.setInputFiles('#dict-file', jmdict);
     await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'), undefined, { timeout: 600000 });
     await options.close();

@@ -1,8 +1,8 @@
 // Unit tests of the Netflix subtitle list, the choice of the track, the TTML reader, and the card of a protected video.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BUILTIN, type CardFields, noteDraft } from '../src/anki.ts';
-import { choose, type Manifest, parseTrack, parseTtml, toReply } from '../src/netflix-captions.ts';
+import { BUILTIN, type CardFields, noteDraft } from '../src/anki/anki.ts';
+import { choose, type Manifest, parseTrack, parseTtml, toReply } from '../src/video/netflix/netflix-captions.ts';
 
 const downloadable = (url: string) => ({ urls: [{ url, cdn_id: 0 }] });
 // A subtitle list as the Netflix player reads it, with the none track, a forced track, and the two URL shapes.

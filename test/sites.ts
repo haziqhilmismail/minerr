@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { at } from '../src/parse.ts';
+import { at } from '../src/shared/guards.ts';
 import { launch, listen, makeDictionary, mockAnki, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-sites-'));
@@ -59,7 +59,7 @@ context.on('weberror', error => failures.push(error.error().message));
 
 try {
   const options = await context.newPage();
-  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
   await options.setInputFiles('#dict-file', dictionary);
   await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'));
   await options.close();
@@ -69,7 +69,7 @@ try {
   await tab.goto('https://videos.example/watch/1');
   const tabId = await worker.evaluate(async () => (await chrome.tabs.query({ url: 'https://videos.example/*' }))[0]?.id);
   const action = await context.newPage();
-  await action.goto(`chrome-extension://${extensionId}/action.html?tab=${tabId}`);
+  await action.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${tabId}`);
   await action.click('#attach');
   await action.locator('#elsewhere', { hasText: 'Minerr shows its subtitle overlay on the video.' }).waitFor();
   await tab.bringToFront();

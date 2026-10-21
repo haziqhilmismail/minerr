@@ -2,17 +2,17 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import { test } from 'node:test';
 import kuromoji from 'kuromoji';
-import { chord, statusTarget } from '../src/chord.ts';
-import { groupTokens, lookupCandidates, splitSegments, toHiragana } from '../src/group.ts';
-import { inflection, stepsText } from '../src/inflection.ts';
-import { entryStars, highs, morae, pitchPattern, stars, toMeta, withMeta } from '../src/meta.ts';
-import { at, isStringList } from '../src/parse.ts';
-import { sentenceBounds } from '../src/sentence.ts';
-import { activeOf, toggleSite } from '../src/site.ts';
-import { readYomitan } from '../src/yomitan.ts';
+import { chord, statusTarget } from '../src/popup/chord.ts';
+import { groupTokens, lookupCandidates, splitSegments, toHiragana } from '../src/text/group.ts';
+import { inflection, stepsText } from '../src/text/inflection.ts';
+import { entryStars, highs, morae, pitchPattern, stars, toMeta, withMeta } from '../src/dictionary/meta.ts';
+import { at, isStringList } from '../src/shared/guards.ts';
+import { sentenceBounds } from '../src/text/sentence.ts';
+import { activeOf, toggleSite } from '../src/page-text/site.ts';
+import { readYomitan } from '../src/dictionary/yomitan.ts';
 
 const here = import.meta.dirname;
 
@@ -79,15 +79,24 @@ test('readYomitan reads the term meta banks and the frequency mode', async () =>
   ]]);
 });
 
-test('every module that a content script module imports is in web_accessible_resources', () => {
-  const manifest: unknown = JSON.parse(readFileSync(join(here, '..', 'manifest.json'), 'utf8'));
+test('every module that a content script imports matches web_accessible_resources', () => {
+  const root = join(here, '..');
+  const manifest: unknown = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
   const resources = at(manifest, 'web_accessible_resources', 0, 'resources');
   assert.ok(isStringList(resources), 'the manifest lists the content script modules');
-  const listed = new Set(resources);
-  const missing = [...listed].flatMap(module => [...readFileSync(join(here, '..', module.replace(/\.js$/, '.ts')), 'utf8')
-    .matchAll(/^import (?!type )[^;]*?from '\.\/([\w-]+)\.ts';/gms)]
-    .map(([, name]) => `src/${name}.js`).filter(name => !listed.has(name)).map(name => `${module} imports ${name}`));
-  assert.deepEqual(missing, []);
+  const patterns = resources.map(glob => new RegExp(`^${glob.replaceAll('.', '\\.').replaceAll('*', '.*')}$`));
+  const seen = new Set<string>();
+  const blocked = (module: string): string[] => {
+    if (seen.has(module)) return [];
+    seen.add(module);
+    const imports = [...readFileSync(join(root, module.replace(/\.js$/, '.ts')), 'utf8')
+      .matchAll(/^(?:import|export) (?!type )(?:[^;]*? from )?'(\.\.?\/[^']+)\.ts';|import\('(\.\.?\/[^']+)\.ts'\)/gms)]
+      .map(([, path, dynamic]) => posix.join(posix.dirname(module), `${path ?? dynamic}.js`));
+    return [...(patterns.some(pattern => pattern.test(module)) ? [] : [module]), ...imports.flatMap(blocked)];
+  };
+  const entries = [...readFileSync(join(root, 'content.ts'), 'utf8').matchAll(/'(src\/[^']+\.js)'/g)].flatMap(([, path]) => path ?? []);
+  assert.deepEqual(entries.flatMap(blocked), []);
+  assert.ok(seen.size > entries.length, 'the walk follows the imports of the content script modules');
 });
 
 test('chord names a key with Alt from the physical key, and Shift only with Alt', () => {
@@ -112,7 +121,7 @@ test('toggleSite adds a site that is off and removes a site that is on', () => {
 
 test('activeOf: the page text only on a site that is on and on Minerr pages; the video everywhere while Minerr is on', () => {
   const web = new URL('https://a.com/page');
-  const minerr = new URL('chrome-extension://abc/player.html');
+  const minerr = new URL('chrome-extension://abc/pages/player.html');
   assert.equal(activeOf(true, [], web), 'video');
   assert.equal(activeOf(true, ['b.org'], web), 'video');
   assert.equal(activeOf(true, ['a.com'], web), 'on');

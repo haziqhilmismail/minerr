@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { at } from '../src/parse.ts';
+import { at } from '../src/shared/guards.ts';
 import { launch, listen, makeDictionary, mockAnki, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-lineaudio-'));
@@ -91,7 +91,7 @@ const storedAudio = (field: unknown) => {
 
 try {
   const options = await context.newPage();
-  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
   await options.setInputFiles('#dict-file', dictionary);
   await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'));
   await options.close();

@@ -3,10 +3,10 @@ import { writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { join } from 'node:path';
 import { chromium, type Page, type Worker } from 'playwright';
-import { BUILTIN, type NoteType } from '../src/anki.ts';
-import type { MetaRow } from '../src/meta.ts';
-import { at } from '../src/parse.ts';
-import type { TagRow, TermRow } from '../src/yomitan.ts';
+import { BUILTIN, type NoteType } from '../src/anki/anki.ts';
+import type { MetaRow } from '../src/dictionary/meta.ts';
+import { at } from '../src/shared/guards.ts';
+import type { TagRow, TermRow } from '../src/dictionary/yomitan.ts';
 
 const here = import.meta.dirname;
 // Run npm run build first: the tests load the built extension in dist/.

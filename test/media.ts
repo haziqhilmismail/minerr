@@ -9,7 +9,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Page, PageScreenshotOptions } from 'playwright';
-import { at } from '../src/parse.ts';
+import { at } from '../src/shared/guards.ts';
 import { launch, listen, makeDictionary, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-media-'));
@@ -142,7 +142,7 @@ try {
 
   const action = await context.newPage();
   await action.setViewportSize({ width: 340, height: 200 });
-  await action.goto(`chrome-extension://${extensionId}/action.html`);
+  await action.goto(`chrome-extension://${extensionId}/pages/action.html`);
   const toggle = action.locator('#iplusone');
   assert.equal(await toggle.isChecked(), true);
   await shot(action, 'action-light.png', { fullPage: true });
@@ -179,7 +179,7 @@ try {
   console.log('i+1 highlight in the YouTube overlay:', await highlighted(youtube));
   const youtubeTab = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, youtube.url());
   const youtubeMenu = await context.newPage();
-  await youtubeMenu.goto(`chrome-extension://${extensionId}/action.html?tab=${youtubeTab}`);
+  await youtubeMenu.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${youtubeTab}`);
   await youtubeMenu.locator('#score').waitFor();
   assert.match(await youtubeMenu.innerText('#score-basis'), /^5 words in the 1 subtitle lines that the overlay showed\./);
   await youtubeMenu.close();
@@ -188,7 +188,7 @@ try {
   await youtube.close();
 
   const options = await context.newPage();
-  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
   const shown = await highlighted(tab);
   assert.ok(shown?.length, 'the tab has an i+1 highlight');
   assert.equal(await options.isChecked('#iplusone'), true);
@@ -204,7 +204,7 @@ try {
 
   const player = await context.newPage();
   await player.setViewportSize({ width: 1000, height: 720 });
-  await player.goto(`chrome-extension://${extensionId}/player.html`);
+  await player.goto(`chrome-extension://${extensionId}/pages/player.html`);
   await shot(player, 'player-empty-light.png');
   await player.emulateMedia({ colorScheme: 'dark' });
   await shot(player, 'player-empty-dark.png');
@@ -387,9 +387,9 @@ try {
   await player.waitForSelector('#long p:last-child .ml-word', { timeout: 60000 });
   await player.waitForTimeout(500);
   const cost = await player.evaluate(async () => {
-    const module: { refresh?: unknown } = await import(chrome.runtime.getURL('src/iplusone.js'));
+    const module: { refresh?: unknown } = await import(chrome.runtime.getURL('src/page-text/iplusone.js'));
     const { refresh } = module;
-    if (typeof refresh !== 'function') throw new Error('src/iplusone.js exports no refresh');
+    if (typeof refresh !== 'function') throw new Error('src/page-text/iplusone.js exports no refresh');
     const times: number[] = [];
     for (let i = 0; i < 15; i++) {
       const start = performance.now();

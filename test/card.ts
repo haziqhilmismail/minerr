@@ -5,8 +5,8 @@ import { mkdtempSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { LAPIS_FIELDS, LAPIS_PACKAGE_URL } from '../src/lapis.ts';
-import { at } from '../src/parse.ts';
+import { LAPIS_FIELDS, LAPIS_PACKAGE_URL } from '../src/anki/lapis.ts';
+import { at } from '../src/shared/guards.ts';
 import { launch, listen, makeDictionary, mockAnki } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-card-'));
@@ -43,7 +43,7 @@ context.on('weberror', error => failures.push(error.error().message));
 
 try {
   const options = await context.newPage();
-  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
   await options.setInputFiles('#dict-file', fixture);
   await options.locator('#dict-status', { hasText: 'Imported Fixture' }).waitFor();
   await options.locator('#note-type option[value="custom:Basic"]').waitFor({ state: 'attached' });

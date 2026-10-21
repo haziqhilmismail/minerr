@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { TermRow } from '../src/yomitan.ts';
+import type { TermRow } from '../src/dictionary/yomitan.ts';
 import { launch, listen, makeDictionary, mockAnki } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-spelling-'));
@@ -49,7 +49,7 @@ try {
     .filter(([key]) => key.startsWith('w:')).map(([key, value]) => [key.slice(2), value])));
   await worker.evaluate(() => chrome.storage.local.set({ 'w:ねこ': 'known', 'w:ネコ': 'learning', 'w:かみ': 'ignored' }));
   const options = await context.newPage();
-  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
   await options.setInputFiles('#dict-file', fixture);
   await options.locator('#dict-status', { hasText: 'Imported JMdict' }).waitFor();
   assert.deepEqual(await storedWords(), { 猫: 'known', かみ: 'ignored' });

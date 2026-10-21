@@ -995,61 +995,61 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | --- | --- |
 | `manifest.json` | The Manifest V3 declaration. Its paths are the `.js` files in `dist`. |
 | `background.ts` | The service worker. It routes messages and calls AnkiConnect and the WhisperX server. |
-| `offscreen.ts` | Runs kuromoji and the dictionary lookups in an offscreen document. |
-| `src/rpc.ts` | The messages between the parts of the extension, and the type of the reply to each message. |
-| `src/page.ts` | Finds Japanese text on the page and wraps each word. After a change of the word overrides, it parses the blocks with that text again. |
-| `src/popup.ts` | The dictionary popup: when it opens, its keys, and the card that it adds. |
-| `src/popup-view.ts` | The content of the popup and its position. |
-| `src/words.ts` | The word spans of parsed text. A word that crosses text nodes gets one span for each part. |
-| `src/furigana.ts` | The furigana setting, and the CSS that shows the reading over a word. |
-| `src/pitch-colors.ts` | The pitch colors of the words on a page. |
-| `src/sentence-hover.ts` | The highlight of the sentence of the word under the mouse. |
-| `src/sentence-text.ts` | The text of the sentence around a word on the page, for the highlight and the card. The walk stops at the sentence ends and at a `<br>`. |
-| `src/site.ts` | The page text on or off for each site, and the state of a page: Minerr off, the video subtitles only, or the page text too. |
-| `src/keys.ts`, `src/chord.ts` | The keys that work on a page without a popup, the browser shortcuts that the service worker sends to the tab, and the names of the keys. |
-| `src/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |
-| `src/subtitles.ts` | The subtitle overlay on YouTube. |
-| `src/youtube-captions.ts` | The YouTube captions with times, read in the tab without the server, and the choice of the caption track. |
-| `src/youtube-main.ts` | Runs in the page of YouTube: it tells `src/youtube-captions.ts` the caption tracks and the token of the player. |
-| `src/askpage.ts` | A question to the script of Minerr in the page itself (YouTube, Netflix), and its reply. |
-| `src/netflix.ts` | The subtitle overlay on Netflix: the Japanese track of the title with times, read in the tab. |
-| `src/netflix-captions.ts` | The subtitle list of a Netflix title, the choice of the track, and the TTML reader. |
-| `src/netflix-main.ts` | Runs in the page of Netflix: it keeps the subtitle list that the player reads, asks for WebVTT, and seeks through the player. |
-| `src/status.ts` | The word statuses, their colors, and their storage. |
-| `src/tags.ts` | The colors of the dictionary tags, for the popup and the card. |
-| `src/anki.ts` | The AnkiConnect client, the note types, and the note draft of a card. |
-| `src/lapis.ts` | The pure parts of the Lapis fields: the furigana, the frequency rank, and the pitch accent. |
-| `src/wordaudio.ts` | The word audio from JapanesePod101, and the check for its placeholder clip. |
-| `src/cardform.ts` | The card form of the popup (`E`). |
-| `src/whisper.ts` | The client for the WhisperX server. |
-| `src/lineaudio.ts`, `src/record.ts` | The sentence audio of a card: the server cuts it, or the tab records the line. |
-| `src/db.ts` | The dictionary storage in IndexedDB. |
-| `src/entry.ts` | The dictionary entry and the status key of each word, and the join of word overrides and compound nouns. |
-| `src/group.ts`, `src/sentence.ts`, `src/yomitan.ts`, `src/zip.ts` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
-| `src/inflection.ts` | Pure function: the parts of an inflected word and their labels, for the popup line. |
-| `src/theme.ts`, `src/tokens.ts` | The theme setting, and the design tokens of every surface (see `docs/design.md`). The build writes the tokens and the base rules of the pages (`PAGE_CSS`) to `dist/theme.css`. |
-| `src/hover.ts` | The word popup setting, and the rule that decides when the popup opens. |
-| `action.html`, `action.ts` | The toolbar popup. |
-| `player.html`, `player.ts` | The video player page. Content scripts do not run on extension pages, so the page loads `src/page.ts`, `src/popup.ts`, `src/iplusone.ts`, and `src/stats.ts` itself. |
-| `src/iplusone.ts` | The i+1 highlight. The pure part is `iPlusOneSentences` in `src/sentence.ts`. |
-| `src/video.ts` | The video, its subtitle lines, and the overlay over it. YouTube, the player, and other sites use it. |
-| `src/overlay.ts` | The subtitle overlay line, for YouTube and the player. |
-| `src/playback.ts`, `src/videokeys.ts` | Pure rules for timed lines (jumps, play modes, gaps, text clean-up), and the table of the video keys. |
-| `src/videosettings.ts`, `src/videooptions.ts` | The video settings, and their part of the options page. |
-| `src/anywhere.ts` | The subtitle overlay on the largest video of a page that is not YouTube, with its buttons. |
-| `src/linelist.ts` | The subtitle sidebar: a full-height panel at the right side of the window, a card for each line, the word list of **+**, and the bookmarks. |
-| `src/linefilter.ts` | The filters of the subtitle sidebar. |
-| `src/lineselect.ts` | The selection of lines in the subtitle sidebar and **Create N cards**. |
-| `src/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
-| `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
+| `pages/offscreen.ts` | Runs kuromoji and the dictionary lookups in an offscreen document. |
+| `src/shared/rpc.ts` | The messages between the parts of the extension, and the type of the reply to each message. |
+| `src/page-text/page.ts` | Finds Japanese text on the page and wraps each word. After a change of the word overrides, it parses the blocks with that text again. |
+| `src/popup/popup.ts` | The dictionary popup: when it opens, its keys, and the card that it adds. |
+| `src/popup/popup-view.ts` | The content of the popup and its position. |
+| `src/text/word-spans.ts` | The word spans of parsed text. A word that crosses text nodes gets one span for each part. |
+| `src/page-text/furigana.ts` | The furigana setting, and the CSS that shows the reading over a word. |
+| `src/page-text/pitch-colors.ts` | The pitch colors of the words on a page. |
+| `src/page-text/sentence-hover.ts` | The highlight of the sentence of the word under the mouse. |
+| `src/text/sentence-text.ts` | The text of the sentence around a word on the page, for the highlight and the card. The walk stops at the sentence ends and at a `<br>`. |
+| `src/page-text/site.ts` | The page text on or off for each site, and the state of a page: Minerr off, the video subtitles only, or the page text too. |
+| `src/popup/keys.ts`, `src/popup/chord.ts` | The keys that work on a page without a popup, the browser shortcuts that the service worker sends to the tab, and the names of the keys. |
+| `src/dictionary/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |
+| `src/video/youtube/youtube-overlay.ts` | The subtitle overlay on YouTube. |
+| `src/video/youtube/youtube-captions.ts` | The YouTube captions with times, read in the tab without the server, and the choice of the caption track. |
+| `src/video/youtube/youtube-main.ts` | Runs in the page of YouTube: it tells `src/video/youtube/youtube-captions.ts` the caption tracks and the token of the player. |
+| `src/video/ask-page.ts` | A question to the script of Minerr in the page itself (YouTube, Netflix), and its reply. |
+| `src/video/netflix/netflix-overlay.ts` | The subtitle overlay on Netflix: the Japanese track of the title with times, read in the tab. |
+| `src/video/netflix/netflix-captions.ts` | The subtitle list of a Netflix title, the choice of the track, and the TTML reader. |
+| `src/video/netflix/netflix-main.ts` | Runs in the page of Netflix: it keeps the subtitle list that the player reads, asks for WebVTT, and seeks through the player. |
+| `src/status/status.ts` | The word statuses, their colors, and their storage. |
+| `src/dictionary/tags.ts` | The colors of the dictionary tags, for the popup and the card. |
+| `src/anki/anki.ts` | The AnkiConnect client, the note types, and the note draft of a card. |
+| `src/anki/lapis.ts` | The pure parts of the Lapis fields: the furigana, the frequency rank, and the pitch accent. |
+| `src/anki/wordaudio.ts` | The word audio from JapanesePod101, and the check for its placeholder clip. |
+| `src/popup/cardform.ts` | The card form of the popup (`E`). |
+| `src/video/whisper.ts` | The client for the WhisperX server. |
+| `src/anki/lineaudio.ts`, `src/video/record.ts` | The sentence audio of a card: the server cuts it, or the tab records the line. |
+| `src/dictionary/db.ts` | The dictionary storage in IndexedDB. |
+| `src/text/entry.ts` | The dictionary entry and the status key of each word, and the join of word overrides and compound nouns. |
+| `src/text/group.ts`, `src/text/sentence.ts`, `src/dictionary/yomitan.ts`, `src/dictionary/zip.ts` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
+| `src/text/inflection.ts` | Pure function: the parts of an inflected word and their labels, for the popup line. |
+| `src/shared/theme.ts`, `src/shared/design-tokens.ts` | The theme setting, and the design tokens of every surface (see `docs/design.md`). The build writes the tokens and the base rules of the pages (`PAGE_CSS`) to `dist/theme.css`. |
+| `src/popup/hover.ts` | The word popup setting, and the rule that decides when the popup opens. |
+| `pages/action.html`, `pages/action.ts` | The toolbar popup. |
+| `pages/player.html`, `pages/player.ts` | The video player page. Content scripts do not run on extension pages, so the page loads `src/page-text/page.ts`, `src/popup/popup.ts`, `src/page-text/iplusone.ts`, and `src/status/stats.ts` itself. |
+| `src/page-text/iplusone.ts` | The i+1 highlight. The pure part is `iPlusOneSentences` in `src/text/sentence.ts`. |
+| `src/video/video.ts` | The video, its subtitle lines, and the overlay over it. YouTube, the player, and other sites use it. |
+| `src/video/overlay.ts` | The subtitle overlay line, for YouTube and the player. |
+| `src/video/playback.ts`, `src/video/videokeys.ts` | Pure rules for timed lines (jumps, play modes, gaps, text clean-up), and the table of the video keys. |
+| `src/video/videosettings.ts`, `src/video/videooptions.ts` | The video settings, and their part of the options page. |
+| `src/video/other-sites.ts` | The subtitle overlay on the largest video of a page that is not YouTube, with its buttons. |
+| `src/video/sidebar/sidebar.ts` | The subtitle sidebar: a full-height panel at the right side of the window, a card for each line, the word list of **+**, and the bookmarks. |
+| `src/video/sidebar/sidebar-filter.ts` | The filters of the subtitle sidebar. |
+| `src/video/sidebar/sidebar-select.ts` | The selection of lines in the subtitle sidebar and **Create N cards**. |
+| `src/video/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
+| `src/video/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 | `server/whisper_server.py`, `server/media.py` | The local server: WhisperX jobs and the HTTP routes, and the video side (cache keys, `yt-dlp`, the audio cache, and line clips). |
-| `src/stats.ts` | The comprehension score and the recommended sentences of a tab, for the toolbar popup. |
-| `src/score.ts` | Pure functions for the score, its label, and the text of the i+1 sentences. |
-| `words.html`, `words.ts` | The word browser page. |
-| `src/wordlist.ts` | Pure functions for the search, the filter, and the sort of the word browser, and for the pasted words. |
-| `reader.html`, `reader.ts` | The reader page for files and pasted text. It loads `src/page.ts`, `src/popup.ts`, `src/iplusone.ts`, and `src/stats.ts` itself. |
-| `src/epub.ts` | The EPUB reader. It makes new DOM nodes from an allowlist of tags, with no attributes from the file. |
-| `src/book.ts` | Pure functions of the reader: the text parts, the page keys, the page turn, and the saved place. |
+| `src/status/stats.ts` | The comprehension score and the recommended sentences of a tab, for the toolbar popup. |
+| `src/status/score.ts` | Pure functions for the score, its label, and the text of the i+1 sentences. |
+| `pages/words.html`, `pages/words.ts` | The word browser page. |
+| `src/status/wordlist.ts` | Pure functions for the search, the filter, and the sort of the word browser, and for the pasted words. |
+| `pages/reader.html`, `pages/reader.ts` | The reader page for files and pasted text. It loads `src/page-text/page.ts`, `src/popup/popup.ts`, `src/page-text/iplusone.ts`, and `src/status/stats.ts` itself. |
+| `src/reader/epub.ts` | The EPUB reader. It makes new DOM nodes from an allowlist of tags, with no attributes from the file. |
+| `src/reader/book.ts` | Pure functions of the reader: the text parts, the page keys, the page turn, and the saved place. |
 
 Node.js runs the `.ts` test files directly, without a build. To run the tests:
 

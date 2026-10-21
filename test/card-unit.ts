@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { CardFields } from '../src/anki.ts';
-import type { Entry } from '../src/meta.ts';
+import type { CardFields } from '../src/anki/anki.ts';
+import type { Entry } from '../src/dictionary/meta.ts';
 
 const TABERU: Entry = {
   expression: '食べる',
@@ -30,7 +30,7 @@ const CARD: CardFields = {
 };
 
 test('furiganaPlain puts the reading over the kanji only, as Yomitan {furigana-plain}', async () => {
-  const { furiganaPlain } = await import('../src/lapis.ts');
+  const { furiganaPlain } = await import('../src/anki/lapis.ts');
   assert.deepEqual([
     furiganaPlain('食べる', 'たべる'), furiganaPlain('お茶', 'おちゃ'), furiganaPlain('取り扱い', 'とりあつかい'),
     furiganaPlain('猫', 'ねこ'), furiganaPlain('ネコ', 'ねこ'), furiganaPlain('ねこ', 'ねこ'), furiganaPlain('今日', 'きょう'),
@@ -39,7 +39,7 @@ test('furiganaPlain puts the reading over the kanji only, as Yomitan {furigana-p
 });
 
 test('harmonicRank is the floor of the harmonic mean of the ranks, one per dictionary, as Yomitan {frequency-harmonic-rank}', async () => {
-  const { harmonicRank } = await import('../src/lapis.ts');
+  const { harmonicRank } = await import('../src/anki/lapis.ts');
   assert.equal(harmonicRank(TABERU.frequencies), 1714, 'the number at the start of a display value wins: 3000, not 9');
   assert.equal(harmonicRank([{ dict: 'A', value: 100, display: '100', ranked: true }, { dict: 'A', value: 5, display: '5', ranked: true }]), 100);
   assert.equal(harmonicRank([{ dict: 'Occurrences', value: 500, display: '500', ranked: false }]), null);
@@ -47,7 +47,7 @@ test('harmonicRank is the floor of the harmonic mean of the ranks, one per dicti
 });
 
 test('pitchCategories names each pattern one time, with kifuku for a verb or an i-adjective', async () => {
-  const { pitchCategories, pitchPositions } = await import('../src/lapis.ts');
+  const { pitchCategories, pitchPositions } = await import('../src/anki/lapis.ts');
   assert.equal(pitchPositions(TABERU.pitches), '<ol><li>[2]</li><li>[0]</li></ol>');
   assert.equal(pitchPositions([{ dict: 'NHK', positions: [3] }]), '[3]');
   assert.equal(pitchPositions([]), '');
@@ -60,7 +60,7 @@ test('pitchCategories names each pattern one time, with kifuku for a verb or an 
 });
 
 test('lapisFields fills every field of the Lapis note type in order', async () => {
-  const { lapisFields } = await import('../src/anki.ts');
+  const { lapisFields } = await import('../src/anki/anki.ts');
   const forms = { dict: 'JMdict', tags: [{ name: 'forms', category: '', notes: '' }], glossary: ['食べる、喰べる'] };
   const entry: Entry = { ...TABERU, senses: [forms, ...TABERU.senses.slice(0, 2), { dict: 'Jitendex', tags: [{ name: 'v1', category: 'partOfSpeech', notes: '' }], glossary: ['to eat (Jitendex)', 'a <b>\nline'] },
     { dict: 'Jitendex', tags: [{ name: 'forms', category: '', notes: '' }], glossary: ['食べる、喰べる'] }] };
@@ -96,14 +96,14 @@ test('lapisFields fills every field of the Lapis note type in order', async () =
 });
 
 test('parseNoteType: no stored choice is Lapis; a stored choice stays', async () => {
-  const { parseNoteType, wordField } = await import('../src/anki.ts');
+  const { parseNoteType, wordField } = await import('../src/anki/anki.ts');
   assert.deepEqual([undefined, null, 'custom', { kind: 'lapis' }].map(parseNoteType), [{ kind: 'lapis' }, { kind: 'lapis' }, { kind: 'lapis' }, { kind: 'lapis' }]);
   assert.deepEqual(parseNoteType({ kind: 'builtin' }), { kind: 'builtin' });
   assert.equal(wordField({ kind: 'lapis' }), 'Expression');
 });
 
 test('wordAudioUrl asks for the kanji and the kana, and only the kana for a kana word, as Yomitan', async () => {
-  const { wordAudioUrl } = await import('../src/wordaudio.ts');
+  const { wordAudioUrl } = await import('../src/anki/wordaudio.ts');
   const base = 'https://assets.languagepod101.com/dictionary/japanese/audiomp3.php?';
   assert.deepEqual([wordAudioUrl('猫', 'ねこ'), wordAudioUrl('ねこ', 'ねこ'), wordAudioUrl('ネコ', 'ねこ')], [
     `${base}kanji=%E7%8C%AB&kana=%E3%81%AD%E3%81%93`, `${base}kana=%E3%81%AD%E3%81%93`, `${base}kanji=%E3%83%8D%E3%82%B3&kana=%E3%81%AD%E3%81%93`,
@@ -111,14 +111,14 @@ test('wordAudioUrl asks for the kanji and the kana, and only the kana for a kana
 });
 
 test('wordAudioFile names a clip by its SHA-256 and rejects the placeholder clip of JapanesePod101', async () => {
-  const { isPlaceholder, wordAudioFile } = await import('../src/wordaudio.ts');
+  const { isPlaceholder, wordAudioFile } = await import('../src/anki/wordaudio.ts');
   assert.deepEqual(await wordAudioFile(new TextEncoder().encode('abc').buffer), { filename: 'minerr-word-ba7816bf8f01cfea.mp3', data: 'YWJj' });
   assert.deepEqual([isPlaceholder('ae6398b5a27bc8c0a771df6c907ade794be15518174773c58c7c7ddd17098906'),
     isPlaceholder('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')], [true, false]);
 });
 
 test('installLapis keeps a "Lapis" deck that has notes of the user, and does nothing if Anki has Lapis', async () => {
-  const { installLapis } = await import('../src/anki.ts');
+  const { installLapis } = await import('../src/anki/anki.ts');
   const requests: string[] = [];
   let models = ['Basic'];
   const replies: Record<string, () => unknown> = {

@@ -5,12 +5,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import kuromoji from 'kuromoji';
-import { definitionHtml } from '../src/anki.ts';
-import { groupTokens } from '../src/group.ts';
-import { iPlusOneSentences, isIPlusOne, type Piece, sentenceAround } from '../src/sentence.ts';
-import type { Status } from '../src/status.ts';
-import { type DictTerm, flattenGlossaryItem, groupTerms, readYomitan } from '../src/yomitan.ts';
-import { unzip } from '../src/zip.ts';
+import { definitionHtml } from '../src/anki/anki.ts';
+import { groupTokens } from '../src/text/group.ts';
+import { iPlusOneSentences, isIPlusOne, type Piece, sentenceAround } from '../src/text/sentence.ts';
+import type { Status } from '../src/status/status.ts';
+import { type DictTerm, flattenGlossaryItem, groupTerms, readYomitan } from '../src/dictionary/yomitan.ts';
+import { unzip } from '../src/dictionary/zip.ts';
 
 const here = import.meta.dirname;
 const JMDICT = join(here, 'fixtures', 'JMdict_english.zip');
@@ -252,26 +252,26 @@ test('real JMdict Yomitan zip parses with 食べる -> "to eat"', async () => {
 });
 
 test('captionText joins the caption lines into one text and drops empty lines', async () => {
-  const { captionText } = await import('../src/captions.ts');
+  const { captionText } = await import('../src/video/captions.ts');
   assert.equal(captionText([' だけ登山口 ', '', 'こっちだ。']), 'だけ登山口こっちだ。');
   assert.equal(captionText([]), '');
 });
 
 test('segmentAt finds the segment that covers a time, with the end exclusive', async () => {
-  const { segmentAt } = await import('../src/captions.ts');
+  const { segmentAt } = await import('../src/video/captions.ts');
   const segments = [{ start: 0, end: 2, text: 'あ' }, { start: 2, end: 4, text: 'い' }, { start: 6, end: 8, text: 'う' }];
   assert.deepEqual([0, 1.99, 2, 5, 7, 8].map(t => segmentAt(segments, t)?.text ?? null), ['あ', 'あ', 'い', null, 'う', null]);
 });
 
 test('resolveTheme follows the system only for the system theme', async () => {
-  const { resolveTheme, THEMES } = await import('../src/theme.ts');
+  const { resolveTheme, THEMES } = await import('../src/shared/theme.ts');
   assert.deepEqual(THEMES.flatMap(theme => [false, true].map(systemDark => `${theme}+${systemDark ? 'dark' : 'light'}=${resolveTheme(theme, systemDark)}`)), [
     'system+light=light', 'system+dark=dark', 'light+light=light', 'light+dark=light', 'dark+light=dark', 'dark+dark=dark',
   ]);
 });
 
 test('hoverDelay opens on Shift at once, waits for the mouse to stop on plain hover, and never opens during a selection or a drag', async () => {
-  const { hoverDelay, HOVER_MODES } = await import('../src/hover.ts');
+  const { hoverDelay, HOVER_MODES } = await import('../src/popup/hover.ts');
   const base = { shift: false, unknownWord: false, popupOpen: false, textSelected: false, buttonDown: false };
   const row = (extra: Partial<typeof base>) => HOVER_MODES.map(mode => hoverDelay({ ...base, ...extra, mode }));
   assert.deepEqual(HOVER_MODES, ['hover', 'unknown', 'shift']);
@@ -288,7 +288,7 @@ test('hoverDelay opens on Shift at once, waits for the mouse to stop on plain ho
 });
 
 test('renderField fills each marker in one pass and escapes the plain text values one time', async () => {
-  const { markerValues, renderField } = await import('../src/anki.ts');
+  const { markerValues, renderField } = await import('../src/anki/anki.ts');
   const card = { word: '食べる', reading: 'たべる', sentence: '猫が魚を<b>食べなかった</b>。', definition: '<ol><li>to eat</li></ol>', entry: null, selection: '' };
   const media = { image: '<img src="minerr-1.jpg">', audio: '', wordaudio: '' };
   const values = markerValues(card, { url: 'https://example.com/?a=1&b=2', title: 'Tom & Jerry <3 {word}' }, media);
@@ -302,13 +302,13 @@ test('renderField fills each marker in one pass and escapes the plain text value
 });
 
 test('unknownMarkers lists each marker that is not known, one time, as written', async () => {
-  const { unknownMarkers } = await import('../src/anki.ts');
+  const { unknownMarkers } = await import('../src/anki/anki.ts');
   assert.deepEqual(unknownMarkers('{word} {Word} {nope} {nope} {} {image}'), ['{Word}', '{nope}', '{}']);
   assert.deepEqual(unknownMarkers('{word}{reading}{furigana}{sentence}{definition}{image}{url}{title} plain text'), []);
 });
 
 test('suggestFields maps known field names to one marker and leaves the others empty', async () => {
-  const { suggestFields } = await import('../src/anki.ts');
+  const { suggestFields } = await import('../src/anki/anki.ts');
   assert.deepEqual(suggestFields(['Expression', 'ExpressionFurigana', 'ExpressionReading', 'Sentence', 'SentenceFurigana',
     'MainDefinition', 'Picture', 'Word Meaning', 'Glossary', 'Front', 'Back', 'Notes', 'Source URL', 'Title']), {
     Expression: '{word}', ExpressionFurigana: '{furigana}', ExpressionReading: '{reading}', Sentence: '{sentence}', SentenceFurigana: '',
@@ -318,7 +318,7 @@ test('suggestFields maps known field names to one marker and leaves the others e
 });
 
 test('parseNoteType reads a stored note type and falls back to Lapis', async () => {
-  const { parseNoteType, wordField } = await import('../src/anki.ts');
+  const { parseNoteType, wordField } = await import('../src/anki/anki.ts');
   const custom = { kind: 'custom', model: 'Mining', fields: { Front: '{sentence}', Back: '{word} {definition}' } };
   assert.deepEqual(parseNoteType(custom), custom);
   for (const bad of [undefined, null, 'custom', { kind: 'custom', model: 'Mining' }, { ...custom, fields: { Front: 1 } }, { ...custom, fields: [] }]) {
@@ -330,7 +330,7 @@ test('parseNoteType reads a stored note type and falls back to Lapis', async () 
 });
 
 test('statusFile and parseStatusFile round-trip the words, and a wrong file throws a clear error', async () => {
-  const { parseStatusFile, statusFile } = await import('../src/status.ts');
+  const { parseStatusFile, statusFile } = await import('../src/status/status.ts');
   const words = { 猫: 'known', 魚: 'learning', 田中: 'ignored' } as const;
   const file = statusFile(words, new Date('2026-10-20T03:04:05.000Z'));
   assert.deepEqual(file, { format: 'minerr-statuses', version: 1, exported: '2026-10-20T03:04:05.000Z', words });
@@ -369,7 +369,7 @@ test('statusFile and parseStatusFile round-trip the words, and a wrong file thro
 });
 
 test('mergeStatuses lets the imported status win and counts added, changed, and unchanged words', async () => {
-  const { mergeStatuses, parseStatusFile } = await import('../src/status.ts');
+  const { mergeStatuses, parseStatusFile } = await import('../src/status/status.ts');
   const imported = parseStatusFile(JSON.stringify({ format: 'minerr-statuses', version: 1, exported: '2026-10-20T00:00:00.000Z',
     words: { 猫: 'known', 魚: 'ignored', 雨: 'learning', constructor: 'known' } }));
   assert.deepEqual(mergeStatuses({ 猫: 'known', 魚: 'learning', 本: 'known' }, imported), {
@@ -380,7 +380,7 @@ test('mergeStatuses lets the imported status win and counts added, changed, and 
 });
 
 test('statusesByKey gives each key the highest status of its words: known, then ignored, then learning', async () => {
-  const { statusesByKey, statusMoves } = await import('../src/status.ts');
+  const { statusesByKey, statusMoves } = await import('../src/status/status.ts');
   assert.deepEqual(statusesByKey([['ねこ', 'learning'], ['猫', 'known'], ['ネコ', 'ignored'], ['いぬ', 'learning'], ['犬', 'ignored']], ['猫', '猫', '猫', '犬', '犬']),
     new Map([['猫', 'known'], ['犬', 'ignored']]));
   assert.deepEqual(statusMoves({ ねこ: 'known', ネコ: 'learning', 猫: 'learning', 犬: 'ignored', いぬ: 'learning', 紙: 'known' }, ['猫', '猫', '猫', '犬', '犬', '紙']),
@@ -389,7 +389,7 @@ test('statusesByKey gives each key the highest status of its words: known, then 
 });
 
 test('parseSubtitles reads SRT with a BOM, CRLF, multi-line cues, tags, and position codes', async () => {
-  const { parseSubtitles } = await import('../src/captions.ts');
+  const { parseSubtitles } = await import('../src/video/captions.ts');
   const srt = '﻿1\r\n00:00:01,500 --> 00:00:03,000\r\n<i>猫が</i>魚を\r\n食べた\r\n\r\n'
     + '2\r\n00:01:02,000 --> 01:00:00,250\r\n{\\an8}今日は雨\r\n\r\n3\r\n00:00:05,000 --> 00:00:04,000\r\n逆の時間\r\n\r\n'
     + '4\r\n00:00:06,000 --> 00:00:07,000\r\n\r\n';
@@ -400,7 +400,7 @@ test('parseSubtitles reads SRT with a BOM, CRLF, multi-line cues, tags, and posi
 });
 
 test('parseSubtitles reads WebVTT with a header, notes, styles, cue ids, cue settings, short times, ruby, and entities', async () => {
-  const { parseSubtitles } = await import('../src/captions.ts');
+  const { parseSubtitles } = await import('../src/video/captions.ts');
   const vtt = 'WEBVTT - 日本語\nKind: captions\n\nNOTE a comment\nwith two lines\n\nSTYLE\n::cue { color: yellow }\n\n'
     + 'intro\n00:02.000 --> 00:04.500 align:start position:10%\n<v 先生><ruby>漢字<rt>かんじ</rt></ruby>を&lt;読む&gt;\n<c.yellow>二行目</c> &amp; 三&nbsp;四\n\n'
     + '00:00:00.250 --> 00:00:01.000\n最初\n';
@@ -411,7 +411,7 @@ test('parseSubtitles reads WebVTT with a header, notes, styles, cue ids, cue set
 });
 
 test('toSrt numbers the cues and writes SRT times that parseSubtitles reads back', async () => {
-  const { parseSubtitles, toSrt } = await import('../src/captions.ts');
+  const { parseSubtitles, toSrt } = await import('../src/video/captions.ts');
   const segments = [{ start: 0, end: 2.5, text: '猫が魚を食べた。' }, { start: 3661.0005, end: 3662.9996, text: '一行目\n二行目' }];
   const srt = toSrt(segments);
   assert.equal(srt, '1\n00:00:00,000 --> 00:00:02,500\n猫が魚を食べた。\n\n2\n01:01:01,001 --> 01:01:03,000\n一行目\n二行目\n');

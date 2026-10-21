@@ -8,7 +8,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Page, PageScreenshotOptions } from 'playwright';
-import { at } from '../src/parse.ts';
+import { at } from '../src/shared/guards.ts';
 import { launch, listen, makeDictionary, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-subs-'));
@@ -177,7 +177,7 @@ const shot = async (target: Page, name: string, options: PageScreenshotOptions =
 
 try {
   const options = await context.newPage();
-  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
   await options.setInputFiles('#dict-file', dictionary);
   await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'));
 
@@ -298,7 +298,7 @@ try {
   assert.equal(typeof tabId, 'number');
   const action = await context.newPage();
   await action.setViewportSize({ width: 340, height: 200 });
-  await action.goto(`chrome-extension://${extensionId}/action.html?tab=${tabId}`);
+  await action.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${tabId}`);
   await action.locator('#server.ok').waitFor();
   assert.equal(await action.textContent('#server'), 'WhisperX server is running: large-v3-turbo on the CPU.');
   assert.equal(await action.textContent('[aria-pressed="true"]'), 'YouTube captions');
@@ -626,7 +626,7 @@ try {
   const otherTabId = await worker.evaluate(async () => (await chrome.tabs.query({ url: 'https://example.com/*' }))[0]?.id);
   assert.equal(typeof otherTabId, 'number');
   const elsewhere = await context.newPage();
-  await elsewhere.goto(`chrome-extension://${extensionId}/action.html?tab=${otherTabId}`);
+  await elsewhere.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${otherTabId}`);
   await elsewhere.locator('#elsewhere:not([hidden])').waitFor();
   assert.ok(await elsewhere.locator('#controls').isHidden());
 

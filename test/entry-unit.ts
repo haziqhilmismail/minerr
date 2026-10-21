@@ -3,9 +3,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import kuromoji from 'kuromoji';
-import { dictionaryWords, type EntryIndex, type EntryRow, entrySegments } from '../src/entry.ts';
-import { groupTokens } from '../src/group.ts';
-import { readYomitan } from '../src/yomitan.ts';
+import { dictionaryWords, type EntryIndex, type EntryRow, entrySegments } from '../src/text/entry.ts';
+import { groupTokens } from '../src/text/group.ts';
+import { readYomitan } from '../src/dictionary/yomitan.ts';
 
 const here = import.meta.dirname;
 const JMDICT = join(here, 'fixtures', 'JMdict_english.zip');

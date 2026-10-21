@@ -20,7 +20,7 @@ useCjkFonts(work);
 const { context, extensionId } = await launch(join(work, 'profile'));
 
 const options = await context.newPage();
-await options.goto(`chrome-extension://${extensionId}/options.html`);
+await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
 await options.setInputFiles('#dict-file', jmdict);
 await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'), null, { timeout: 180000 });
 await options.evaluate(([known, learning]) => chrome.storage.local.set(Object.fromEntries([

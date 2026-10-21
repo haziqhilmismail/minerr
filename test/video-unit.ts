@@ -1,11 +1,11 @@
 // Unit tests of the pure video rules: line jumps, keys, play modes, gaps, text clean-up, and card lines.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { choices, FILTER_NAMES, type LineState, shownLines, targetWord } from '../src/linefilter.ts';
-import { summary } from '../src/lineselect.ts';
-import { autoPause, cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted, onLine } from '../src/playback.ts';
-import { isStatus } from '../src/status.ts';
-import { keyLabel, keyName, videoKey } from '../src/videokeys.ts';
+import { choices, FILTER_NAMES, type LineState, shownLines, targetWord } from '../src/video/sidebar/sidebar-filter.ts';
+import { summary } from '../src/video/sidebar/sidebar-select.ts';
+import { autoPause, cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted, onLine } from '../src/video/playback.ts';
+import { isStatus } from '../src/status/status.ts';
+import { keyLabel, keyName, videoKey } from '../src/video/videokeys.ts';
 
 const LINES = [{ start: 1, end: 3, text: '一' }, { start: 3, end: 5, text: '二' }, { start: 8, end: 10, text: '三' }];
 
@@ -45,7 +45,7 @@ test('keyLabel writes keys for people', () => {
 });
 
 test('parseCaptions reads YouTube json3: rolling lines end where the next starts, line-break events drop out', async () => {
-  const { parseCaptions } = await import('../src/captions.ts');
+  const { parseCaptions } = await import('../src/video/captions.ts');
   const json3 = JSON.stringify({ events: [
     { tStartMs: 0, dDurationMs: 101600, id: 1 },
     { tStartMs: 80, dDurationMs: 5920, segs: [{ utf8: 'NHK' }, { utf8: '優しい', tOffsetMs: 680 }] },
@@ -57,7 +57,7 @@ test('parseCaptions reads YouTube json3: rolling lines end where the next starts
 });
 
 test('trackUrl takes the uploader track, then the automatic one, and never a machine translation into Japanese', async () => {
-  const { trackUrl } = await import('../src/youtube-captions.ts');
+  const { trackUrl } = await import('../src/video/youtube/youtube-captions.ts');
   const base = 'https://www.youtube.com/api/timedtext?v=v1';
   const track = (languageCode: string, kind: string | null) => ({ languageCode, kind, vssId: `${kind ? 'a' : ''}.${languageCode}`,
     baseUrl: `${base}&lang=${languageCode}${kind ? `&kind=${kind}` : ''}` });
@@ -69,7 +69,7 @@ test('trackUrl takes the uploader track, then the automatic one, and never a mac
 });
 
 test('addNote adds a missing SentenceAudio field to an old Minerr note type and sends the line audio', async () => {
-  const { addDraft, BUILTIN, noteDraft, NOTE_TYPE, RECOGNITION } = await import('../src/anki.ts');
+  const { addDraft, BUILTIN, noteDraft, NOTE_TYPE, RECOGNITION } = await import('../src/anki/anki.ts');
   const requests: { action: string; params: Record<string, unknown> }[] = [];
   const replies: Record<string, unknown> = {
     createDeck: 1, modelNames: ['Minerr'], modelFieldNames: ['Word', 'Reading', 'Sentence', 'Definition', 'Image'],
@@ -135,7 +135,7 @@ test('autoPause finds the line edge that a frame step passed, as the play mode s
 });
 
 test('widenSentence puts the popup sentence back into the text of the joined lines', async () => {
-  const { widenSentence } = await import('../src/lineaudio.ts');
+  const { widenSentence } = await import('../src/anki/lineaudio.ts');
   assert.equal(widenSentence('猫が魚を食べた。\n今日は<雨>だ', '<b>猫</b>が魚を食べた。'), '<b>猫</b>が魚を食べた。 今日は&lt;雨&gt;だ');
   assert.equal(widenSentence('猫が魚を食べた。\n今日は<雨>だ', '今日は&lt;<b>雨</b>&gt;だ'), '猫が魚を食べた。 今日は&lt;<b>雨</b>&gt;だ');
   assert.equal(widenSentence('別の行', '<b>猫</b>だ'), '<b>猫</b>だ', 'a sentence that is not in the lines stays');

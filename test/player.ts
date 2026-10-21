@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { at } from '../src/parse.ts';
+import { at } from '../src/shared/guards.ts';
 import { launch, makeDictionary, mockAnki, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-player-'));
@@ -33,7 +33,7 @@ const setStorage = (items: Record<string, unknown>) => worker.evaluate(value => 
 try {
   await setStorage({ 'w:猫': 'known', 'w:食べる': 'known' });
   const options = await context.newPage();
-  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
   await options.setInputFiles('#dict-file', dictionary);
   await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'));
   const keyRows = await options.locator('#video-keys tr').evaluateAll(rows => rows.map(row => (row as HTMLElement).innerText.replace(/\s+/g, ' ').trim()));
@@ -65,7 +65,7 @@ try {
 
   const player = await context.newPage();
   await player.setViewportSize({ width: 1000, height: 720 });
-  await player.goto(`chrome-extension://${extensionId}/player.html`);
+  await player.goto(`chrome-extension://${extensionId}/pages/player.html`);
   await player.setInputFiles('#video-file', clip);
   await player.setInputFiles('#subs-file', srt);
   const status = player.locator('#status');
@@ -73,7 +73,7 @@ try {
   const playerTab = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, player.url());
   const menuScore = async () => {
     const menu = await context.newPage();
-    await menu.goto(`chrome-extension://${extensionId}/action.html?tab=${playerTab}`);
+    await menu.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${playerTab}`);
     await menu.waitForFunction(() => document.querySelector('#sentences-title')?.textContent || document.querySelector('#score-empty')?.textContent !== 'Reading this tab…');
     const shown = await menu.$$eval('#score-percent, #score-basis, #sentences li', nodes => nodes.map(node => node.textContent));
     await menu.close();
@@ -134,7 +134,7 @@ try {
   await player.waitForFunction(size => parseFloat(getComputedStyle(document.querySelector('.minerr-subs-line') ?? document.body).fontSize) > size, before);
   assert.ok(Math.abs(await fontSize() - before * 1.1) < 0.5, 'Alt+= makes the text 10% larger');
   const sizes = await context.newPage();
-  await sizes.goto(`chrome-extension://${extensionId}/options.html`);
+  await sizes.goto(`chrome-extension://${extensionId}/pages/options.html`);
   await sizes.locator('#sub-scale-value', { hasText: '110%' }).waitFor();
   assert.equal(await sizes.inputValue('#sub-scale'), '110', 'the slider shows the size of the keys');
   await sizes.locator('#sub-scale').fill('200');

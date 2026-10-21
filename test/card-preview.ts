@@ -4,8 +4,8 @@ import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
-import { definitionHtml, NOTE_TYPE, RECOGNITION } from '../src/anki.ts';
-import { type DictTerm, groupTerms, readYomitan } from '../src/yomitan.ts';
+import { definitionHtml, NOTE_TYPE, RECOGNITION } from '../src/anki/anki.ts';
+import { type DictTerm, groupTerms, readYomitan } from '../src/dictionary/yomitan.ts';
 import { useCjkFonts } from './harness.ts';
 
 const out = process.env.OUT_DIR ?? '/tmp/minerr-card';

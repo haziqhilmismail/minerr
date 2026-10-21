@@ -5,7 +5,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Page } from 'playwright';
-import { at } from '../src/parse.ts';
+import { at } from '../src/shared/guards.ts';
 import { launch, listen } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-pages-'));
@@ -29,7 +29,7 @@ const tabIdOf = (url: string) => worker.evaluate(async url => (await chrome.tabs
 
 async function toolbarPopup(url: string): Promise<Page> {
   const action = await context.newPage();
-  await action.goto(extensionPage(`action.html?tab=${await tabIdOf(url)}`));
+  await action.goto(extensionPage(`pages/action.html?tab=${await tabIdOf(url)}`));
   await action.waitForFunction(() => document.querySelector<HTMLElement>('#score')?.hidden === false
     || document.querySelector('#score-empty')?.textContent !== 'Reading this tab…');
   return action;
@@ -91,7 +91,7 @@ try {
   const emptyPopup = await toolbarPopup(`${origin}/empty`);
   assert.equal(await emptyPopup.textContent('#score-empty'), 'This page has no Japanese words.');
   assert.equal(await emptyPopup.isVisible('#score'), false);
-  for (const [button, path] of [['#words', 'words.html'], ['#reader', 'reader.html'], ['#paste', 'reader.html?paste']] as const) {
+  for (const [button, path] of [['#words', 'pages/words.html'], ['#reader', 'pages/reader.html'], ['#paste', 'pages/reader.html?paste']] as const) {
     const [opened] = await Promise.all([context.waitForEvent('page'), emptyPopup.click(button)]);
     await opened.waitForURL(extensionPage(path));
     await opened.close();
@@ -103,7 +103,7 @@ try {
   await worker.evaluate(words => chrome.storage.local.set(words), many);
   const browser = await context.newPage();
   const opened = Date.now();
-  await browser.goto(extensionPage('words.html'));
+  await browser.goto(extensionPage('pages/words.html'));
   await browser.waitForSelector('#rows tr');
   const openMs = Date.now() - opened;
   const listedWords = () => browser.$$eval('#rows tr', rows => rows.map(row => `${row.querySelector('.word')?.textContent} ${row.querySelector('select')?.value}`));
@@ -191,7 +191,7 @@ try {
     'OEBPS/Text/three.xhtml=deflated:<html><body><p>最後&nbsp;の章。</p></body></html>',
   ]);
   const reader = await context.newPage();
-  await reader.goto(extensionPage('reader.html'));
+  await reader.goto(extensionPage('pages/reader.html'));
   await reader.setInputFiles('#file', epub);
   await reader.waitForSelector('#article .ml-word[data-ml-lemma="魚"]', { timeout: 20000 });
   assert.equal(await reader.title(), '猫の本 - Minerr');
@@ -241,7 +241,7 @@ try {
   await reader.keyboard.press('2');
   await reader.waitForSelector('#article .ml-word.ml-learning[data-ml-lemma="好き"]');
   await reader.keyboard.press('Escape');
-  const readerStats = await toolbarPopup(extensionPage('reader.html'));
+  const readerStats = await toolbarPopup(extensionPage('pages/reader.html'));
   assert.equal((await scoreText(readerStats))[3], 'Learning 1', 'the score of the reader tab counts 好き as learning');
   await readerStats.close();
   console.log('reader: the word popup sets a status, and the toolbar popup shows the score of the reader tab');
@@ -294,7 +294,7 @@ try {
     chrome.permissions.contains = async () => true;
     Object.defineProperty(navigator.clipboard, 'readText', { value: async () => document.documentElement.dataset.clipboard ?? '' });
   });
-  await paste.goto(extensionPage('reader.html?paste'));
+  await paste.goto(extensionPage('pages/reader.html?paste'));
   assert.equal(await paste.textContent('#status'), 'Press Ctrl+V to read the text in the clipboard.');
   const pasteText = (value: string) => paste.evaluate(value => {
     const data = new DataTransfer();

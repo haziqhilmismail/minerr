@@ -3,7 +3,7 @@ import { mkdtempSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { at } from '../src/parse.ts';
+import { at } from '../src/shared/guards.ts';
 import { launch, listen, makeDictionary, runCommand, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-reading-'));
@@ -87,7 +87,7 @@ try {
   }));
 
   const options = await context.newPage();
-  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
   for (const [file, message] of [[terms, 'Imported Fixture: 5 terms'], [ranks, 'Imported Ranks: 0 terms, 3 frequency and pitch entries'],
     [pitches, 'Imported Pitches: 0 terms, 3 frequency and pitch entries']]) {
     await options.setInputFiles('#dict-file', file ?? '');
@@ -155,7 +155,7 @@ try {
   assert.equal(await tab.locator('.ml-word').count(), 0);
   const tabId = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, pageUrl);
   const action = await context.newPage();
-  await action.goto(`chrome-extension://${extensionId}/action.html?tab=${tabId}`);
+  await action.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${tabId}`);
   assert.equal(await action.innerText('#site-toggle'), 'Page text on this site\n127.0.0.1. Shortcut: Alt+Shift+D. Video subtitles work without it.\nOFF');
   assert.equal(await action.isChecked('#site'), false);
   assert.equal(await action.innerText('#enabled-hint'), 'In all tabs. Shortcut: Alt+Shift+M.', 'the toolbar menu shows the key that Chrome has now');
@@ -173,7 +173,7 @@ try {
   await tab.waitForSelector('#line .ml-word[data-ml-lemma="猫"]');
   const optionsTabId = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, options.url());
   assert.equal(typeof optionsTabId, 'number');
-  await action.goto(`chrome-extension://${extensionId}/action.html?tab=${optionsTabId}`);
+  await action.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${optionsTabId}`);
   await action.locator('#server').filter({ hasNotText: 'Checking' }).waitFor();
   assert.equal(await action.isVisible('#site-toggle'), false, 'an extension page gets no site switch');
   await action.close();

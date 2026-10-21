@@ -4,8 +4,8 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Locator, Page } from 'playwright';
-import { at } from '../src/parse.ts';
-import { messageOf } from '../src/rpc.ts';
+import { at } from '../src/shared/guards.ts';
+import { messageOf } from '../src/shared/rpc.ts';
 import { extension, launch, listen, makeDictionary } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-e2e-'));
@@ -95,7 +95,7 @@ try {
   }));
 
   const options = await context.newPage();
-  await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
   await options.setInputFiles('#dict-file', fixture);
   await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'));
   const imported = await options.textContent('#dict-status');
@@ -293,7 +293,7 @@ try {
   const [LIGHT_PAGE, DARK_PAGE, DARK_POPUP] = ['rgb(242, 246, 247)', 'rgb(15, 29, 36)', 'rgb(21, 39, 48)'];
   const action = await context.newPage();
   for (const page of [options, action, tab]) await page.emulateMedia({ colorScheme: 'light' });
-  await action.goto(`chrome-extension://${extensionId}/action.html`);
+  await action.goto(`chrome-extension://${extensionId}/pages/action.html`);
   assert.equal(await options.isChecked('input[name="theme"][value="system"]'), true);
   assert.deepEqual([await background(options, 'body'), await background(action, 'body')], [LIGHT_PAGE, LIGHT_PAGE]);
   await options.click('label:has(input[name="theme"][value="dark"])');
