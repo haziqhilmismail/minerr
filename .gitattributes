@@ -1,2 +1,3 @@
 docs export-ignore
 test export-ignore
+*.cmd text eol=crlf

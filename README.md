@@ -370,13 +370,27 @@ The server uses the CPU. It does not need a GPU, so it also works on a computer 
 
 ### Start the server
 
+On Windows, double-click `Start WhisperX server.cmd` in the Minerr folder. This is the folder that you load in `chrome://extensions`. A window opens, and the server starts in WSL. Keep the window open while you use the server. To stop the server, close the window.
+
+On Linux, run this command in the Minerr folder. Keep the terminal open while you use the server.
+
 ```sh
 uv run server/whisper_server.py
 ```
 
-The first start installs about 2.6 GB of packages. The first job also downloads the model, about 1.6 GB. Keep the terminal open while you use the server.
+The first start installs about 2.6 GB of packages. The first job also downloads the model, about 1.6 GB.
 
-If you use WSL, start the server in WSL. Chrome on Windows connects to it at `http://127.0.0.1:8766`, because WSL forwards localhost ports to Windows.
+Chrome on Windows connects to the server in WSL at `http://127.0.0.1:8766`, because WSL forwards localhost ports to Windows.
+
+If the window or the terminal says that port 8766 is in use, the server already runs.
+
+To start the server when you log in to Windows, put a shortcut to `Start WhisperX server.cmd` in the Startup folder:
+
+1. Press Win+R.
+2. Type `shell:startup`.
+3. Press Enter. The Startup folder opens.
+4. With the right mouse button, drag `Start WhisperX server.cmd` from the Minerr folder to the Startup folder.
+5. Click **Create shortcuts here**.
 
 The default model is `large-v3-turbo`. To use a different model, add `--model`, for example `--model small`. The `small` model is about 2.5 times faster, but it makes more mistakes in Japanese. For example, it wrote 自身 for 地震, 部身 for 文, and 感じに振り金 for 漢字にふりがな.
 
@@ -998,7 +1012,7 @@ The theme does not change the Anki card. The card follows the night mode of Anki
 
 ## Development
 
-The code is TypeScript with no framework and no bundler. `npm run build` copies `manifest.json`, the HTML pages, and `vendor` to `dist`. Then `tsc` compiles each `.ts` file to a `.js` file in `dist`. `npm run typecheck` checks the types of the extension, the tests, and the scripts.
+The code is TypeScript with no framework and no bundler. `npm run build` copies `manifest.json`, the HTML pages, `vendor`, the WhisperX server (`server/whisper_server.py` and `server/media.py`), and `Start WhisperX server.cmd` to `dist`. Then `tsc` compiles each `.ts` file to a `.js` file in `dist`. `npm run typecheck` checks the types of the extension, the tests, and the scripts.
 
 ### Code map
 
@@ -1078,6 +1092,7 @@ The path of a word from a page to a card:
 | `src/video/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
 | `src/video/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 | `server/whisper_server.py`, `server/media.py` | The local server: WhisperX jobs and the HTTP routes, and the video side (cache keys, `yt-dlp`, the audio cache, and line clips). |
+| `Start WhisperX server.cmd` | Starts the WhisperX server in WSL from the extension folder on Windows. Git writes this file with CRLF line ends (`.gitattributes`), because it is a Windows batch file. |
 | `src/status/stats.ts` | The comprehension score and the recommended sentences of a tab, for the toolbar popup. |
 | `src/status/score.ts` | Pure functions for the score, its label, and the text of the i+1 sentences. |
 | `pages/words.html`, `pages/words.ts` | The word browser page. |
@@ -1093,7 +1108,7 @@ Node.js runs the `.ts` test files directly, without a build. To run the tests:
 1. Run `npm ci`.
 2. Download `JMdict_english.zip` to `test/fixtures/JMdict_english.zip`.
 3. Run `npm run build`. The browser tests load the extension from `dist`.
-4. Run `node test/unit.ts`, `node test/entry-unit.ts`, `node test/card-unit.ts`, `node test/video-unit.ts`, and `node test/netflix-unit.ts`.
+4. Run `node test/unit.ts`, `node test/entry-unit.ts`, `node test/card-unit.ts`, `node test/video-unit.ts`, and `node test/netflix-unit.ts`. `node test/video-unit.ts` also checks that `dist` has `Start WhisperX server.cmd` with CRLF line ends and the two server files.
 5. Close Anki, because the next test uses port 8765.
 6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect. Then run `node test/spelling.ts`, which tests the shared status of the spellings of a word, and `node test/card.ts`. It tests the Lapis note type, the word audio, and the card form, with a mock AnkiConnect and a mock JapanesePod101.
 7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/line-audio.ts`, `node test/media.ts`, `node test/player.ts`, `node test/sites.ts`, and `node test/netflix.ts`, which use the same ports. `node test/line-audio.ts` tests the sentence and the sentence audio of a card from a long YouTube line. `node test/netflix.ts` tests the overlay on a fake Netflix watch page, with the subtitle list of the player, and the card of a protected video.

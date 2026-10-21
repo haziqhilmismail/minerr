@@ -1,5 +1,8 @@
 // Unit tests of the pure video rules: line jumps, keys, play modes, gaps, text clean-up, and card lines.
+// The test of the WhisperX server files in dist needs npm run build first.
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { choices, FILTER_NAMES, type LineState, shownLines, targetWord } from '../src/video/sidebar/sidebar-filter.ts';
 import { summary } from '../src/video/sidebar/sidebar-select.ts';
@@ -181,4 +184,12 @@ test('summary tells what Create N cards did', () => {
   assert.equal(summary(['added', 'skipped', 'added'], 3), 'Added 2 cards. 1 line needs a target word: use + on it.');
   assert.equal(summary(['skipped', 'skipped'], 2), 'Added 0 cards. 2 lines need a target word: use + on each.');
   assert.equal(summary(['added', 'failed'], 4), 'Stopped. Added 1 card. 1 card failed: the popup shows why.');
+});
+
+test('the build puts the WhisperX launcher with CRLF line ends and the two server files in dist', () => {
+  const dist = join(import.meta.dirname, '..', 'dist');
+  const launcher = readFileSync(join(dist, 'Start WhisperX server.cmd'), 'utf8');
+  assert.match(launcher, /^@echo off\r\n/);
+  assert.doesNotMatch(launcher, /(?<!\r)\n/, 'every line ends with CRLF');
+  assert.deepEqual(readdirSync(join(dist, 'server')).sort(), ['media.py', 'whisper_server.py']);
 });
