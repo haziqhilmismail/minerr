@@ -36,11 +36,15 @@ export async function waitForJob(
 // A job as the toolbar popup shows it, without the subtitles.
 export type JobStatus = Exclude<Job, { state: 'done' }> | { state: 'done' };
 
+export const serverHint = (navigatorPlatform: string): string => (navigatorPlatform.startsWith('Win')
+  ? 'Start the WhisperX server: double-click "Start WhisperX server.cmd" in the Minerr folder.'
+  : 'Start the WhisperX server: uv run server/whisper_server.py');
+
 async function send(path: string, init?: RequestInit): Promise<Response> {
   try {
     return await fetch(SERVER + path, init);
   } catch {
-    throw new Error('Start the WhisperX server: uv run server/whisper_server.py');
+    throw new Error(serverHint(navigator.platform));
   }
 }
 

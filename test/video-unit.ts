@@ -1,5 +1,5 @@
-// Unit tests of the pure video rules: line jumps, keys, play modes, gaps, text clean-up, and card lines.
-// The test of the WhisperX server files in dist needs npm run build first.
+// Unit tests of the pure video rules (line jumps, keys, play modes, gaps, text clean-up, card lines, the server hint),
+// and a check of the WhisperX server files that npm run build puts in dist.
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -9,6 +9,7 @@ import { summary } from '../src/video/sidebar/sidebar-select.ts';
 import { autoPause, cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted, onLine } from '../src/video/playback.ts';
 import { isStatus } from '../src/status/status.ts';
 import { keyLabel, keyName, videoKey } from '../src/video/videokeys.ts';
+import { serverHint } from '../src/video/whisper.ts';
 
 const LINES = [{ start: 1, end: 3, text: '一' }, { start: 3, end: 5, text: '二' }, { start: 8, end: 10, text: '三' }];
 
@@ -184,6 +185,14 @@ test('summary tells what Create N cards did', () => {
   assert.equal(summary(['added', 'skipped', 'added'], 3), 'Added 2 cards. 1 line needs a target word: use + on it.');
   assert.equal(summary(['skipped', 'skipped'], 2), 'Added 0 cards. 2 lines need a target word: use + on each.');
   assert.equal(summary(['added', 'failed'], 4), 'Stopped. Added 1 card. 1 card failed: the popup shows why.');
+});
+
+test('serverHint tells a Windows user to double-click the launcher, and other users to run uv', () => {
+  assert.deepEqual(['Win32', 'Linux x86_64', 'MacIntel'].map(serverHint), [
+    'Start the WhisperX server: double-click "Start WhisperX server.cmd" in the Minerr folder.',
+    'Start the WhisperX server: uv run server/whisper_server.py',
+    'Start the WhisperX server: uv run server/whisper_server.py',
+  ]);
 });
 
 test('the build puts the WhisperX launcher with CRLF line ends and the two server files in dist', () => {
