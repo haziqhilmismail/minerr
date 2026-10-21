@@ -4,12 +4,13 @@ import { iPlusOneSentences, type Piece } from '../text/sentence.ts';
 import { type Status, STATUS_NAMES, STATUSES } from '../status/status.ts';
 import { iPlusOne } from '../shared/settings.ts';
 import { watchActive } from './site.ts';
+import { I_PLUS_ONE } from '../shared/design-tokens.ts';
 
 const NAME = 'minerr-i1';
 // A translucent yellow, like a highlighter pen: pale on a light page, olive on a dark page.
 // The subtitle overlay is a dark box over moving video, so it gets a stronger yellow.
 const STYLE = `
-  ::highlight(${NAME}) { background-color: rgba(250, 204, 21, 0.3); }
+  ::highlight(${NAME}) { background-color: ${I_PLUS_ONE}; }
   .minerr-subs-line::highlight(${NAME}), .minerr-subs-line *::highlight(${NAME}) { background-color: rgba(250, 204, 21, 0.5); }
 `;
 const DELAY_MS = 150;
