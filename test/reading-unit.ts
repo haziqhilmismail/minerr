@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, posix } from 'node:path';
 import { test } from 'node:test';
 import kuromoji from 'kuromoji';
-import { chord, statusTarget } from '../src/popup/chord.ts';
+import { chord } from '../src/popup/chord.ts';
 import { groupTokens, lookupCandidates, splitSegments, toHiragana } from '../src/text/group.ts';
 import { inflection, stepsText } from '../src/text/inflection.ts';
 import { entryStars, highs, morae, pitchPattern, stars, toMeta, withMeta } from '../src/dictionary/meta.ts';
@@ -159,12 +159,6 @@ test('sentenceBounds finds the sentence around an offset, with its closing quote
     return text.slice(start, end);
   };
   assert.deepEqual(['雨', '魚', '彼', '次'].map(around), ['昨日は雨だった。', '「猫が魚を食べた！」', 'と彼は言った', '次の行']);
-});
-
-test('statusTarget: a selection wins over the popup, and the subtitle line counts only with one unknown word', () => {
-  const target = (selectedWords: number, popupOpen: boolean, lineUnknowns: number) => statusTarget({ selectedWords, popupOpen, lineUnknowns });
-  assert.deepEqual([target(2, true, 1), target(0, true, 1), target(0, false, 1), target(0, false, 2), target(0, false, 0)],
-    ['selection', 'popup', 'line', null, null]);
 });
 
 test('splitSegments cuts the segments of a run at its text nodes and marks the parts of a split word', async () => {

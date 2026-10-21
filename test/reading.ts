@@ -367,22 +367,40 @@ try {
     assert.equal(await tab.$eval('.ml-word[data-ml-active]', span => span.closest('.minerr-subs-line') !== null), true);
   }
   console.log('N: the popup cycles through the unknown words of the subtitle line');
+  const lineStatuses = () => options.evaluate(() => chrome.storage.local.get(['w:猫', 'w:魚', 'w:食べる']));
+  await tab.keyboard.press('2');
+  await popup.locator('button[aria-pressed="true"]', { hasText: 'Learning' }).waitFor();
+  assert.deepEqual(await lineStatuses(), { 'w:猫': 'learning' }, 'a status key sets the word of a popup that a key opened, with the mouse on no word');
+  await options.evaluate(() => chrome.storage.local.remove('w:猫'));
   await tab.keyboard.press('Escape');
+  // The keys that reach the page, as YouTube gets them: a key that Minerr takes stops before the page sees it.
+  await tab.evaluate(() => {
+    const keys: string[] = [];
+    Object.assign(window, { pageKeys: keys });
+    document.addEventListener('keydown', event => keys.push(event.key));
+  });
+  const pageKeys = () => tab.evaluate(() => (window as unknown as { pageKeys: string[] }).pageKeys.splice(0));
   await tab.keyboard.press('2');
+  await tab.hover('.minerr-subs-line .ml-word[data-ml-lemma="魚"]');
+  await popup.locator('.lemma', { hasText: '魚' }).waitFor();
+  await tab.mouse.move(0, 0);
+  await tab.keyboard.press('3');
   await tab.waitForTimeout(200);
-  assert.deepEqual(await options.evaluate(() => chrome.storage.local.get(['w:猫', 'w:魚', 'w:食べる'])), {},
-    'with three unknown words in the line, a status key does nothing');
-  await options.evaluate(() => chrome.storage.local.set({ 'w:猫': 'known', 'w:魚': 'known' }));
-  await tab.waitForSelector('.minerr-subs-line .ml-word.ml-known[data-ml-lemma="魚"]');
-  await tab.keyboard.press('2');
-  await toast.filter({ hasText: 'Marked 食べる as learning.' }).waitFor();
-  await tab.waitForSelector('.minerr-subs-line .ml-word.ml-learning[data-ml-lemma="食べる"]');
-  assert.equal(await popup.isVisible(), false);
+  assert.deepEqual(await pageKeys(), ['2', '3'], 'with the mouse on no word, the page gets a status key, also while a popup shows');
+  assert.deepEqual(await lineStatuses(), {});
+  await popup.locator('header').hover();
+  await tab.keyboard.press('3');
+  await popup.locator('button[aria-pressed="true"]', { hasText: 'Known' }).waitFor();
+  assert.deepEqual(await lineStatuses(), { 'w:魚': 'known' }, 'a status key with the mouse on a popup sets the word of the popup');
+  assert.deepEqual(await pageKeys(), []);
+  await tab.keyboard.press('Escape');
+  await options.evaluate(() => chrome.storage.local.set({ 'w:猫': 'known', 'w:魚': 'known', 'w:食べる': 'known' }));
+  await tab.waitForSelector('.minerr-subs-line .ml-word.ml-known[data-ml-lemma="食べる"]');
   await tab.keyboard.press('n');
   await tab.waitForTimeout(300);
   assert.equal(await popup.isVisible(), false, 'N with no unknown word in the line opens no popup');
   await options.evaluate(() => chrome.storage.local.remove(['w:猫', 'w:魚', 'w:食べる']));
-  console.log('subtitle line with one unknown word: a status key sets it with no popup');
+  console.log('status keys: the word of a popup that a key opened or of the popup under the mouse; with the mouse on no word, the page gets the key');
   await tab.evaluate(() => {
     const host = document.body.appendChild(Object.assign(document.createElement('div'), { id: 'shadow-field' }));
     host.attachShadow({ mode: 'open' }).append(document.createElement('input'));
@@ -421,10 +439,11 @@ try {
   await tab.screenshot({ path: join(work, 'nested.png') });
   await tab.keyboard.press('Escape');
   assert.deepEqual(await lemmas(), ['猫', '子猫', '猫']);
+  await popups.nth(2).locator('header').hover();
   await tab.keyboard.press('2');
   await popups.nth(2).locator('button[aria-pressed="true"]', { hasText: 'Learning' }).waitFor();
   assert.equal(await popups.nth(1).locator('.definitions .ml-word[data-ml-lemma="猫"]').getAttribute('class'), 'ml-word ml-learning',
-    'a status key sets the word of the top popup, and the words in the popups follow');
+    'a status key on the top popup sets its word, and the words in the popups follow');
   await options.evaluate(() => chrome.storage.local.remove('w:猫'));
   await popups.nth(0).locator('.definitions').click({ position: { x: 4, y: 4 } });
   assert.deepEqual(await lemmas(), ['猫'], 'a click in a popup closes the popups over it');
@@ -432,6 +451,8 @@ try {
   assert.deepEqual(await lemmas(), []);
   console.log('nested popups: Shift + hover on a word in a popup opens a popup over it, up to 4; Esc closes the top one; saved', join(work, 'nested.png'));
 
+  // Away from the words: a popup that closes over a resting mouse gives the word under it a mouseover, and its popup.
+  await tab.mouse.move(0, 0);
   const lookUp = async (from: string, offset: number, length: number) => {
     await tab.evaluate(([selector, start, count]) => {
       const text = document.querySelector(String(selector))?.firstChild;

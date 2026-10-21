@@ -2,7 +2,7 @@ import { type CardFields, definitionHtml, escapeHtml, type NoteDraft } from '../
 import { cardForm } from './cardform.ts';
 import { JAPANESE } from '../text/group.ts';
 import { type HoverMode, hoverDelay, hoverMode } from './hover.ts';
-import { installKeys } from './keys.ts';
+import { installKeys, type PopupKeys } from './keys.ts';
 import type { Entry } from '../dictionary/meta.ts';
 import {
   addLabel, type Anchor, anchorRect, anchorText, createBox, hideBox, isPopup, type Layer, markStatus, mount, position, render,
@@ -13,7 +13,7 @@ import { sentenceAround } from '../text/sentence.ts';
 import { sentenceText, wordRange } from '../text/sentence-text.ts';
 import { setPopupWord } from '../page-text/sentence-hover.ts';
 import { type Active, VIDEO, watchActive } from '../page-text/site.ts';
-import { getStatuses, onStatusChange, setStatus, type Status, STATUSES } from '../status/status.ts';
+import { getStatuses, onStatusChange, STATUSES } from '../status/status.ts';
 import { parseWords, recolor, sameWord, wordFragment, wordOf, wordParts } from '../text/word-spans.ts';
 
 // A word in a popup opens a popup over it with Shift + hover, up to this many popups.
@@ -57,6 +57,9 @@ const boxes: HTMLDivElement[] = [];
 // The word under the mouse, so that Shift can open it, and the timer of a popup that waits for the mouse to stop.
 let hovered: HTMLElement | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
+// The popup that a key or a click opened (Alt+S, N, the play mode, the + of the sidebar), not the mouse on a word.
+// It keeps the status keys until the mouse goes onto or off a word: the user looks at the popup, not at the mouse.
+let keyed: Layer | null = null;
 // The popup whose lookup runs; a newer open or a close makes it stale.
 let opening: View | null = null;
 // The popup with the open card form (E). While it is open, no other popup opens, and Esc closes the form.
@@ -118,7 +121,9 @@ async function wrapWords(root: Element): Promise<void> {
 // The number of words on the page with the status key.
 const countOf = (key: string) => [...document.querySelectorAll<HTMLElement>('.ml-word:not([data-ml-cont])')].filter(span => wordOf(span).key === key).length;
 
-async function open(anchor: Anchor, { lemma, word, headword }: Pick<View, 'lemma' | 'word' | 'headword'>, depth: number, lookup: Promise<Entry[]>): Promise<void> {
+async function open(
+  anchor: Anchor, { lemma, word, headword }: Pick<View, 'lemma' | 'word' | 'headword'>, depth: number, lookup: Promise<Entry[]>, by: 'key' | 'hover',
+): Promise<void> {
   const view: View = { anchor, lemma, word, headword, status: 'unknown', groups: [], inflection: '', count: countOf(word.key) };
   // The popup shows without the line if the parse fails.
   const inflection = call({ type: 'inflection', text: anchorText(anchor) }).catch(error => {
@@ -138,22 +143,27 @@ async function open(anchor: Anchor, { lemma, word, headword }: Pick<View, 'lemma
   const box = (boxes[depth] ??= createBox());
   mount();
   showBox(box);
-  layers.push(render(box, view, { addCard, editCard, close: () => close() }));
+  const layer = render(box, view, { addCard, editCard, close: () => close() });
+  layers.push(layer);
+  if (by === 'key') keyed = layer;
   position(box, anchorRect(anchor));
   markActive();
   const definitions = box.querySelector('.definitions');
   if (definitions && depth + 1 < MAX_LAYERS) wrapWords(definitions).catch(error => console.warn('minerr parse failed', error));
 }
 
-// Opens the popup of a word span (a .ml-word with data-ml-lemma). The subtitle code calls it for keys that pick a word.
-export async function openWord(span: HTMLElement): Promise<void> {
+// Opens the popup of a word span (a .ml-word with data-ml-lemma).
+async function openSpan(span: HTMLElement, by: 'key' | 'hover'): Promise<void> {
   const { mlLemma: lemma, mlHeadword: text, mlHeadwordReading: reading = '' } = span.dataset;
   const depth = depthOf(span);
   // An open card form keeps its popup: a play-mode pause would otherwise throw away the edits.
   if (lemma === undefined || depth >= MAX_LAYERS || editing) return;
   const headword = text === undefined ? undefined : { text, reading };
-  await open({ kind: 'word', span }, { lemma, word: wordOf(span), headword }, depth, call({ type: 'lookup', lemma }));
+  await open({ kind: 'word', span }, { lemma, word: wordOf(span), headword }, depth, call({ type: 'lookup', lemma }), by);
 }
+
+// The subtitle code, the keys, and the + of the sidebar open a popup with this, so the popup keeps the status keys (see keyed).
+export const openWord = (span: HTMLElement): Promise<void> => openSpan(span, 'key');
 
 // Alt+S: looks up the longest dictionary word at the start of the text selection on the page. False if no text is selected.
 function lookupSelection(): boolean {
@@ -174,7 +184,7 @@ function lookupSelection(): boolean {
     const headword = entry ? { text: entry.headword, reading: entry.reading } : undefined;
     // A status key changes the words of a selection first, so the selection goes and the key changes the popup word.
     selection.removeAllRanges();
-    open({ kind: 'text', range, text: text.slice(0, found.length) }, { lemma, word, headword }, 0, Promise.resolve(found.entries));
+    open({ kind: 'text', range, text: text.slice(0, found.length) }, { lemma, word, headword }, 0, Promise.resolve(found.entries), 'key');
   }).catch(error => toast(messageOf(error)));
   return true;
 }
@@ -269,7 +279,7 @@ function consider(span: HTMLElement, shift: boolean, buttonDown: boolean): void 
     buttonDown,
   });
   // A YouTube subtitle line can change during the wait, so open only a word that is still on the page.
-  if (delay !== null) timer = setTimeout(() => { if (span.isConnected) openWord(span); }, delay);
+  if (delay !== null) timer = setTimeout(() => { if (span.isConnected) openSpan(span, 'hover'); }, delay);
 }
 
 // composedPath()[0] is the element under the mouse also inside the shadow root of the popup.
@@ -278,22 +288,23 @@ const wordAt = (event: Event) => {
   return target instanceof Element ? target.closest<HTMLElement>('.ml-word') : null;
 };
 
+// The mouse went onto a word, onto another word, or off a word (span null).
+function hover(span: HTMLElement | null, shift = false, buttonDown = false): void {
+  if (span === hovered) return;
+  hovered = span;
+  keyed = null;
+  if (span) consider(span, shift, buttonDown);
+  else clearTimeout(timer);
+}
+
 // mousemove too: Chrome can skip the mouseover of a word in a popup box that opened under the mouse path.
 for (const type of ['mouseover', 'mousemove'] as const) {
-  document.addEventListener(type, event => {
-    const span = wordAt(event);
-    if (span === hovered) return;
-    hovered = span;
-    if (span) consider(span, event.shiftKey, event.buttons !== 0);
-    else clearTimeout(timer);
-  });
+  document.addEventListener(type, event => hover(wordAt(event), event.shiftKey, event.buttons !== 0));
 }
 
 // The mouse left the window, so no mouseover tells us it left the word.
 document.addEventListener('mouseout', event => {
-  if (event.relatedTarget) return;
-  hovered = null;
-  clearTimeout(timer);
+  if (!event.relatedTarget) hover(null);
 });
 
 // A click in a popup closes the popups over it; a click outside the popups and the page words closes them all.
@@ -315,17 +326,22 @@ window.addEventListener('keydown', event => {
 export const isPopupOpen = (): boolean => layers.length > 0;
 export const closePopups = (): void => close(0);
 
+// A subtitle line can change under a mouse that does not move, so the hovered span must be under the mouse still.
+const pointed: PopupKeys['pointed'] = () => {
+  const word = (keyed && layers.includes(keyed) ? keyed.view.word : null)
+    ?? (hovered?.matches(':hover') ? wordOf(hovered) : null)
+    ?? layers.findLast(layer => layer.box.matches(':hover'))?.view.word;
+  return word ? { word, shown: layers.some(layer => layer.view.word.key === word.key) } : null;
+};
+
 installKeys({
   isOpen: isPopupOpen,
   isEditing: () => editing !== null,
-  setStatus: (status: Status) => {
-    const layer = top();
-    if (layer) setStatus(layer.view.word, status);
-  },
+  pointed,
   addCard,
   editCard,
   close: () => { if (!stopEdit()) close(); },
-  word: () => spanOf(layers[0]),
+  firstSpan: () => spanOf(layers[0]),
   openWord,
   lookupSelection,
 });

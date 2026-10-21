@@ -1,5 +1,5 @@
 // The keys of a page and of the open popup. One table, so a key has one meaning at a time.
-import { chord, focused, isEditable, isField, type PageCommand, statusTarget } from './chord.ts';
+import { chord, focused, isEditable, isField, type PageCommand } from './chord.ts';
 import { toast } from './popup-view.ts';
 import { call, messageOf, serve } from '../shared/rpc.ts';
 import { sentenceHighlight } from '../page-text/sentence-hover.ts';
@@ -13,15 +13,16 @@ export interface PopupKeys {
   isOpen: () => boolean;
   // A card form is open: only Esc works, to close it.
   isEditing: () => boolean;
-  // The status of the word of the top popup.
-  setStatus: (status: Status) => void;
+  // The word that a status key changes: the word of a popup that a key opened, else the word under the mouse (with a popup
+  // or not), else the word of the popup under the mouse. shown: an open popup shows the word. null: the mouse is on no word.
+  pointed: () => { word: WordId; shown: boolean } | null;
   addCard: () => void;
   // Opens the card form of the top popup.
   editCard: () => void;
   // Closes the card form, else the top popup.
   close: () => void;
   // The word span of the first popup, if it is open.
-  word: () => HTMLElement | null;
+  firstSpan: () => HTMLElement | null;
   openWord: (span: HTMLElement) => Promise<void>;
   // Looks up the selected text. False if no text is selected.
   lookupSelection: () => boolean;
@@ -50,7 +51,8 @@ async function markSelection(spans: HTMLElement[], status: Status): Promise<void
   toast(`Marked ${plural(new Set(words.map(word => word.key)).size, 'word')} as ${STATUSES[status].label.toLowerCase()}.`);
 }
 
-async function markLineWord(word: WordId, status: Status): Promise<void> {
+// A word with no popup shows no status buttons, so a toast tells the change.
+async function markWord(word: WordId, status: Status): Promise<void> {
   await setStatus(word, status);
   toast(`Marked ${word.key} as ${STATUSES[status].label.toLowerCase()}.`);
 }
@@ -97,26 +99,24 @@ export function installKeys(popup: PopupKeys): void {
   let active = false;
   watchActive(value => { active = value !== 'off'; });
 
+  // A status key changes the words of a text selection, else the word that the user points at. Else the page gets the key,
+  // so a status key on YouTube seeks when the mouse is on no word.
   const statusKey = (status: Status) => () => {
     const selected = selectedWords();
-    const unknowns = lineUnknowns();
-    switch (statusTarget({ selectedWords: selected.length, popupOpen: popup.isOpen(), lineUnknowns: unknowns.length })) {
-      case 'selection': report(markSelection(selected, status)); return true;
-      case 'popup': popup.setStatus(status); return true;
-      case 'line': {
-        const [span] = unknowns;
-        if (span) report(markLineWord(wordOf(span), status));
-        return span !== undefined;
-      }
-      default: return false;
+    if (selected.length) {
+      report(markSelection(selected, status));
+      return true;
     }
+    const target = popup.pointed();
+    if (target) report(target.shown ? setStatus(target.word, status) : markWord(target.word, status));
+    return target !== null;
   };
   // Opens the popup of the next unknown word of the subtitle line, after the word of the open popup.
   const nextUnknown = () => {
     const unknowns = lineUnknowns();
     if (!unknowns.length) return false;
-    const word = popup.word();
-    const next = unknowns[(unknowns.findIndex(span => sameWord(span, word)) + 1) % unknowns.length];
+    const current = popup.firstSpan();
+    const next = unknowns[(unknowns.findIndex(span => sameWord(span, current)) + 1) % unknowns.length];
     if (!next) return false;
     popup.openWord(next);
     return true;

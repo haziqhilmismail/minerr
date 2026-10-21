@@ -120,7 +120,7 @@ Each unknown word of the page then gets an underline. The other words get their 
 
 The words that Minerr reads have the hand cursor. Move the mouse onto a word and stop it there. The popup of the word opens after 0.3 seconds. To open the popup at once, hold `Shift` while the mouse is on a word. To change when the popup opens, see [Word popup](#word-popup). The popup does not open while text is selected or a mouse button is down.
 
-When the popup is open, use these keys:
+Use these keys on a word. The status keys, `1` to `4`, also work with no popup open. `A`, `E`, and `Esc` work when the popup is open.
 
 | Key | Action |
 | --- | --- |
@@ -131,6 +131,15 @@ When the popup is open, use these keys:
 | `A` | Add an Anki card. |
 | `E` | Edit the card, then send it to Anki. See [Edit a card before you add it](#edit-a-card-before-you-add-it). |
 | `Esc` | Close the card form, or close the popup. |
+
+A status key changes the first of these that applies:
+
+1. The words of a text selection.
+2. The word of a popup that a key opened (`N`, `Alt+S`, or the play mode), until the mouse goes onto or off a word.
+3. The word under the mouse, with or without a popup. If no popup shows the word, a short message shows the change.
+4. The word of the popup under the mouse.
+
+If none applies, the page gets the key. For example, on YouTube `1` to `4` go to 10% to 40% of the video. An open popup does not take the status keys when the mouse is not on it.
 
 The keys do not work when the focus is in a text field.
 
@@ -317,9 +326,9 @@ The overlay text is page text. Minerr underlines its words, and the popup and th
 You can also use the keyboard on the subtitle line:
 
 - Press `N` to open the popup of the first unknown word of the line. Press `N` again to go to the next unknown word. After the last unknown word, `N` goes back to the first one. If no popup is open, YouTube gets `Shift+N` (the next video).
-- If the line has exactly one unknown word, press a status key, `1` to `4`, to set that word. You do not need to open the popup. A short message shows the change.
+- Move the mouse onto a word, then press a status key, `1` to `4`, to set that word. You do not need to open the popup. See [Read and set statuses](#read-and-set-statuses).
 
-These keys work in the Minerr video player too. If the line has no unknown word, the page gets the key, so YouTube keys still work.
+These keys work in the Minerr video player too. If the mouse is on no word, the page gets the status key, so the YouTube number keys still work. If the line has no unknown word, the page gets `N`.
 
 ### YouTube subtitles with times
 
@@ -873,7 +882,7 @@ Japanese text in the definitions of a popup is also cut into words. Hold `Shift`
 
 - `Esc` closes the top popup only.
 - A click in a popup closes the popups over it.
-- The status keys and `A` act on the word of the top popup.
+- `A` and `E` act on the word of the top popup. A status key acts on the word under the mouse, else on the popup under the mouse. See [Read and set statuses](#read-and-set-statuses).
 
 ### Sentence highlight
 

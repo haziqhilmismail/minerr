@@ -27,13 +27,3 @@ export function chord(event: Pick<KeyboardEvent, 'key' | 'code' | 'altKey' | 'sh
   const name = digit ?? (event.altKey && letter ? letter.toLowerCase() : event.key.length === 1 ? event.key.toLowerCase() : event.key);
   return `${event.altKey ? 'alt+' : ''}${event.altKey && event.shiftKey ? 'shift+' : ''}${name}`;
 }
-
-// What a status key (1-4) changes: the words of a text selection, else the word of the open popup,
-// else the one unknown word of the subtitle line. null: the page gets the key.
-export type StatusTarget = 'selection' | 'popup' | 'line' | null;
-
-export function statusTarget({ selectedWords, popupOpen, lineUnknowns }: { selectedWords: number; popupOpen: boolean; lineUnknowns: number }): StatusTarget {
-  if (selectedWords > 0) return 'selection';
-  if (popupOpen) return 'popup';
-  return lineUnknowns === 1 ? 'line' : null;
-}

@@ -355,6 +355,13 @@ try {
   await tab.mouse.move(0, 0);
   await tab.hover('#line .ml-word[data-ml-lemma="魚"]');
   await noPopupAfterRest('shift mode: a rest without Shift opens no popup');
+  await tab.keyboard.press('4');
+  await tab.locator('minerr-popup .toast', { hasText: 'Marked 魚 as ignored.' }).waitFor();
+  await tab.waitForSelector('#line .ml-word.ml-ignored[data-ml-lemma="魚"]');
+  assert.equal(await popup.isVisible(), false, 'a status key on a word with no popup opens no popup');
+  await tab.keyboard.press('2');
+  await tab.waitForSelector('#line .ml-word.ml-learning[data-ml-lemma="魚"]');
+  console.log('shift mode: a status key sets the word under the mouse with no popup');
   await tab.keyboard.down('Shift');
   await popup.locator('.lemma', { hasText: '魚' }).waitFor();
   await tab.keyboard.press('Escape');
@@ -363,6 +370,11 @@ try {
   await tab.keyboard.down('Shift');
   await tab.hover('#line .ml-word[data-ml-lemma="食べる"]');
   await popup.locator('.lemma', { hasText: '食べる' }).waitFor();
+  // With Shift held, the 2 key gives "@" and the 3 key "#".
+  await tab.keyboard.press('Digit2');
+  await popup.locator('button[aria-pressed="true"]', { hasText: 'Learning' }).waitFor();
+  await tab.keyboard.press('Digit3');
+  await popup.locator('button[aria-pressed="true"]', { hasText: 'Known' }).waitFor();
   await tab.keyboard.up('Shift');
   await tab.keyboard.press('Escape');
   await hoverMode('hover');
