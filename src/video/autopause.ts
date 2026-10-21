@@ -1,9 +1,9 @@
-// The pauses that Minerr makes: while the mouse is on the subtitle line or the popup of a subtitle word is open (holds),
+// The pauses that Minerr makes: while the mouse is on the subtitle line or the popup of a word is open (holds; video.ts applies the settings),
 // and after a pause of the play mode, which can play again after some seconds and open the popup of the first unknown word.
 import { openWord } from '../popup/popup.ts';
-import { autoLookup, autoResume, type AutoResume, pauseOnHover } from './videosettings.ts';
+import { autoLookup, autoResume, type AutoResume } from './videosettings.ts';
 
-export type Hold = 'hover' | 'popup';
+export type Hold = 'hover' | 'popup' | 'sidebar';
 
 const holds = new Set<Hold>();
 // True while a hold paused the video, so the end of the last hold plays it again.
@@ -14,7 +14,6 @@ let modePaused = false;
 export type PlaySource = 'user' | 'minerr';
 let nextPlay: PlaySource = 'user';
 let resumeTimer: ReturnType<typeof setTimeout> | undefined;
-let holdOn = true;
 let resumeAfter: AutoResume = 'off';
 let lookup = false;
 
@@ -25,7 +24,7 @@ function resume(video: HTMLVideoElement): void {
 }
 
 export function setHold(video: HTMLVideoElement, hold: Hold, on: boolean): void {
-  if (on && holdOn) {
+  if (on) {
     if (!holds.size && !video.paused) {
       heldPlaying = true;
       video.pause();
@@ -61,6 +60,5 @@ export function modePause(video: HTMLVideoElement, line: HTMLElement): void {
   if (lookup && unknown) openWord(unknown);
 }
 
-pauseOnHover.watch(value => { holdOn = value; });
 autoResume.watch(value => { resumeAfter = value; });
 autoLookup.watch(value => { lookup = value; });

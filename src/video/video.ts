@@ -16,7 +16,7 @@ import { isIPlusOne } from '../text/sentence.ts';
 import { setTrack } from '../status/stats.ts';
 import { type VideoAction, videoKey } from './videokeys.ts';
 import {
-  cleanSubs, gapMode, playMode, type SecondDisplay, secondDisplay, type SubEffect, subEffect, subObscured, subScale,
+  cleanSubs, gapMode, pauseOnHover, pauseOnSidebar, playMode, type SecondDisplay, secondDisplay, type SubEffect, subEffect, subObscured, subScale,
 } from './videosettings.ts';
 import type { AudioSource } from './whisper.ts';
 
@@ -383,16 +383,21 @@ secondDisplay.watch(value => {
 });
 
 // popup.ts marks the word of the open popup with data-ml-active, in the overlay or in the sidebar.
-const wordRoots = [layer, list.panel];
+const hasPopup = (root: HTMLElement) => root.querySelector('.ml-word[data-ml-active]') !== null;
+let holdOverlay = true;
+let holdSidebar = true;
 function syncHolds(): void {
   const playing = video();
   if (!playing || recording) return;
-  setHold(playing, 'hover', line.matches(':hover'));
-  setHold(playing, 'popup', wordRoots.some(root => root.querySelector('.ml-word[data-ml-active]') !== null));
+  setHold(playing, 'hover', holdOverlay && line.matches(':hover'));
+  setHold(playing, 'popup', holdOverlay && hasPopup(layer));
+  setHold(playing, 'sidebar', holdSidebar && hasPopup(list.panel));
 }
+pauseOnHover.watch(value => { holdOverlay = value; syncHolds(); });
+pauseOnSidebar.watch(value => { holdSidebar = value; syncHolds(); });
 line.addEventListener('mouseenter', syncHolds);
 line.addEventListener('mouseleave', syncHolds);
-for (const root of wordRoots) {
+for (const root of [layer, list.panel]) {
   new MutationObserver(syncHolds).observe(root, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-ml-active'] });
 }
 

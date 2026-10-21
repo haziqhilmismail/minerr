@@ -141,6 +141,18 @@ try {
   await video('pause');
   console.log('sidebar: the video plays again after the popup pause, and the list stays where the user scrolled it');
 
+  await setStorage({ pauseOnSidebar: false });
+  await video('play');
+  await hoverWord();
+  await player.waitForTimeout(500);
+  assert.equal(await player.evaluate(() => document.querySelector('video')?.paused), false, 'with the switch off, a sidebar popup does not pause');
+  await player.mouse.move(0, 0);
+  await player.keyboard.press('Escape');
+  await popup.waitFor({ state: 'hidden' });
+  await setStorage({ pauseOnSidebar: true });
+  await video('pause');
+  console.log('sidebar: with "Pause while a word popup in the sidebar is open" off, the video plays on');
+
   const target = await visibleCard();
   const time = await cards.nth(target).locator('time').innerText();
   await cards.nth(target).locator('time').click();

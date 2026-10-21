@@ -3,7 +3,7 @@ import { byId } from '../shared/dom.ts';
 import type { Setting } from '../shared/settings.ts';
 import { keyLabel, VIDEO_KEYS } from './videokeys.ts';
 import {
-  audioPadding, autoLookup, autoResume, cleanSubs, gapMode, pauseOnHover, playMode, secondDisplay, subEffect, subObscured, subScale,
+  audioPadding, autoLookup, autoResume, cleanSubs, gapMode, pauseOnHover, pauseOnSidebar, playMode, secondDisplay, subEffect, subObscured, subScale,
 } from './videosettings.ts';
 
 // bindRadios of pages/options.ts, which binds a radio group to a setting.
@@ -49,6 +49,7 @@ export async function bindVideoOptions(bindRadios: BindRadios): Promise<void> {
   bindCheckbox('clean-subs', cleanSubs);
   bindCheckbox('auto-lookup', autoLookup);
   bindCheckbox('pause-on-hover', pauseOnHover);
+  bindCheckbox('pause-on-sidebar', pauseOnSidebar);
   await Promise.all([
     bindRadios('subEffect', subEffect), bindRadios('gapMode', gapMode), bindRadios('playMode', playMode), bindRadios('autoResume', autoResume),
     bindRadios('secondDisplay', secondDisplay),

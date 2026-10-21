@@ -31,6 +31,8 @@ export const playMode = setting('playMode', isPlayMode, 'normal');
 
 // Pause while the mouse is on the subtitle line or the popup of a subtitle word is open, and play again after.
 export const pauseOnHover = setting('pauseOnHover', isBoolean, true);
+// Pause while the popup of a word in the sidebar is open, and play again after.
+export const pauseOnSidebar = setting('pauseOnSidebar', isBoolean, true);
 
 // Seconds after a pause of the play mode before the video plays again; 'off' waits for the user.
 export const AUTO_RESUME = ['off', '3', '6', '10'] as const;
