@@ -57,8 +57,7 @@ function follows(a: Text, b: Text, cache: Map<Element, Element>): boolean {
 }
 
 // Nodes in page order, cut into runs of text that reads as one: <ruby>暖<rt>あたた</rt></ruby>かくて is one run.
-async function runsOf(sorted: Text[]): Promise<Text[][]> {
-  const cache = new Map<Element, Element>();
+async function runsOf(sorted: Text[], cache: Map<Element, Element>): Promise<Text[][]> {
   const runs: Text[][] = [];
   let since = performance.now();
   for (const node of sorted) {
@@ -98,21 +97,57 @@ async function wrap(runs: Text[][]): Promise<void> {
   });
 }
 
+// True for a node whose block is on the screen or within one screen of it.
+function nearViewport(cache: Map<Element, Element>): (node: Text) => boolean {
+  const rects = new Map<Element, DOMRect>();
+  return node => {
+    const parent = node.parentElement;
+    if (!parent) return false;
+    const block = blockOf(parent, cache);
+    const rect = rects.get(block) ?? block.getBoundingClientRect();
+    rects.set(block, rect);
+    return rect.bottom >= -innerHeight && rect.top <= 2 * innerHeight;
+  };
+}
+
+const nearFirst = <T>(items: T[], near: (item: T) => boolean): T[] => [...items.filter(near), ...items.filter(item => !near(item))];
+
+// Parses the runs in batches. at is the scroll position of the last order; after a scroll, the runs near the viewport go first.
+// The rects are read after a scroll only, because a read after each batch forced a layout of the page after each batch.
+// ponytail: scrollY sees the window only, so a page that scrolls inside an element keeps page order; a scroll listener on
+// document in the capture phase would see the inner scroll too.
+async function wrapAll(runs: Text[][], cache: Map<Element, Element>, at: number): Promise<void> {
+  let left = runs;
+  while (left.length) {
+    if (scrollY !== at) {
+      at = scrollY;
+      const near = nearViewport(cache);
+      left = nearFirst(left, run => run.some(near));
+    }
+    await wrap(left.slice(0, BATCH)).catch(error => console.warn('minerr parse failed', error));
+    left = left.slice(BATCH);
+  }
+}
+
 async function flush(): Promise<void> {
-  const first = ordered;
-  const added = inPageOrder([...pending]);
+  const lists = [ordered, inPageOrder([...pending])];
   ordered = [];
   pending.clear();
-  const runs = [...await runsOf(first), ...await runsOf(added)];
-  for (let i = 0; i < runs.length; i += BATCH) {
-    await wrap(runs.slice(i, i + BATCH)).catch(error => console.warn('minerr parse failed', error));
-  }
+  const cache = new Map<Element, Element>();
+  const at = scrollY;
+  const near = nearViewport(cache);
+  // The nodes near the viewport go first, as lists of their own, so their words show before the runs of the rest are cut.
+  // A run never crosses blocks (follows), so a cut by block keeps every run whole.
+  const parts = [...lists.map(list => list.filter(near)), ...lists.map(list => list.filter(node => !near(node)))];
+  for (const list of parts) await wrapAll(await runsOf(list, cache), cache, at);
   timer = null;
   if (pending.size || ordered.length) schedule();
 }
 
-function schedule(): void {
-  timer ??= setTimeout(flush, 50);
+// The observer waits this long for the burst of a page change to end; the first walk of a page has its nodes already.
+const BURST_MS = 50;
+function schedule(delay = BURST_MS): void {
+  timer ??= setTimeout(flush, delay);
 }
 
 // Gives root its text back: each word span becomes text, and the text nodes that we made merge again, so a word that the
@@ -186,7 +221,7 @@ watchActive(active => {
   if (!started || (pageOn && !was)) {
     started = true;
     collect(document.body, node => ordered.push(node));
-    schedule();
+    schedule(0);
   }
   // When the page text goes off, no word spans stay outside the subtitle overlay.
   if (active === 'video') unwrap(document.body, inVideo);
