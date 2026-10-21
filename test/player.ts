@@ -402,7 +402,7 @@ try {
   assert.equal(await listTop(), 3000, 'the list does not scroll under the mouse');
   await player.mouse.move(0, 0);
   await paused.waitFor({ state: 'hidden' });
-  assert.equal(await listTop(), 0, 'the list goes to the current line when the mouse leaves');
+  assert.equal(await listTop(), 3000, 'the list does not scroll when the mouse leaves');
   console.log('sidebar: the list stops to follow the video while the mouse is over it, with a "Scroll paused" badge');
   await player.keyboard.press('g');
 

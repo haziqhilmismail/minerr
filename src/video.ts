@@ -390,10 +390,12 @@ subScale.watch(value => {
 for (const type of ['play', 'pause', 'seeked', 'timeupdate']) {
   document.addEventListener(type, event => {
     if (event.target !== video()) return;
-    if (type === 'play' && !recording) played();
+    // Only a play of the user takes the sidebar back to the current line, not the end of a pause of Minerr.
+    const userPlay = type === 'play' && !recording && played() === 'user';
     if (type === 'play' || type === 'seeked') heldIndex = -1;
     if (type === 'seeked' && playOnce && !onLine(playOnce.segment, lineTime())) playOnce = null;
     if (type !== 'timeupdate') lastTime = lineTime();
     follow();
+    if (userPlay) list.resumeFollow();
   }, true);
 }

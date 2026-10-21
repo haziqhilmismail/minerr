@@ -1,6 +1,5 @@
 // The pauses that Minerr makes: while the mouse is on the subtitle line or the popup of a subtitle word is open (holds),
 // and after a pause of the play mode, which can play again after some seconds and open the popup of the first unknown word.
-import { play } from './dom.ts';
 import { openWord } from './popup.ts';
 import { autoLookup, autoResume, type AutoResume, pauseOnHover } from './videosettings.ts';
 
@@ -11,11 +10,19 @@ const holds = new Set<Hold>();
 let heldPlaying = false;
 // True from a pause of the play mode until the video plays again.
 let modePaused = false;
+// Who started the next play event: Minerr at the end of a hold or with the auto resume, else the user.
+export type PlaySource = 'user' | 'minerr';
+let nextPlay: PlaySource = 'user';
 let resumeTimer: ReturnType<typeof setTimeout> | undefined;
 let holdOn = true;
 let resumeAfter: AutoResume = 'off';
 let lookup = false;
 
+
+function resume(video: HTMLVideoElement): void {
+  nextPlay = 'minerr';
+  video.play().catch(() => { nextPlay = 'user'; });
+}
 
 export function setHold(video: HTMLVideoElement, hold: Hold, on: boolean): void {
   if (on && holdOn) {
@@ -26,15 +33,18 @@ export function setHold(video: HTMLVideoElement, hold: Hold, on: boolean): void 
     holds.add(hold);
   } else if (holds.delete(hold) && !holds.size && heldPlaying) {
     heldPlaying = false;
-    play(video);
+    resume(video);
   }
 }
 
-// The user played the video, or it played after a hold: the pauses of Minerr are over.
-export function played(): void {
+// The video played: the pauses of Minerr are over.
+export function played(): PlaySource {
+  const source = nextPlay;
+  nextPlay = 'user';
   heldPlaying = false;
   modePaused = false;
   clearTimeout(resumeTimer);
+  return source;
 }
 
 // The play mode paused the video at a line; line is the overlay line with the words of that line.
@@ -44,7 +54,7 @@ export function modePause(video: HTMLVideoElement, line: HTMLElement): void {
   clearTimeout(resumeTimer);
   if (resumeAfter !== 'off') {
     resumeTimer = setTimeout(() => {
-      if (modePaused && !holds.size && video.paused) play(video);
+      if (modePaused && !holds.size && video.paused) resume(video);
     }, Number(resumeAfter) * 1000);
   }
   const unknown = line.querySelector<HTMLElement>('.ml-word.ml-unknown');

@@ -12,8 +12,8 @@ import { applyTheme } from './theme.ts';
 import { themed } from './tokens.ts';
 import { wordOf } from './words.ts';
 
-// The list does not follow the video under the mouse, or while the user selects a target word.
-const PAUSED = ':hover, :has(.pick)';
+// The list does not follow the video under the mouse, or after the user scrolled it (data-scroll-paused).
+const PAUSED = ':hover, [data-scroll-paused]';
 
 // The open panel, for the rules of the page around it.
 export const SIDE_OPEN = ':root[data-minerr-side]:not([data-minerr-off])';
@@ -100,6 +100,8 @@ export interface LineList {
   toggleBookmark: (index: number) => void;
   toggle: () => void;
   setCurrent: (index: number) => void;
+  // The user played the video: the list follows it again, from the current line.
+  resumeFollow: () => void;
   // The index of the line of a row that holds node, or null.
   rowIndex: (node: Node) => number | null;
 }
@@ -212,6 +214,7 @@ export function createLineList(actions: LineActions): LineList {
 
   async function addFor(card: Card, span: HTMLElement): Promise<void> {
     closePick();
+    follow(card.index);
     await actions.still(card.index);
     if (span.isConnected) await addWordCard(span);
   }
@@ -262,14 +265,19 @@ export function createLineList(actions: LineActions): LineList {
       mark: button('mark', '★', 'Bookmark the line (B)'),
     };
     const play = button('play', '▶', 'Play the line');
-    play.addEventListener('click', () => actions.play(index));
+    play.addEventListener('click', () => {
+      follow(index);
+      actions.play(index);
+    });
     card.add.addEventListener('click', () => plus(card));
     card.mark.addEventListener('click', () => toggleBookmark(index));
     const cardHead = Object.assign(document.createElement('div'), { className: 'card-head' });
     cardHead.append(Object.assign(document.createElement('time'), { textContent: minutes(segment.start) }), play, card.add, card.mark);
     card.row.append(cardHead, card.text);
     card.row.addEventListener('click', event => {
-      if (!(event.target instanceof Element && event.target.closest('.ml-word, button, .pick'))) actions.seek(index);
+      if (event.target instanceof Element && event.target.closest('.ml-word, button, .pick')) return;
+      follow(index);
+      actions.seek(index);
     });
     cardOf.set(card.row, card);
     return card;
@@ -283,6 +291,7 @@ export function createLineList(actions: LineActions): LineList {
     cards = panel.hidden ? [] : segments.map(makeCard);
     list.replaceChildren(...cards.map(card => card.row));
     current = -1;
+    panel.removeAttribute('data-scroll-paused');
     apply();
   }
 
@@ -321,19 +330,27 @@ export function createLineList(actions: LineActions): LineList {
   close.addEventListener('click', toggle);
 
   // scrollTop, not scrollIntoView, which also scrolls the page around the list.
-  function center(): void {
-    const row = cards[current]?.row;
+  function center(index: number): void {
+    const row = cards[index]?.row;
     if (row && !row.hidden) list.scrollTop = row.offsetTop - (list.clientHeight - row.offsetHeight) / 2;
   }
-  // While PAUSED, the "Scroll paused" badge shows; the list goes to the current line when the mouse leaves.
-  panel.addEventListener('pointerleave', center);
+
+  // A scroll of the user (wheel, scroll bar, keys, a click that is no seek) stops the follow until the video plays,
+  // or until the user goes to a line. The mouse that leaves the panel does not scroll the list.
+  function follow(index = current): void {
+    panel.removeAttribute('data-scroll-paused');
+    center(index);
+  }
+  for (const type of ['wheel', 'pointerdown', 'keydown']) {
+    list.addEventListener(type, () => panel.setAttribute('data-scroll-paused', ''), { passive: true });
+  }
 
   function setCurrent(index: number): void {
     if (index === current) return;
     cards[current]?.row.removeAttribute('aria-current');
     current = index;
     cards[index]?.row.setAttribute('aria-current', 'true');
-    if (!panel.matches(PAUSED)) center();
+    if (!panel.matches(PAUSED)) center(index);
   }
 
   return {
@@ -346,6 +363,7 @@ export function createLineList(actions: LineActions): LineList {
     toggleBookmark,
     toggle,
     setCurrent,
+    resumeFollow: () => follow(),
     rowIndex: node => {
       const row = node instanceof Element ? node.closest('li') : null;
       return (row && cardOf.get(row)?.index) ?? null;

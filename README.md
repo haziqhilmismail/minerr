@@ -516,7 +516,12 @@ The word of the card from **+**:
 - If the line has no unknown word, the list shows all words of the line.
 - To close the list, click **Cancel**, click **+** again, or press `Esc`. Use `Tab` and `Enter` to select a word with the keyboard.
 
-The sidebar follows the video. The card of the current line has a teal border, and the list scrolls to keep that card in view. While the mouse is on the sidebar, or while a word list of **+** is open, the list does not scroll, and the sidebar shows **Scroll paused**. When the mouse leaves the sidebar, the list goes to the current line.
+The sidebar follows the video. The card of the current line has a teal border, and the list scrolls to keep that card in view. While the sidebar does not follow the video, it shows **Scroll paused**:
+
+- While the mouse is on the sidebar, the list does not scroll. When the mouse leaves the sidebar, the list stays where it is.
+- When you scroll the list, or click in it, the list stays where you put it. A pause of the video for a popup does not change this.
+- When you play the video, the list goes to the current line and follows the video again.
+- When you click a card, its time, **▶**, or **+**, the list goes to that line and follows the video again.
 
 With only the YouTube captions that Minerr copies from the player, the sidebar shows a message. These captions have no times.
 
@@ -1045,6 +1050,8 @@ The WhisperX server has two endpoints for the player:
 `node test/media.ts` tests the i+1 highlight and the player, with a mock AnkiConnect and a mock WhisperX server. It uses port 8765 and port 8766. `npm test` runs it after `node test/subtitles.ts`.
 
 `node test/pages-unit.ts` tests the pure functions of the comprehension score, the word browser, and the reader. `node test/pages.ts` tests the comprehension score in the toolbar popup, the word browser, and the reader in Chromium. `npm test` runs both after `node test/media.ts`.
+
+`node test/sidebar.ts` tests the subtitle sidebar in the player: when the list follows the video. It uses port 8765 and `ffmpeg`. `npm test` runs it after `node test/player.ts`.
 
 ## Third-party data
 
