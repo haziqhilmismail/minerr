@@ -426,7 +426,7 @@ try {
   assert.equal(await popups.nth(1).locator('.definitions .ml-word[data-ml-lemma="猫"]').getAttribute('class'), 'ml-word ml-learning',
     'a status key sets the word of the top popup, and the words in the popups follow');
   await options.evaluate(() => chrome.storage.local.remove('w:猫'));
-  await popups.nth(0).locator('.definitions').click();
+  await popups.nth(0).locator('.definitions').click({ position: { x: 4, y: 4 } });
   assert.deepEqual(await lemmas(), ['猫'], 'a click in a popup closes the popups over it');
   await tab.keyboard.press('Escape');
   assert.deepEqual(await lemmas(), []);

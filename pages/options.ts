@@ -30,7 +30,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 const swatch = (color: string) => {
-  const dot = el('span', { className: 'swatch' });
+  const dot = el('span', { className: 'dot' });
   dot.style.background = color;
   return dot;
 };

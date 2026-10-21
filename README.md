@@ -13,9 +13,9 @@ Minerr does these steps in the browser:
 
 ![A Japanese Wikipedia article with status underlines and the popup for 狭義](docs/page.png)
 
-![A YouTube video with WhisperX subtitles in the Minerr overlay and the popup for 例えば](docs/video.png)
+![The Minerr video player with a subtitle line in the overlay, the subtitle sidebar, and the popup for 魚](docs/video.png)
 
-The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedia.org/wiki/%E3%83%8D%E3%82%B3) (CC BY-SA 4.0) and an NHK やさしいことばニュース video on YouTube.
+The first screenshot shows the Japanese Wikipedia article [ネコ](https://ja.wikipedia.org/wiki/%E3%83%8D%E3%82%B3) (CC BY-SA 4.0). The second shows the video player with a test clip and a subtitle file.
 
 ## Features
 
@@ -1094,11 +1094,11 @@ Node.js runs the `.ts` test files directly, without a build. To run the tests:
 
 More scripts:
 
-- `node test/screenshots.ts` saves screenshots of the page, the popup, and the options page to `/tmp/minerr-ui`.
+- `node test/screenshots.ts` saves a light and a dark screenshot of each surface to `/tmp/minerr-ui`: the page, the popup, the card form, the toolbar popup, the options page, the video player, the subtitle sidebar, the reader, and the word browser. Set `OUT_DIR` for a different folder, `EXTENSION_DIR` for a different build, and `SUFFIX` to add a suffix to the file names, for example `SUFFIX=before`.
 - `node test/card-preview.ts` saves screenshots of the card to `/tmp/minerr-card`.
 - `node test/page-perf.ts [paragraphs] [runs]` measures the first parse of a long article, 2000 paragraphs and 3 runs by default: the time until the first word in the viewport shows, with the viewport at the top and in the middle of the page, the time until all the words show, and the longest tasks. With `test/fixtures/JMdict_english.zip` it installs JMdict and uses distinct words. It fails when the first word in the viewport takes more than 400 ms after the page load on a warm run.
 - `node test/parse-time.ts` imports the real JMdict and prints the parse time of a long page. To time a different build, set `EXTENSION_DIR`.
-- `node test/readme-shots.ts` saves the two screenshots at the top of this README to `docs/`. It needs the network and a WhisperX server that has the subtitles of the video.
+- `node test/readme-shots.ts` saves screenshots of a Japanese Wikipedia article and a YouTube video to `docs/page.png` and `docs/video.png`. It needs the network and a WhisperX server that has the subtitles of the video. `node test/readme-shots.ts page` saves only `docs/page.png`, and needs no server.
 - If the system has no Japanese font, set `CJK_FONT_DIR` to a folder that contains one. Put an emoji font in the same folder, for example `seguiemj.ttf` from Windows. Without it, the `⭐` tag shows as a box.
 - If Chromium cannot start because a library such as `libnss3.so` is missing, set `LD_LIBRARY_PATH` to a folder with the missing libraries.
 - If you update kuromoji, run `npm run vendor` and commit the `vendor/kuromoji` folder.

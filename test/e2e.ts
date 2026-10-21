@@ -290,7 +290,9 @@ try {
   console.log('check connection:', await options.textContent('#anki-status'));
 
   const background = (page: Page, selector: string) => page.$eval(selector, node => getComputedStyle(node).backgroundColor);
-  const [LIGHT_PAGE, DARK_PAGE, DARK_POPUP] = ['rgb(242, 246, 247)', 'rgb(15, 29, 36)', 'rgb(21, 39, 48)'];
+  // The popup is glass over the page, so its background is not one color: its color scheme tells its theme.
+  const popupScheme = () => tab.$eval('minerr-popup >> .popup', node => getComputedStyle(node).colorScheme);
+  const [LIGHT_PAGE, DARK_PAGE] = ['rgb(242, 246, 247)', 'rgb(15, 29, 36)'];
   const action = await context.newPage();
   for (const page of [options, action, tab]) await page.emulateMedia({ colorScheme: 'light' });
   await action.goto(`chrome-extension://${extensionId}/pages/action.html`);
@@ -304,18 +306,17 @@ try {
   await tab.mouse.move(0, 0);
   await tab.hover('#line .ml-word[data-ml-lemma="猫"]');
   await popup.locator('.lemma', { hasText: '猫' }).waitFor();
-  assert.equal(await background(tab, 'minerr-popup >> .popup'), DARK_POPUP);
+  assert.equal(await popupScheme(), 'dark');
   console.log('theme Dark on a light system: options, toolbar menu and word popup are dark');
   await options.click('label:has(input[name="theme"][value="system"])');
   await tab.waitForFunction(() => document.querySelector('minerr-popup')?.shadowRoot?.querySelector<HTMLElement>('.popup')?.dataset.theme === 'light');
-  assert.notEqual(await background(tab, 'minerr-popup >> .popup'), DARK_POPUP);
+  assert.equal(await popupScheme(), 'light');
   assert.equal(await background(options, 'body'), LIGHT_PAGE);
   for (const page of [options, action, tab]) await page.emulateMedia({ colorScheme: 'dark' });
   await options.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
   await action.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
   await tab.waitForFunction(() => document.querySelector('minerr-popup')?.shadowRoot?.querySelector<HTMLElement>('.popup')?.dataset.theme === 'dark');
-  assert.deepEqual([await background(options, 'body'), await background(action, 'body'), await background(tab, 'minerr-popup >> .popup')],
-    [DARK_PAGE, DARK_PAGE, DARK_POPUP]);
+  assert.deepEqual([await background(options, 'body'), await background(action, 'body'), await popupScheme()], [DARK_PAGE, DARK_PAGE, 'dark']);
   for (const page of [options, action, tab]) await page.emulateMedia({ colorScheme: null });
   await action.close();
   await tab.keyboard.press('Escape');

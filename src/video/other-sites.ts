@@ -2,16 +2,19 @@
 // from the site through the server (yt-dlp), or from WhisperX. The toolbar popup starts it, so other pages load nothing more.
 import { parseSubtitles, type SubtitleSegment } from './captions.ts';
 import { followVideo } from './overlay.ts';
+import { GLASS } from '../shared/design-tokens.ts';
 import { call, messageOf, serve } from '../shared/rpc.ts';
 import { waitForJob } from './whisper.ts';
 
 const POLL_MS = 2000;
 const BAR_STYLE = `
-  .minerr-site-bar { position: absolute; top: 8px; left: 8px; display: flex; flex-wrap: wrap; gap: 4px; pointer-events: auto;
-    font: 600 12px/1.6 system-ui, sans-serif; }
-  .minerr-site-bar button { padding: 3px 9px; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 6px;
-    background: rgba(16, 16, 22, 0.85); color: #ececf1; font: inherit; cursor: pointer; }
-  .minerr-site-bar button:hover { background: rgba(40, 40, 52, 0.95); }
+  .minerr-site-bar { position: absolute; top: var(--space-3); left: var(--space-3); display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1);
+    border-radius: var(--radius-pill); ${GLASS}
+    box-shadow: var(--edge), var(--shadow-2); pointer-events: auto; font: 600 var(--text-footnote)/1.4 var(--font-ui); }
+  .minerr-site-bar button { min-height: 32px; padding: 0 var(--space-3); border: 0; border-radius: var(--radius-pill); background: transparent;
+    color: var(--text); font: inherit; cursor: pointer; transition: background-color var(--fast) var(--ease); }
+  .minerr-site-bar button:hover { background: var(--raised); }
+  .minerr-site-bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 `;
 
 const area = (video: HTMLVideoElement) => {

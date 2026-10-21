@@ -1,5 +1,6 @@
 // Saves the README screenshots of real sites to docs/: a Japanese Wikipedia article and a YouTube video with WhisperX subtitles.
 // Needs test/fixtures/JMdict_english.zip, the network, and a WhisperX server on 127.0.0.1:8766 that has the subtitles of VIDEO.
+// With the argument "page", it saves only docs/page.png, which needs no server.
 // If the system has no Japanese font, set CJK_FONT_DIR to a folder of fonts.
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -17,7 +18,7 @@ const LEARNING = ['生活', '紹介', '住む', '分かる', '必要'];
 
 const work = mkdtempSync(join(tmpdir(), 'minerr-readme-'));
 useCjkFonts(work);
-const { context, extensionId } = await launch(join(work, 'profile'));
+const { context, extensionId } = await launch(join(work, 'profile'), null, ['ja.wikipedia.org']);
 
 const options = await context.newPage();
 await options.goto(`chrome-extension://${extensionId}/pages/options.html`);
@@ -36,8 +37,12 @@ await target.scrollIntoViewIfNeeded();
 await news.mouse.wheel(0, -120);
 await target.hover();
 await news.locator('minerr-popup .popup li').first().waitFor();
-await news.screenshot({ path: join(docs, 'page.png') });
+await news.screenshot({ path: join(docs, 'page.png'), animations: 'disabled' });
 console.log('saved docs/page.png from', news.url());
+if (process.argv[2] === 'page') {
+  await context.close();
+  process.exit(0);
+}
 
 const video = await context.newPage();
 await video.setViewportSize({ width: 1280, height: 800 });
@@ -53,7 +58,7 @@ await word.waitFor({ timeout: 30000 });
 await video.mouse.move(0, 0);
 await word.hover();
 await video.locator('minerr-popup .popup li').first().waitFor();
-await video.screenshot({ path: join(docs, 'video.png') });
+await video.screenshot({ path: join(docs, 'video.png'), animations: 'disabled' });
 console.log('saved docs/video.png');
 
 await context.close();
