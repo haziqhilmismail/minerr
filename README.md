@@ -991,6 +991,32 @@ The theme does not change the Anki card. The card follows the night mode of Anki
 
 The code is TypeScript with no framework and no bundler. `npm run build` copies `manifest.json`, the HTML pages, and `vendor` to `dist`. Then `tsc` compiles each `.ts` file to a `.js` file in `dist`. `npm run typecheck` checks the types of the extension, the tests, and the scripts.
 
+### Code map
+
+The extension code is in `src/`, with one folder for each concern. The extension pages are in `pages/`. Of the extension files, only `manifest.json`, `background.ts`, and `content.ts` stay at the top, because Chrome starts there.
+
+| Folder | What it holds |
+| --- | --- |
+| `pages/` | The extension pages: the toolbar popup, the options, the video player, the reader, the word browser, and the offscreen document that parses text. Each page is an `.html` file and a `.ts` file. |
+| `src/text/` | Japanese text to words: kuromoji tokens to words, the dictionary entry of each word, inflections, sentences, and the word spans of parsed text, on a page and in a subtitle line. |
+| `src/dictionary/` | The Yomitan dictionaries: the zip reader, the import, the IndexedDB storage, the frequency and pitch data, and the tag colors. |
+| `src/page-text/` | The page text of a website: the parse of the page, the switch for each site, furigana, pitch colors, the i+1 highlight, and the sentence highlight. |
+| `src/popup/` | The word popup, its card form, the rule for when it opens, and the keys of the page and the popup. |
+| `src/video/` | The subtitles of a video: the overlay, the subtitle files, the play modes, the video keys and settings, the audio record, and the client of the Minerr server. `sidebar/` holds the subtitle sidebar. `youtube/` and `netflix/` hold the parts that only YouTube or Netflix uses. |
+| `src/anki/` | The AnkiConnect client, the note types (Lapis), and the sentence audio and word audio of a card. |
+| `src/reader/` | The text files and EPUB files of the reader page. |
+| `src/status/` | The word statuses, the list of the word browser, and the comprehension score. |
+| `src/shared/` | Code that all parts use: the messages, the settings, the type guards for data from outside, the DOM helpers, the theme, and the design tokens. |
+
+The path of a word from a page to a card:
+
+1. `content.ts` loads `src/page-text/`, `src/popup/`, `src/status/stats.ts`, and the subtitle overlay of `src/video/` into each tab.
+2. A module sends a message (`src/shared/rpc.ts`) to the service worker, `background.ts`.
+3. The service worker sends the text to the offscreen document, `pages/offscreen.ts`. It parses the text with kuromoji and finds the words in the dictionaries.
+4. When you add a card, the service worker sends the note to Anki through AnkiConnect (`src/anki/anki.ts`).
+
+### Files
+
 | Path | Purpose |
 | --- | --- |
 | `manifest.json` | The Manifest V3 declaration. Its paths are the `.js` files in `dist`. |
@@ -1050,6 +1076,8 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `pages/reader.html`, `pages/reader.ts` | The reader page for files and pasted text. It loads `src/page-text/page.ts`, `src/popup/popup.ts`, `src/page-text/iplusone.ts`, and `src/status/stats.ts` itself. |
 | `src/reader/epub.ts` | The EPUB reader. It makes new DOM nodes from an allowlist of tags, with no attributes from the file. |
 | `src/reader/book.ts` | Pure functions of the reader: the text parts, the page keys, the page turn, and the saved place. |
+
+### Tests
 
 Node.js runs the `.ts` test files directly, without a build. To run the tests:
 
