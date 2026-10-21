@@ -19,7 +19,7 @@ The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedi
 
 ## Features
 
-- The extension parses the text of a page, and also the text that appears later. The page text is off on each site until you turn it on with `Alt+Shift+D` or the toolbar menu. The Minerr subtitle overlay works on all sites. The subtitles of Netflix are page text, so turn on the page text for netflix.com to parse them.
+- The extension parses the text of a page, and also the text that appears later. The page text is off on each site until you turn it on with `Alt+Shift+D` or the toolbar menu. The Minerr subtitle overlay works on all sites.
 - It joins a verb or adjective with its inflections into one word. For example, 食べなかった is one word with the dictionary form 食べる.
 - It joins nouns into the longest word that the dictionary has. For example, 食肉目ネコ科ネコ属 is three words: 食肉目, ネコ科, and ネコ属.
 - All the spellings of one dictionary word share one status. For example, 猫, ねこ, and ネコ are one word.
@@ -32,6 +32,7 @@ The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedi
 - You can edit each field of a card before Minerr sends it.
 - It can mark the words of your mature Anki cards as known.
 - On YouTube, it shows the subtitles in its own large overlay at the bottom center of the video. You can look up and mine the words in the overlay. The overlay also works on other video sites and on video files from your computer.
+- On Netflix, it shows the Japanese subtitles of the title in its overlay, with their times. The keys, the play modes, and the subtitle sidebar work as on YouTube. A card from Netflix gets no line audio and no screenshot, because the video has DRM.
 - A card from a subtitle line gets the audio of the line.
 - It can make Japanese subtitles for a YouTube video with WhisperX, in a small server on your computer.
 - It shows a comprehension score for each page or video, and the recommended i+1 sentences.
@@ -447,9 +448,27 @@ The keys, the play modes, the subtitle sidebar, and the sentence audio work as o
 
 Limits:
 
-- `yt-dlp` cannot download from a site with DRM, for example Netflix. The overlay then shows the error of the server. Use a subtitle file, if you have one. The sentence audio then comes from a recording in the tab, if the site allows it.
+- `yt-dlp` cannot download from a site with DRM. The overlay then shows the error of the server. Use a subtitle file, if you have one. The sentence audio then comes from a recording in the tab, if the site allows it.
 - The video must be in the page itself. Some sites play the video in a frame, and Minerr does not see a video in a frame.
-- Minerr does not copy the captions of Netflix or other sites. On YouTube only, it copies the captions of the player.
+- Minerr copies the captions of the player on YouTube and on Netflix only. On other sites, it does not copy the captions.
+
+### Netflix
+
+On a Netflix watch page, Minerr shows its overlay with the Japanese subtitles of the title, with their times. You do not need the server and you do not need to click anything.
+
+1. Open a title on netflix.com. The overlay shows the Japanese subtitles when the player starts the video.
+2. If the player shows Japanese subtitles, the overlay shows the same track. Else the overlay shows the regular Japanese subtitles, before the Japanese closed captions.
+3. Turn on the second subtitles (`Shift+W`) to see the English track under the Japanese line.
+
+How it works: the Netflix player asks Netflix for a list of the subtitle tracks of the title. Minerr reads that list in the tab, and asks for the WebVTT format of the tracks. Then it reads the Japanese track from the Netflix servers, as the player does. Minerr does not download the video and does not touch the DRM of the video. A seek from a Minerr key goes through the player of Netflix.
+
+Limits:
+
+- The video has DRM, so Chrome gives no sound and no picture of it to an extension. A card from Netflix gets the line as the sentence and the word audio from JapanesePod101. It gets no line audio and no screenshot. The overlay says so when you add the card.
+- Some Japanese titles have subtitles as images. The overlay says so, and the captions of Netflix stay. Minerr cannot read them.
+- WhisperX does not work on Netflix, because the server cannot download the audio.
+- Forced subtitles (the few foreign lines of a film) are not the dialogue, so the overlay does not show them.
+- The toolbar button **Subtitles for the video of this page** tells the state of the overlay on Netflix, for example the number of lines.
 
 ## Sentence audio
 
@@ -465,6 +484,8 @@ The audio comes from one of these sources:
 Minerr gives all sentence audio one loudness, so a card is not too loud or too quiet. The server sets each MP3 file to -16 LUFS (EBU R128). The tab recording only evens out the level: the start of a recording can be a little louder or quieter. A change of the volume of the video does not change the recording.
 
 The sentence audio needs subtitles with times. A card from the YouTube captions that Minerr copies from the player has no sentence audio.
+
+A video with DRM (Netflix and other sites) gives no sound to a recording and no picture to a screenshot. A card from such a video gets no sentence audio and no screenshot. It gets the word audio from JapanesePod101, if the note type has a field for it. The overlay shows **Protected video: the card gets no line audio and no screenshot.**
 
 The `SentenceAudio` field is new. If your note type is from an earlier version, Anki asks for a full sync one time after the update. Sync all your devices before you update Minerr. See [The note type](#the-note-type).
 
@@ -975,6 +996,10 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/subtitles.ts` | The subtitle overlay on YouTube. |
 | `src/youtube-captions.ts` | The YouTube captions with times, read in the tab without the server, and the choice of the caption track. |
 | `src/youtube-main.ts` | Runs in the page of YouTube: it tells `src/youtube-captions.ts` the caption tracks and the token of the player. |
+| `src/askpage.ts` | A question to the script of Minerr in the page itself (YouTube, Netflix), and its reply. |
+| `src/netflix.ts` | The subtitle overlay on Netflix: the Japanese track of the title with times, read in the tab. |
+| `src/netflix-captions.ts` | The subtitle list of a Netflix title, the choice of the track, and the TTML reader. |
+| `src/netflix-main.ts` | Runs in the page of Netflix: it keeps the subtitle list that the player reads, asks for WebVTT, and seeks through the player. |
 | `src/status.ts` | The word statuses, their colors, and their storage. |
 | `src/tags.ts` | The colors of the dictionary tags, for the popup and the card. |
 | `src/anki.ts` | The AnkiConnect client, the note types, and the note draft of a card. |
@@ -1015,10 +1040,10 @@ Node.js runs the `.ts` test files directly, without a build. To run the tests:
 1. Run `npm ci`.
 2. Download `JMdict_english.zip` to `test/fixtures/JMdict_english.zip`.
 3. Run `npm run build`. The browser tests load the extension from `dist`.
-4. Run `node test/unit.ts`, `node test/entry-unit.ts`, `node test/card-unit.ts`, and `node test/video-unit.ts`.
+4. Run `node test/unit.ts`, `node test/entry-unit.ts`, `node test/card-unit.ts`, `node test/video-unit.ts`, and `node test/netflix-unit.ts`.
 5. Close Anki, because the next test uses port 8765.
 6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect. Then run `node test/spelling.ts`, which tests the shared status of the spellings of a word, and `node test/card.ts`. It tests the Lapis note type, the word audio, and the card form, with a mock AnkiConnect and a mock JapanesePod101.
-7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/line-audio.ts`, `node test/media.ts`, `node test/player.ts`, and `node test/sites.ts`, which use the same ports. `node test/line-audio.ts` tests the sentence and the sentence audio of a card from a long YouTube line.
+7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/line-audio.ts`, `node test/media.ts`, `node test/player.ts`, `node test/sites.ts`, and `node test/netflix.ts`, which use the same ports. `node test/line-audio.ts` tests the sentence and the sentence audio of a card from a long YouTube line. `node test/netflix.ts` tests the overlay on a fake Netflix watch page, with the subtitle list of the player, and the card of a protected video.
 8. Run `python3 -I -B -m unittest discover -s server` to test the WhisperX server. This test does not need WhisperX.
 
 `npm test` does steps 3 to 7 in one command, after a type check.
