@@ -39,7 +39,7 @@ export const TOKENS = `
     0 12px 28px light-dark(rgb(15 29 36 / 12%), rgb(0 0 0 / 32%)), 0 32px 64px light-dark(rgb(15 29 36 / 10%), rgb(0 0 0 / 28%));
   --edge: inset 0 0 0 0.5px light-dark(rgb(255 255 255 / 60%), rgb(255 255 255 / 10%));
 
-  --material: color-mix(in srgb, var(--card) 88%, transparent);
+  --material: color-mix(in srgb, var(--card) 94%, transparent);
   --material-subs: color-mix(in srgb, var(--bg) 64%, transparent);
   --blur: blur(24px) saturate(180%);
 

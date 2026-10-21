@@ -60,7 +60,7 @@ Weights are 400 for text, 600 for labels and buttons, and 700 for titles. Sizes 
 | `--shadow-2` | 2 px and 16 px | Toasts, the subtitle line, the video stage, the hover of a line. |
 | `--shadow-3` | A 0.5 px outline and three soft layers | The word popup. |
 | `--edge` | A 0.5 px inner highlight | The edge of glass surfaces. |
-| `--material`, `--material-subs`, `--blur` | `--card` at 88%, `--bg` at 64%, `blur(24px) saturate(180%)` | Frosted glass: the popup, the toasts, and the button bar on other sites; the subtitle line. |
+| `--material`, `--material-subs`, `--blur` | `--card` at 94% (thick, because the popup holds text to read), `--bg` at 64%, `blur(24px) saturate(180%)` | Frosted glass: the popup, the toasts, and the button bar on other sites; the subtitle line. |
 | `--switch-w`, `--switch-h` | 46 px, 28 px | The size of every switch. |
 | `--ease`, `--fast`, `--normal` | `cubic-bezier(0.22, 1, 0.36, 1)`, 150, 200 ms | Hover and pressed states, switches, the entry of the popup and the toasts. |
 
