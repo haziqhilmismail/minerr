@@ -6,7 +6,7 @@ import { listDictionaries } from './src/db.ts';
 import { cardMedia, widenSentence } from './src/lineaudio.ts';
 import { call, type Message, type Reply, serve } from './src/rpc.ts';
 import { getStatuses, moveStatusKeys, setStatus, setStatuses } from './src/status.ts';
-import { minerrEnabled, wordJoins } from './src/settings.ts';
+import { minerrEnabled, wordAudioEnabled, wordJoins } from './src/settings.ts';
 import { cachedSegments, getJob, health, siteCaptions, startJob } from './src/whisper.ts';
 import { wordAudio } from './src/wordaudio.ts';
 
@@ -56,8 +56,8 @@ async function cardDraft({ card }: Message<'cardDraft'>, sender: chrome.runtime.
   const noteType = await getNoteType();
   // After the screenshot, because the tab may play the line again to record it.
   const { line, audio } = await cardMedia(sender.tab.id);
-  // One audio per card, so Anki plays one: the line audio of a video, else the audio of the word.
-  const word = !audio && usesWordAudio(noteType) ? await wordAudio(card.word, card.reading) : null;
+  // One audio per card, so Anki plays one: the line audio of a video, else the audio of the word if the user did not turn it off.
+  const word = !audio && usesWordAudio(noteType) && await wordAudioEnabled.get() ? await wordAudio(card.word, card.reading) : null;
   const sentence = line?.combined ? widenSentence(line.text, card.sentence) : card.sentence;
   const { url = '', title = '' } = sender.tab;
   return noteDraft(noteType, { ...card, sentence, ...(audio ? { audio } : {}), ...(word ? { wordAudio: word } : {}) }, { url, title }, image);

@@ -128,6 +128,26 @@ try {
   console.log('no word audio from JapanesePod101: ExpressionAudio is empty, and the card is added');
   jpodHasAudio = true;
 
+  await options.bringToFront();
+  assert.equal(await options.isChecked('#word-audio'), true, 'the word audio is on by default');
+  await options.uncheck('#word-audio');
+  await options.waitForFunction(() => chrome.storage.local.get('wordAudio').then(items => items['wordAudio'] === false));
+  await tab.bringToFront();
+  await open('食べる');
+  jpod.length = 0;
+  from = anki.requests.length;
+  await tab.keyboard.press('a');
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+  assert.deepEqual(jpod, [], 'no request to JapanesePod101 with the word audio off');
+  assert.deepEqual(actions(from), ['createDeck', 'modelNames', 'storeMediaFile', 'addNote']);
+  assert.equal(at(params(from, 'addNote')[0], 'note', 'fields', 'ExpressionAudio'), '');
+  await options.bringToFront();
+  await options.check('#word-audio');
+  await options.waitForFunction(() => chrome.storage.local.get('wordAudio').then(items => items['wordAudio'] === true));
+  await tab.bringToFront();
+  jpod.length = 0;
+  console.log('word audio off in Options: no request to JapanesePod101, ExpressionAudio is empty, and the card is added');
+
   await open('猫');
   await tab.keyboard.press('e');
   const form = popup.locator('form.card-form');
@@ -137,6 +157,7 @@ try {
   assert.equal(await sentence.inputValue(), '<b>猫</b>が魚を食べなかった。');
   assert.equal(await form.locator('img').count(), 1, 'the screenshot shows');
   assert.equal(await form.locator('audio').count(), 1, 'the word audio shows');
+  assert.equal(jpod.length, 1, 'one request to JapanesePod101 with the word audio on again');
   assert.equal(await popup.locator('.definitions').isVisible(), false);
   await sentence.press('End');
   await sentence.pressSequentially('3a');

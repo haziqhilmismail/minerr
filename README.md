@@ -38,7 +38,7 @@ The screenshots show the Japanese Wikipedia article [ネコ](https://ja.wikipedi
 - It has a word browser to find, sort, and change word statuses, and to add a list of known words.
 - It has a reader for `.epub`, `.txt`, `.srt`, and `.vtt` files, with vertical text, and a page for pasted text.
 
-All data stays on your computer, with two exceptions. The extension sends requests to AnkiConnect at `http://127.0.0.1:8765` and to the optional WhisperX server at `http://127.0.0.1:8766`. When you add a card with word audio, it sends the word and its reading to JapanesePod101 (`assets.languagepod101.com`). See [Word audio](#word-audio). When you click **Install Lapis**, Anki downloads the Lapis package from GitHub.
+All data stays on your computer, with two exceptions. The extension sends requests to AnkiConnect at `http://127.0.0.1:8765` and to the optional WhisperX server at `http://127.0.0.1:8766`. When you add a card with word audio, it sends the word and its reading to JapanesePod101 (`assets.languagepod101.com`). You can turn off the word audio in **Options**. See [Word audio](#word-audio). When you click **Install Lapis**, Anki downloads the Lapis package from GitHub.
 
 ## Install
 
@@ -687,6 +687,8 @@ When you add a card to Lapis, Minerr gets the audio of the word from JapanesePod
 If JapanesePod101 has no audio of the word, it sends a clip that says that the audio is not available. Minerr finds this clip by its SHA-256, as Yomitan does, and leaves the field empty. If the request fails, the field is also empty. In both cases, Minerr adds the card.
 
 For your own note type, use the `{wordaudio}` marker. The classic note type has no field for the word audio.
+
+To stop the requests to JapanesePod101, clear **Add the audio of the word from JapanesePod101** in the **Anki** section of **Options**. Then Minerr sends no request to JapanesePod101, and `ExpressionAudio` and `{wordaudio}` stay empty. Minerr still adds the card. A card from a page then has no audio, because only a word in video subtitles gets the audio of its line. The switch is on by default.
 
 ## The note type
 
