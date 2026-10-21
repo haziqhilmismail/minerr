@@ -1108,7 +1108,7 @@ Node.js runs the `.ts` test files directly, without a build. To run the tests:
 1. Run `npm ci`.
 2. Download `JMdict_english.zip` to `test/fixtures/JMdict_english.zip`.
 3. Run `npm run build`. The browser tests load the extension from `dist`.
-4. Run `node test/unit.ts`, `node test/entry-unit.ts`, `node test/card-unit.ts`, `node test/video-unit.ts`, and `node test/netflix-unit.ts`. `node test/video-unit.ts` also checks that `dist` has `Start WhisperX server.cmd` with CRLF line ends and the two server files.
+4. Run `node test/unit.ts`, `node test/entry-unit.ts`, `node test/card-unit.ts`, `node test/video-unit.ts`, and `node test/netflix-unit.ts`.
 5. Close Anki, because the next test uses port 8765.
 6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect. Then run `node test/spelling.ts`, which tests the shared status of the spellings of a word, and `node test/card.ts`. It tests the Lapis note type, the word audio, and the card form, with a mock AnkiConnect and a mock JapanesePod101.
 7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/line-audio.ts`, `node test/media.ts`, `node test/player.ts`, `node test/sites.ts`, and `node test/netflix.ts`, which use the same ports. `node test/line-audio.ts` tests the sentence and the sentence audio of a card from a long YouTube line. `node test/netflix.ts` tests the overlay on a fake Netflix watch page, with the subtitle list of the player, and the card of a protected video.

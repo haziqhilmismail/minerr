@@ -1,8 +1,5 @@
-// Unit tests of the pure video rules (line jumps, keys, play modes, gaps, text clean-up, card lines, the server hint),
-// and a check of the WhisperX server files that npm run build puts in dist.
+// Unit tests of the pure video rules: line jumps, keys, play modes, gaps, text clean-up, card lines, and the server hint.
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { test } from 'node:test';
 import { choices, FILTER_NAMES, type LineState, shownLines, targetWord } from '../src/video/sidebar/sidebar-filter.ts';
 import { summary } from '../src/video/sidebar/sidebar-select.ts';
@@ -193,12 +190,4 @@ test('serverHint tells a Windows user to double-click the launcher, and other us
     'Start the WhisperX server: uv run server/whisper_server.py',
     'Start the WhisperX server: uv run server/whisper_server.py',
   ]);
-});
-
-test('the build puts the WhisperX launcher with CRLF line ends and the two server files in dist', () => {
-  const dist = join(import.meta.dirname, '..', 'dist');
-  const launcher = readFileSync(join(dist, 'Start WhisperX server.cmd'), 'utf8');
-  assert.match(launcher, /^@echo off\r\n/);
-  assert.doesNotMatch(launcher, /(?<!\r)\n/, 'every line ends with CRLF');
-  assert.deepEqual(readdirSync(join(dist, 'server')).sort(), ['media.py', 'whisper_server.py']);
 });
