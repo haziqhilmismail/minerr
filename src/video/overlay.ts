@@ -1,5 +1,5 @@
 import { type Status, STATUS_NAMES, STATUSES } from '../status/status.ts';
-import { TOKENS } from '../shared/design-tokens.ts';
+import { GLASS, tokensOn } from '../shared/design-tokens.ts';
 
 // The statuses of the words in element, in text order. Words that page.ts did not parse yet have none.
 export const wordStatuses = (element: Element): Status[] => [...element.querySelectorAll('.ml-word')]
@@ -9,7 +9,8 @@ export const wordStatuses = (element: Element): Status[] => [...element.querySel
 // The layer fills its positioned parent as a size container, so the text size follows the video in every view mode.
 // The layer is always dark: it sits over video.
 const STYLE = `
-  .minerr-subs { ${TOKENS} color-scheme: dark;
+  ${tokensOn('.minerr-subs')}
+  .minerr-subs { color-scheme: dark;
     position: absolute; inset: 0; z-index: 60; container-type: size; pointer-events: none; --minerr-scale: 1; }
   /* The YouTube player sets user-select: none, and the user copies text from the subtitles. */
   .minerr-subs-stack, .minerr-lines { user-select: text; -webkit-user-select: text; }
@@ -18,15 +19,14 @@ const STYLE = `
     display: flex; flex-direction: column; align-items: center; gap: 0.3em; width: max-content; max-width: 90cqw;
     font: 500 calc(clamp(20px, min(5.6cqh, 3.4cqw), 64px) * var(--minerr-scale))/1.45 var(--font-jp);
   }
-  .minerr-subs-line {
-    box-sizing: border-box; max-width: 100%; padding: 0.12em 0.7em 0.18em;
-    border-radius: 0.85em; background: color-mix(in srgb, var(--bg) 80%, transparent); color: var(--text); pointer-events: auto;
-    text-align: center; white-space: pre-line; overflow-wrap: anywhere; text-shadow: 0 1px 3px rgb(0 0 0 / 70%); box-shadow: var(--shadow-2);
+  .minerr-subs-line, .minerr-subs-second {
+    box-sizing: border-box; max-width: 100%; border-radius: 0.6em; corner-shape: var(--corner);
+    background: var(--material-subs); backdrop-filter: var(--blur);
+    color: var(--text); pointer-events: auto; text-align: center; white-space: pre-line; overflow-wrap: anywhere;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 50%); box-shadow: var(--edge), var(--shadow-2);
   }
-  .minerr-subs-second {
-    box-sizing: border-box; max-width: 100%; padding: 0.1em 0.7em 0.14em; border-radius: 0.85em;
-    background: color-mix(in srgb, var(--bg) 72%, transparent); color: var(--text); font: 400 0.72em/1.45 var(--font-ui); pointer-events: auto; text-align: center; white-space: pre-line; overflow-wrap: anywhere;
-  }
+  .minerr-subs-line { padding: 0.12em 0.6em 0.18em; }
+  .minerr-subs-second { padding: 0.12em 0.7em 0.16em; font: 400 0.72em/1.45 var(--font-ui); }
   .minerr-subs[data-second="hover"]:not([data-paused]) .minerr-subs-stack:not(:hover) .minerr-subs-second { visibility: hidden; }
   .minerr-subs-line[hidden], .minerr-subs-second[hidden], .minerr-subs-toast[hidden] { display: none; }
   .minerr-subs[data-obscure="blur"]:not([data-paused]) .minerr-subs-line:not(:hover) { filter: blur(0.3em); }
@@ -35,10 +35,12 @@ const STYLE = `
     color: transparent; text-shadow: none; text-decoration-color: transparent;
   }
   .minerr-subs-toast {
-    position: absolute; top: 12px; left: 50%; transform: translateX(-50%); max-width: 80cqw; padding: 6px 16px;
-    border-radius: var(--radius-pill); background: color-mix(in srgb, var(--card) 92%, transparent); color: var(--text);
-    font: 600 14px/1.4 var(--font-ui); text-align: center; box-shadow: var(--shadow-2);
+    position: absolute; top: var(--space-3); left: 50%; transform: translateX(-50%); max-width: 80cqw; padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-pill); ${GLASS}
+    color: var(--text); font: 600 var(--text-body)/1.4 var(--font-ui); text-align: center; box-shadow: var(--edge), var(--shadow-2);
+    transition: opacity var(--normal) var(--ease), translate var(--normal) var(--ease);
   }
+  @starting-style { .minerr-subs-toast { opacity: 0; translate: 0 -8px; } }
 `;
 
 const TOAST_MS = 2500;

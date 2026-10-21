@@ -27,50 +27,53 @@ const STYLE = `
   .minerr-lines {
     position: fixed; top: 0; right: 0; bottom: 0; z-index: 2147483646; width: var(--minerr-side-width);
     box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden;
-    border-left: 1px solid var(--line); background: var(--bg); color: var(--text); box-shadow: var(--shadow-2);
-    font: 16px/1.5 var(--font-ui); text-align: left;
+    border-left: 1px solid var(--separator); background: var(--bg); color: var(--text);
+    font: var(--text-body)/1.45 var(--font-ui); text-align: left; -webkit-font-smoothing: antialiased;
   }
-  .minerr-lines[hidden], :root[data-minerr-off] .minerr-lines { display: none; }
-  .minerr-lines button, .minerr-lines select, .minerr-lines input { box-sizing: border-box; margin: 0; border: 1px solid var(--line);
-    border-radius: var(--radius-pill); background: transparent; color: inherit; font: 600 14px/1.6 var(--font-ui); cursor: pointer; }
+  .minerr-lines[hidden], :root[data-minerr-off] .minerr-lines, .minerr-lines li[hidden] { display: none; }
+  .minerr-lines button, .minerr-lines select, .minerr-lines input { box-sizing: border-box; margin: 0; border: 0;
+    border-radius: var(--radius-pill); background: transparent; color: inherit; font: 600 var(--text-footnote)/1.4 var(--font-ui); cursor: pointer;
+    transition: background-color var(--fast) var(--ease), color var(--fast) var(--ease), opacity var(--fast) var(--ease), scale var(--fast) var(--ease); }
   .minerr-lines button:hover, .minerr-lines input:hover { background: var(--raised); }
-  .minerr-lines select { width: 100%; padding: 6px 10px; border-radius: var(--radius-s); background: var(--field); }
+  .minerr-lines button:active { scale: 0.95; }
+  .minerr-lines select { width: 100%; min-height: 36px; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-s);
+    corner-shape: var(--corner); background: var(--field); font-size: var(--text-body); font-weight: 400; }
   .minerr-lines :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .minerr-lines-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 0 16px; }
-  .minerr-lines-head strong { font-size: 17px; font-weight: 800; }
-  .minerr-lines-head span { color: var(--muted); font-size: 14px; }
-  .minerr-lines-head .paused { display: none; padding: 1px 10px; border-radius: var(--radius-pill); background: var(--accent-soft);
-    color: var(--accent); font-size: 12px; font-weight: 700; }
+  .minerr-lines-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-3) var(--space-2) var(--space-4); }
+  .minerr-lines-head strong { font: 700 var(--text-headline)/1.3 var(--font-display); }
+  .minerr-lines-head span { color: var(--muted); font-size: var(--text-footnote); }
+  .minerr-lines-head .paused { display: none; padding: 1px var(--space-2); border-radius: var(--radius-pill); background: var(--accent-soft);
+    color: var(--accent); font-size: var(--text-caption); font-weight: 600; }
   .minerr-lines:is(${PAUSED}) .minerr-lines-head .paused { display: inline; }
-  .minerr-lines-head button { width: 34px; height: 34px; margin-left: auto; padding: 0; border: 0; border-radius: 50%;
-    color: var(--muted); font-size: 20px; line-height: 1; }
-  .minerr-lines-head button:hover { color: var(--text); }
-  .minerr-lines-bar { padding: 10px 12px 12px 16px; border-bottom: 1px solid var(--line); }
-  .minerr-lines ol { position: relative; flex: 1; min-height: 0; margin: 0; padding: 10px 12px; overflow: auto; overscroll-behavior: contain; list-style: none; }
-  .minerr-lines li { margin: 0 0 8px; padding: 6px 10px 10px 14px; border-radius: var(--radius-m); background: var(--card);
-    box-shadow: var(--shadow-1); cursor: pointer; }
-  .minerr-lines li[hidden] { display: none; }
-  .minerr-lines li:hover { box-shadow: inset 0 0 0 1px var(--line), var(--shadow-1); }
-  .minerr-lines li[aria-current="true"] { background: color-mix(in srgb, var(--accent-fill) 14%, var(--card));
-    box-shadow: inset 0 0 0 2px var(--accent), var(--shadow-1); }
+  .minerr-lines-head button { width: 32px; height: 32px; margin-left: auto; padding: 0; border-radius: 50%; background: var(--raised);
+    color: var(--muted); font-size: 18px; line-height: 1; }
+  .minerr-lines-head button:hover { background: var(--line); }
+  .minerr-lines :is(.minerr-lines-head, .card-head) button:hover { color: var(--text); }
+  .minerr-lines-bar { padding: 0 var(--space-3) var(--space-3) var(--space-4); border-bottom: 1px solid var(--separator); }
+  .minerr-lines ol { position: relative; flex: 1; min-height: 0; margin: 0; padding: var(--space-3); overflow: auto; overscroll-behavior: contain; list-style: none; }
+  .minerr-lines li { margin: 0 0 var(--space-2); padding: var(--space-2) var(--space-2) var(--space-3) var(--space-4); border-radius: var(--radius-m);
+    corner-shape: var(--corner); background: var(--card); box-shadow: var(--shadow-1); cursor: pointer;
+    transition: box-shadow var(--fast) var(--ease), background-color var(--fast) var(--ease); }
+  .minerr-lines li:hover { box-shadow: var(--shadow-2); }
+  .minerr-lines li[aria-current="true"] { background: color-mix(in srgb, var(--accent-fill) 12%, var(--card));
+    box-shadow: inset 0 0 0 1.5px var(--accent), var(--shadow-1); }
   .minerr-lines .card-head { display: flex; align-items: center; gap: 2px; }
-  .minerr-lines time { margin-right: auto; color: var(--muted); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .minerr-lines li[aria-current="true"] time { color: var(--accent); font-weight: 800; }
-  .minerr-lines .card-head button { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; color: var(--muted); font-size: 16px; line-height: 1; }
-  .minerr-lines .card-head button:hover { color: var(--text); }
-  .minerr-lines .card-head .add { color: var(--accent); font-size: 22px; }
+  .minerr-lines time { margin-right: auto; color: var(--muted); font-size: var(--text-footnote); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .minerr-lines li[aria-current="true"] time { color: var(--accent); font-weight: 700; }
+  .minerr-lines .card-head button { width: 32px; height: 32px; padding: 0; border-radius: 50%; color: var(--muted); font-size: 15px; line-height: 1; }
+  .minerr-lines .card-head .add { color: var(--accent); font-size: var(--text-title2); font-weight: 400; }
   .minerr-lines li[data-bookmark] .mark { color: var(--star); }
   .minerr-lines .text { margin: 2px 0 0; font: 19px/1.65 var(--font-jp); white-space: pre-line; overflow-wrap: anywhere; }
-  .minerr-lines .pick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px;
-    border-top: 1px solid var(--line); cursor: default; }
-  .minerr-lines .pick span { flex-basis: 100%; color: var(--muted); font-size: 13px; font-weight: 600; }
-  .minerr-lines .pick input { padding: 3px 12px; background: var(--field); font: 17px/1.5 var(--font-jp); }
+  .minerr-lines .pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-2); padding-top: var(--space-3);
+    border-top: 1px solid var(--separator); cursor: default; }
+  .minerr-lines .pick span { flex-basis: 100%; color: var(--muted); font-size: var(--text-footnote); font-weight: 600; }
+  .minerr-lines .pick input { min-height: 36px; padding: 0 var(--space-3); border: 1px solid var(--line); background: var(--field); font: 17px/1.5 var(--font-jp); }
   .minerr-lines .pick .unknown { border-color: ${STATUSES.unknown.color}; box-shadow: inset 0 0 0 1px ${STATUSES.unknown.color}; }
-  .minerr-lines .pick button, .minerr-lines-empty button { padding: 3px 14px; border-color: transparent; background: var(--raised); }
+  .minerr-lines .pick button, .minerr-lines-empty button { min-height: 36px; padding: 0 var(--space-4); background: var(--raised); }
   .minerr-lines .pick button { color: var(--muted); }
   .minerr-lines .pick button:hover, .minerr-lines-empty button:hover { background: var(--accent-soft); color: var(--text); }
-  .minerr-lines-empty { padding: 16px; color: var(--muted); }
-  .minerr-lines-empty p { margin: 0 0 10px; }
+  .minerr-lines-empty { padding: var(--space-4); color: var(--muted); }
+  .minerr-lines-empty p { margin: 0 0 var(--space-3); }
   ${SELECT_CSS}
 `;
 
