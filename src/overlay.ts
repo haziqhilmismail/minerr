@@ -50,6 +50,27 @@ export interface Overlay {
   toast: (text: string) => void;
 }
 
+// Keeps layer on the screen over video, on a site whose player Minerr does not know: the page can scroll, resize,
+// or move the video into full screen.
+export function followVideo(video: HTMLVideoElement, layer: HTMLElement): void {
+  function place(): void {
+    if (!video.isConnected) {
+      clearInterval(timer);
+      removeEventListener('scroll', place, true);
+      return;
+    }
+    const host = document.fullscreenElement && document.fullscreenElement !== video ? document.fullscreenElement : document.body;
+    if (layer.parentElement !== host) host.append(layer);
+    const rect = video.getBoundingClientRect();
+    Object.assign(layer.style, { position: 'fixed', inset: 'auto', zIndex: '2147483646', top: `${rect.top}px`, left: `${rect.left}px`,
+      width: `${rect.width}px`, height: `${rect.height}px` });
+  }
+  // The interval covers a resize, full screen, and a page that moves the video; scroll makes the overlay follow without a lag.
+  const timer = setInterval(place, 250);
+  addEventListener('scroll', place, { passive: true, capture: true });
+  place();
+}
+
 export function createOverlay(): Overlay {
   const layer = Object.assign(document.createElement('div'), { className: 'minerr-subs' });
   const stack = Object.assign(document.createElement('div'), { className: 'minerr-subs-stack' });

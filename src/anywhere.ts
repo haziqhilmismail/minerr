@@ -1,6 +1,7 @@
 // The subtitle overlay on a page that is not YouTube: on the largest visible video, with subtitles from a file,
 // from the site through the server (yt-dlp), or from WhisperX. The toolbar popup starts it, so other pages load nothing more.
 import { parseSubtitles, type SubtitleSegment } from './captions.ts';
+import { followVideo } from './overlay.ts';
 import { call, messageOf, serve } from './rpc.ts';
 import { waitForJob } from './whisper.ts';
 
@@ -39,18 +40,7 @@ async function start(video: HTMLVideoElement): Promise<void> {
     ? { kind: 'timed', id: `page:${url}`, segments: primary, second, audio: { url } }
     : { kind: 'none' });
 
-  // The layer follows the video on the screen: the page can scroll, resize, or move the video into full screen.
-  function place(): void {
-    const host = document.fullscreenElement && document.fullscreenElement !== video ? document.fullscreenElement : document.body;
-    if (layer.parentElement !== host) host.append(layer);
-    const rect = video.getBoundingClientRect();
-    Object.assign(layer.style, { position: 'fixed', inset: 'auto', zIndex: '2147483646', top: `${rect.top}px`, left: `${rect.left}px`,
-      width: `${rect.width}px`, height: `${rect.height}px` });
-  }
-  // The interval covers a resize, full screen, and a page that moves the video; scroll makes the overlay follow without a lag.
-  const timer = setInterval(() => (video.isConnected ? place() : clearInterval(timer)), 250);
-  addEventListener('scroll', place, { passive: true, capture: true });
-  place();
+  followVideo(video, layer);
   attach({ video: () => (video.isConnected ? video : null) });
 
   const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.srt,.vtt', hidden: true });
