@@ -99,10 +99,11 @@ test('every module that a content script imports matches web_accessible_resource
   assert.ok(seen.size > entries.length, 'the walk follows the imports of the content script modules');
 });
 
-test('chord names a key with Alt from the physical key, and Shift only with Alt', () => {
+test('chord names a key with Alt, and a digit, from the physical key, and Shift only with Alt', () => {
   const key = (key: string, code: string, altKey = false, shiftKey = false) => chord({ key, code, altKey, shiftKey });
   assert.deepEqual([key('Î', 'KeyD', true, true), key('ß', 'KeyS', true), key('N', 'KeyN', false, true), key('1', 'Digit1'),
-    key('Escape', 'Escape'), key('Shift', 'ShiftLeft', true, true)], ['alt+shift+d', 'alt+s', 'n', '1', 'Escape', 'alt+shift+Shift']);
+    key('Escape', 'Escape'), key('Shift', 'ShiftLeft', true, true), key('$', 'Digit4', false, true), key('4', 'Numpad4')],
+  ['alt+shift+d', 'alt+s', 'n', '1', 'Escape', 'alt+shift+Shift', '4', '4']);
 });
 
 test('a site covers its subdomains, and www. drops out, so all of youtube.com is one site', () => {
