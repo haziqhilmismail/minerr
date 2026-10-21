@@ -50,24 +50,50 @@ function ranges(block: Element, cache: Map<Element, Element>): Range[] {
   });
 }
 
+const byBlock = new Map<Element, Range[]>();
+const changed = new Set<Element>();
+// A pass over one huge block (a novel in one <div>) takes long, so the next pass waits this many times as long.
+const IDLE_PER_PASS = 10;
+let delay = DELAY_MS;
+
+function highlightBlock(block: Element, cache: Map<Element, Element>): void {
+  for (const range of byBlock.get(block) ?? []) highlight.delete(range);
+  const next = block.isConnected ? ranges(block, cache) : [];
+  if (next.length) byBlock.set(block, next);
+  else byBlock.delete(block);
+  for (const range of next) highlight.add(range);
+}
+
+function wordBlocks(cache: Map<Element, Element>): Set<Element> {
+  const blocks = new Set<Element>();
+  for (const span of document.querySelectorAll('.ml-word')) blocks.add(blockOf(span.parentElement ?? span, cache));
+  return blocks;
+}
+
 // Every i+1 sentence of the document.
 export function iPlusOneRanges(): Range[] {
   const cache = new Map<Element, Element>();
-  const blocks = new Set<Element>();
-  for (const span of document.querySelectorAll('.ml-word')) blocks.add(blockOf(span.parentElement ?? span, cache));
-  return [...blocks].flatMap(block => ranges(block, cache));
+  return [...wordBlocks(cache)].flatMap(block => ranges(block, cache));
+}
+
+function refreshChanged(): void {
+  timer = null;
+  if (!shown) return;
+  const start = performance.now();
+  const cache = new Map<Element, Element>();
+  for (const block of byBlock.keys()) if (!block.isConnected) changed.add(block);
+  for (const block of changed) highlightBlock(block, cache);
+  changed.clear();
+  delay = Math.max(DELAY_MS, IDLE_PER_PASS * (performance.now() - start));
 }
 
 // Recomputes every i+1 sentence of the document. Exported so a test can measure it.
 export function refresh(): void {
-  timer = null;
+  if (timer) clearTimeout(timer);
   highlight.clear();
-  if (!shown) return;
-  for (const range of iPlusOneRanges()) highlight.add(range);
-}
-
-function schedule(): void {
-  if (shown) timer ??= setTimeout(refresh, DELAY_MS);
+  byBlock.clear();
+  for (const block of wordBlocks(new Map())) changed.add(block);
+  refreshChanged();
 }
 
 const isWord = (node: Node) => node instanceof Element && node.classList.contains('ml-word');
@@ -75,8 +101,13 @@ const hasWords = (node: Node) => isWord(node) || (node instanceof Element && nod
 
 // Words appear when page.ts wraps text, and change status through their class; other page changes do not matter.
 new MutationObserver(records => {
-  if (records.some(record => record.type === 'attributes' ? isWord(record.target)
-    : [...record.addedNodes, ...record.removedNodes].some(hasWords))) schedule();
+  if (!shown) return;
+  const cache = new Map<Element, Element>();
+  for (const record of records) {
+    const words = record.type === 'attributes' ? isWord(record.target) : [...record.addedNodes, ...record.removedNodes].some(hasWords);
+    if (words && record.target instanceof Element) changed.add(blockOf(record.target, cache));
+  }
+  if (changed.size) timer ??= setTimeout(refreshChanged, delay);
 }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
 
 let enabled = false;

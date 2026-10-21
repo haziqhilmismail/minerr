@@ -1068,7 +1068,7 @@ More scripts:
 
 - `node test/screenshots.ts` saves screenshots of the page, the popup, and the options page to `/tmp/minerr-ui`.
 - `node test/card-preview.ts` saves screenshots of the card to `/tmp/minerr-card`.
-- `node test/page-perf.ts [lines]` measures the first parse of a page with many lines of Japanese text, 50000 by default. It prints the time until all the words show and the longest tasks of the page.
+- `node test/page-perf.ts [paragraphs] [runs]` measures the first parse of a long article, 2000 paragraphs and 3 runs by default: the time until the first word in the viewport shows, with the viewport at the top and in the middle of the page, the time until all the words show, and the longest tasks. With `test/fixtures/JMdict_english.zip` it installs JMdict and uses distinct words. It fails when the first word in the viewport takes more than 400 ms after the page load on a warm run.
 - `node test/parse-time.ts` imports the real JMdict and prints the parse time of a long page. To time a different build, set `EXTENSION_DIR`.
 - `node test/readme-shots.ts` saves the two screenshots at the top of this README to `docs/`. It needs the network and a WhisperX server that has the subtitles of the video.
 - If the system has no Japanese font, set `CJK_FONT_DIR` to a folder that contains one. Put an emoji font in the same folder, for example `seguiemj.ttf` from Windows. Without it, the `⭐` tag shows as a box.
