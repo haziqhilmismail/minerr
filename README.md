@@ -371,7 +371,27 @@ The server uses the CPU. It does not need a GPU, so it also works on a computer 
 
 ### Start the server
 
-On Windows, double-click `Start WhisperX server.cmd` in the Minerr folder. This is the folder that you load in `chrome://extensions`. A window opens, and the server starts in WSL. Keep the window open while you use the server. To stop the server, close the window.
+On Windows, click the Minerr button in the Chrome toolbar, then click **Start the server**. A window opens, and the server starts in WSL. Keep the window open while you use the server. To stop the server, close the window.
+
+The button works after one double-click of `Start WhisperX server.cmd` in the Minerr folder. This is the folder that you load in `chrome://extensions`. Before that double-click, the popup tells you to do it:
+
+1. Click **Show the Minerr folder**. The page of Minerr in `chrome://extensions` opens.
+2. Click the path after **Loaded from**. The Minerr folder opens.
+3. Double-click `Start WhisperX server.cmd`. The server starts, and the button is set up.
+
+Each start of `Start WhisperX server.cmd` sets up the button again. It writes two things for Chrome:
+
+- The file `%LOCALAPPDATA%\Minerr\com.minerr.whisperx.json`. It names the host, `server\start-from-chrome.cmd` in the Minerr folder, and the extension that can use it.
+- The registry value `HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.minerr.whisperx`, which points at that file.
+
+When you click **Start the server**, Chrome runs the host, and the host opens `Start WhisperX server.cmd` in a window of its own. If the server does not answer in 90 seconds, the popup says so. Look at the window for the error. If you move the Minerr folder, double-click `Start WhisperX server.cmd` in the new folder one time.
+
+To remove the two things that the launcher writes, run these commands in a Command Prompt:
+
+```bat
+reg delete HKCU\Software\Google\Chrome\NativeMessagingHosts\com.minerr.whisperx /f
+rmdir /s /q %LOCALAPPDATA%\Minerr
+```
 
 On Linux, run this command in the Minerr folder. Keep the terminal open while you use the server.
 
@@ -379,7 +399,7 @@ On Linux, run this command in the Minerr folder. Keep the terminal open while yo
 uv run server/whisper_server.py
 ```
 
-The first start installs about 2.6 GB of packages. The first job also downloads the model, about 1.6 GB.
+The first start installs about 2.6 GB of packages, which takes more than 90 seconds. The first job also downloads the model, about 1.6 GB.
 
 Chrome on Windows connects to the server in WSL at `http://127.0.0.1:8766`, because WSL forwards localhost ports to Windows.
 
@@ -1013,7 +1033,7 @@ The theme does not change the Anki card. The card follows the night mode of Anki
 
 ## Development
 
-The code is TypeScript with no framework and no bundler. `npm run build` copies `manifest.json`, the HTML pages, `vendor`, the WhisperX server (`server/whisper_server.py` and `server/media.py`), and `Start WhisperX server.cmd` to `dist`. Then `tsc` compiles each `.ts` file to a `.js` file in `dist`. `npm run typecheck` checks the types of the extension, the tests, and the scripts.
+The code is TypeScript with no framework and no bundler. `npm run build` copies `manifest.json`, the HTML pages, `vendor`, the WhisperX server (`server/whisper_server.py`, `server/media.py`, `server/chrome_start.py`, and `server/start-from-chrome.cmd`), and `Start WhisperX server.cmd` to `dist`. Then `tsc` compiles each `.ts` file to a `.js` file in `dist`. `npm run typecheck` checks the types of the extension, the tests, and the scripts.
 
 ### Code map
 
@@ -1093,7 +1113,10 @@ The path of a word from a page to a card:
 | `src/video/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
 | `src/video/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 | `server/whisper_server.py`, `server/media.py` | The local server: WhisperX jobs and the HTTP routes, and the video side (cache keys, `yt-dlp`, the audio cache, and line clips). |
-| `Start WhisperX server.cmd` | Starts the WhisperX server in WSL from the extension folder on Windows. Git writes this file with CRLF line ends (`.gitattributes`), because it is a Windows batch file. |
+| `Start WhisperX server.cmd` | Starts the WhisperX server in WSL from the extension folder on Windows, after `server/chrome_start.py` sets up the Start button of the popup. Git writes the `.cmd` files with CRLF line ends (`.gitattributes`), because they are Windows batch files. |
+| `server/chrome_start.py` | Writes the manifest of the native messaging host `com.minerr.whisperx` to `%LOCALAPPDATA%\Minerr` and the registry value that points at it, for the extension in this folder. |
+| `server/start-from-chrome.cmd` | The native messaging host. Chrome runs it when you click **Start the server**. It opens `Start WhisperX server.cmd` in a window of its own and exits. |
+| `src/video/server-status.ts` | Pure function: the status of the WhisperX server as the toolbar popup shows it, and the next status after a health reply, a click on **Start the server**, or the result of the host. |
 | `src/status/stats.ts` | The comprehension score and the recommended sentences of a tab, for the toolbar popup. |
 | `src/status/score.ts` | Pure functions for the score, its label, and the text of the i+1 sentences. |
 | `pages/words.html`, `pages/words.ts` | The word browser page. |
