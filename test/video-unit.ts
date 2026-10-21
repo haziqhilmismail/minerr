@@ -212,6 +212,6 @@ test('nextStatus: Start begins a start; a missing or forbidden host means setup,
   assert.deepEqual(nextStatus({ state: 'failed' }, { type: 'start' }, 5000), starting);
   assert.deepEqual(nextStatus(starting, { type: 'host', error: 'Specified native messaging host not found.' }, 5001), { state: 'setup' });
   assert.deepEqual(nextStatus(starting, { type: 'host', error: 'Access to the specified native messaging host is forbidden.' }, 5001), { state: 'setup' });
-  assert.deepEqual(nextStatus(starting, { type: 'host', error: 'Native host has exited.' }, 5001), starting);
+  assert.deepEqual(nextStatus(starting, { type: 'host', error: 'Error when communicating with the native messaging host.' }, 5001), starting);
   assert.deepEqual(nextStatus(starting, { type: 'host', error: null }, 5001), starting);
 });

@@ -6,11 +6,15 @@ import type { Snapshot, Source } from '../src/video/youtube/youtube-overlay.ts';
 import { applyTheme } from '../src/shared/theme.ts';
 import { iPlusOne, minerrEnabled } from '../src/shared/settings.ts';
 import { enabledSites, siteIsOn, siteOf, toggleSiteOf } from '../src/page-text/site.ts';
-import type { JobStatus } from '../src/video/whisper.ts';
+import { type JobStatus, serverHint } from '../src/video/whisper.ts';
+import { nextStatus, type ServerEvent, type ServerStatus, START_LIMIT_MS } from '../src/video/server-status.ts';
+import { at } from '../src/shared/guards.ts';
 
 applyTheme();
 
 const POLL_MS = 2000;
+const SERVER_POLL_MS = 1000;
+const HOST = 'com.minerr.whisperx';
 const HINT: Record<Source, string> = {
   youtube: 'Minerr shows the Japanese captions of YouTube. If the overlay stays empty, turn on CC in the YouTube player.',
   whisperx: 'The subtitles come from the WhisperX server on this computer.',
@@ -62,19 +66,54 @@ function showState(snapshot: Snapshot): void {
   else showMessage(`${JOB_TEXT[status.state]}${status.state === 'transcribing' ? ` ${status.progress}%` : ''}`, status.state === 'done' ? 'ok' : '');
 }
 
-async function checkServer(): Promise<void> {
-  try {
-    const { model, device } = await call({ type: 'whisperHealth' });
-    server.textContent = `WhisperX server is running: ${model} on the ${device.toUpperCase()}.`;
-    server.className = 'ok';
-  } catch (error) {
-    server.textContent = messageOf(error);
-    server.className = 'error';
+// On Windows the popup starts the server through the native messaging host; elsewhere it shows the command.
+const windows = navigator.platform.startsWith('Win');
+const serverStart = byId('server-start', HTMLElement);
+const setup = byId('setup', HTMLElement);
+
+function serverText(status: ServerStatus): string {
+  switch (status.state) {
+    case 'checking': return 'Checking the WhisperX server…';
+    case 'running': return `WhisperX server is running: ${status.health.model} on the ${status.health.device.toUpperCase()}.`;
+    case 'off': return windows ? 'The WhisperX server is not running.' : serverHint(navigator.platform);
+    case 'starting': return 'Starting the WhisperX server… The first start installs its packages, which takes some minutes.';
+    case 'setup': return 'To set up the Start button, double-click "Start WhisperX server.cmd" in the Minerr folder one time.';
+    case 'failed': return 'The WhisperX server did not answer in 90 seconds. Look at the WhisperX window.';
   }
 }
+const SERVER_CLASS: Record<ServerStatus['state'], string> = { checking: '', running: 'ok', off: 'error', starting: '', setup: 'error', failed: 'error' };
+
+// The session keeps the time of the click: the window of the server takes the focus, which closes the popup,
+// and the popup that opens next shows that the server starts.
+let status: ServerStatus = { state: 'checking' };
+const since = at(await chrome.storage.session.get('serverStart'), 'serverStart');
+if (typeof since === 'number' && Date.now() - since < START_LIMIT_MS) status = { state: 'starting', since };
+
+function showServer(): void {
+  server.textContent = serverText(status);
+  server.className = SERVER_CLASS[status.state];
+  serverStart.hidden = !windows || !(status.state === 'off' || status.state === 'setup' || status.state === 'failed');
+  setup.hidden = status.state !== 'setup';
+}
+
+function serverEvent(event: ServerEvent): void {
+  status = nextStatus(status, event, Date.now());
+  showServer();
+}
+
+async function checkServer(): Promise<void> {
+  serverEvent({ type: 'health', health: await call({ type: 'whisperHealth' }).catch(() => null) });
+}
+
+byId('start', HTMLButtonElement).addEventListener('click', () => {
+  serverEvent({ type: 'start' });
+  if (status.state === 'starting') chrome.storage.session.set({ serverStart: status.since });
+  chrome.runtime.sendNativeMessage(HOST, {})
+    .then(() => serverEvent({ type: 'host', error: null }), (error: unknown) => serverEvent({ type: 'host', error: messageOf(error) }));
+});
+byId('folder', HTMLButtonElement).addEventListener('click', () => chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` }));
 
 async function refresh(): Promise<void> {
-  checkServer();
   if (watchTabId === undefined) {
     elsewhere.hidden = false;
     attach.hidden = !/^https?:/.test(tab?.url ?? '');
@@ -212,5 +251,8 @@ byId('options', HTMLAnchorElement).addEventListener('click', event => {
 });
 
 showTabStats();
+showServer();
+checkServer();
+setInterval(checkServer, SERVER_POLL_MS);
 refresh();
 setInterval(refresh, POLL_MS);

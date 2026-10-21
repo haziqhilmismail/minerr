@@ -3,13 +3,13 @@
 // Saves screenshots to OUT_DIR (default: the temporary work folder).
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Page, PageScreenshotOptions } from 'playwright';
 import { at } from '../src/shared/guards.ts';
-import { launch, listen, makeDictionary, useCjkFonts } from './harness.ts';
+import { extension, launch, listen, makeDictionary, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-subs-'));
 const out = process.env.OUT_DIR ?? work;
@@ -629,6 +629,43 @@ try {
   await elsewhere.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${otherTabId}`);
   await elsewhere.locator('#elsewhere:not([hidden])').waitFor();
   assert.ok(await elsewhere.locator('#controls').isHidden());
+
+  // The Start button of a Windows user: the native messaging host com.minerr.whisperx opens the launcher. Chromium on Linux reads
+  // user-level hosts from <user data dir>/NativeMessagingHosts, so the test registers a host script that brings the mock server back.
+  const started = join(work, 'started');
+  const hostScript = join(work, 'host.sh');
+  writeFileSync(hostScript, `#!/bin/sh\ntouch "${started}"\n`, { mode: 0o755 });
+  const win = await context.newPage();
+  await win.addInitScript(() => Object.defineProperty(Navigator.prototype, 'platform', { get: () => 'Win32' }));
+  await win.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${otherTabId}`);
+  await win.locator('#server.error').waitFor();
+  assert.equal(await win.textContent('#server'), 'The WhisperX server is not running.');
+  await win.click('#start');
+  await win.locator('#setup:not([hidden])').waitFor({ timeout: 5000 });
+  assert.equal(await win.textContent('#server'), 'To set up the Start button, double-click "Start WhisperX server.cmd" in the Minerr folder one time.');
+  await shot(win, 'action-server-setup-light.png', { fullPage: true });
+  const [extensions] = await Promise.all([context.waitForEvent('page'), win.click('#folder')]);
+  await extensions.waitForURL(`chrome://extensions/?id=${extensionId}`);
+  const loadedFrom = extensions.getByText('Loaded from');
+  await loadedFrom.waitFor();
+  assert.equal(await loadedFrom.evaluate(label => label.parentElement?.innerText.replace(/\s+/g, ' ').trim()), `Loaded from: ${extension.replace(homedir(), '~')}`);
+  console.log('no host: the popup asks for one double-click of the launcher, and Show the Minerr folder opens the extension page with its path');
+
+  mkdirSync(join(work, 'profile', 'NativeMessagingHosts'), { recursive: true });
+  writeFileSync(join(work, 'profile', 'NativeMessagingHosts', 'com.minerr.whisperx.json'), JSON.stringify({
+    name: 'com.minerr.whisperx', description: 'Test host', path: hostScript, type: 'stdio', allowed_origins: [`chrome-extension://${extensionId}/`],
+  }));
+  await win.click('#start');
+  await win.locator('#server', { hasText: 'Starting the WhisperX server…' }).waitFor();
+  assert.ok(await win.locator('#server-start').isHidden(), 'no Start button while the server starts');
+  for (let i = 0; !existsSync(started) && i < 50; i++) await new Promise(resolve => setTimeout(resolve, 100));
+  assert.ok(existsSync(started), 'Chrome ran the host');
+  await win.reload();
+  await win.locator('#server', { hasText: 'Starting the WhisperX server…' }).waitFor();
+  await listen(whisper, 8766);
+  await win.locator('#server.ok').waitFor({ timeout: 5000 });
+  assert.equal(await win.textContent('#server'), 'WhisperX server is running: large-v3-turbo on the CPU.');
+  console.log('Start the server: Chrome ran the host, the popup kept the start over a reload, and it shows the server when the server answers');
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('SUBTITLES E2E PASS');

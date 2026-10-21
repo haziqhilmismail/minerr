@@ -18,7 +18,7 @@ export type ServerEvent =
   // The user clicked Start the server.
   | { type: 'start' }
   // The result of the message to the host: the error of Chrome, or null for a reply. The host exits without a reply,
-  // so a start that worked also ends in an error, such as "Native host has exited.".
+  // so a start that worked also ends in an error: "Error when communicating with the native messaging host.".
   | { type: 'host'; error: string | null };
 
 // The first start of the server creates the uv environment, which takes a while.
