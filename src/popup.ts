@@ -214,20 +214,22 @@ async function busy<T>(layer: Layer, label: string, hide: boolean, work: () => P
   }
 }
 
-async function send(layer: Layer, card: CardFields, hide: boolean, draft?: NoteDraft): Promise<void> {
+// True when Anki has the card.
+async function send(layer: Layer, card: CardFields, hide: boolean, draft?: NoteDraft): Promise<boolean> {
   const added = await busy(layer, 'Adding to Anki…', hide, () => call({ type: 'addCard', card, word: layer.view.word, ...(draft ? { draft } : {}) }));
   if (added !== null && layers.includes(layer)) showMessage(layer, 'Added to Anki.');
+  return added !== null;
 }
 
-async function addCard(): Promise<void> {
+async function addCard(): Promise<boolean> {
   const layer = top();
-  if (layer && !layer.addButton.disabled) await send(layer, cardOf(layer.view), true);
+  return layer && !layer.addButton.disabled ? send(layer, cardOf(layer.view), true) : false;
 }
 
 // Opens the popup of a word span and adds its card, as the + of a line in the subtitle sidebar does.
-export async function addWordCard(span: HTMLElement): Promise<void> {
+export async function addWordCard(span: HTMLElement): Promise<boolean> {
   await openWord(span);
-  if (spanOf(layers[0]) === span) await addCard();
+  return spanOf(layers[0]) === span && addCard();
 }
 
 // E: the card form, with the fields that the service worker made for the note type, the screenshot, and the audio.
@@ -311,6 +313,7 @@ window.addEventListener('keydown', event => {
 }, true);
 
 export const isPopupOpen = (): boolean => layers.length > 0;
+export const closePopups = (): void => close(0);
 
 installKeys({
   isOpen: isPopupOpen,

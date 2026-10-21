@@ -45,6 +45,12 @@ export function choices<Word extends LineWord>(words: Word[]): Word[] {
   return sorted.filter((word, index) => sorted.findIndex(other => other.key === word.key) === index);
 }
 
+// The word that the card of a line gets without a choice: the one unknown word of the line, else null.
+export function targetWord<Word extends LineWord>(words: Word[]): Word | null {
+  const [only, ...more] = words.filter(word => word.status === 'unknown');
+  return only && !more.length ? only : null;
+}
+
 // For each line, true when the filter shows it.
 export function shownLines(lines: LineState[], filter: LineFilter): boolean[] {
   const { keeps, once }: Filter = LINE_FILTERS[filter];

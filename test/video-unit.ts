@@ -1,7 +1,8 @@
 // Unit tests of the pure video rules: line jumps, keys, play modes, gaps, text clean-up, and card lines.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { choices, FILTER_NAMES, type LineState, shownLines } from '../src/linefilter.ts';
+import { choices, FILTER_NAMES, type LineState, shownLines, targetWord } from '../src/linefilter.ts';
+import { summary } from '../src/lineselect.ts';
 import { autoPause, cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted, onLine } from '../src/playback.ts';
 import { isStatus } from '../src/status.ts';
 import { keyLabel, keyName, videoKey } from '../src/videokeys.ts';
@@ -172,4 +173,12 @@ test('each sidebar filter shows its lines; Unique 1 unknown word shows the first
   });
   assert.deepEqual(choices(line('猫=known 今日=unknown 猫=known 雨=unknown 今日=unknown 降る=learning').words).map(word => word.key),
     ['今日', '雨', '猫', '降る'], 'the chooser lists the unknown words first, each word once');
+  assert.deepEqual(['猫=known 魚=unknown', '今日=unknown 雨=unknown', '雨=learning'].map(words => targetWord(line(words).words)?.key ?? null),
+    ['魚', null, null], '+ and Create N cards take the one unknown word of a line');
+});
+
+test('summary tells what Create N cards did', () => {
+  assert.equal(summary(['added', 'skipped', 'added'], 3), 'Added 2 cards. 1 line needs a target word: use + on it.');
+  assert.equal(summary(['skipped', 'skipped'], 2), 'Added 0 cards. 2 lines need a target word: use + on each.');
+  assert.equal(summary(['added', 'failed'], 4), 'Stopped. Added 1 card. 1 card failed: the popup shows why.');
 });
