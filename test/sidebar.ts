@@ -1,10 +1,11 @@
-// End-to-end test of the subtitle sidebar in the video player: when the list follows the video.
+// End-to-end test of the subtitle sidebar in the video player: when the list follows the video, and Create N cards.
 // Uses port 8765 (mock AnkiConnect) and ffmpeg for a test clip. Saves screenshots to OUT_DIR (default: the temporary work folder).
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { at } from '../src/parse.ts';
 import { launch, makeDictionary, mockAnki, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-sidebar-'));
@@ -149,6 +150,63 @@ try {
   assert.equal(await listTop(), await centered());
   await paused.waitFor({ state: 'hidden' });
   console.log(`sidebar: a click on the time ${time} goes to the line and the list follows again`);
+
+  const footer = sidebar.locator('.minerr-lines-foot');
+  const footerText = footer.getByRole('status');
+  const select = (index: number) => cards.nth(index).getByRole('button', { name: 'Select the line' }).click();
+  const selectedLines = () => cards.evaluateAll(rows => rows.flatMap((row, index) => (row.querySelector('.check[aria-pressed="true"]') ? [index] : [])));
+  assert.equal(await footer.isVisible(), false);
+  await select(0);
+  await select(1);
+  assert.equal(await footerText.innerText(), '2 lines selected');
+  await player.keyboard.press('Escape');
+  await footer.waitFor({ state: 'hidden' });
+  assert.deepEqual(await selectedLines(), [], 'Esc clears the selection');
+  for (const index of [0, 1, 2]) await select(index);
+  await select(3);
+  await select(3);
+  assert.deepEqual(await selectedLines(), [0, 1, 2]);
+  await sidebar.locator('ol').evaluate(list => { list.scrollTop = 0; });
+  await player.mouse.move(0, 0);
+  await player.screenshot({ path: join(out, 'sidebar-selection.png') });
+  const before = anki.requests.length;
+  await footer.getByRole('button', { name: 'Create 3 cards' }).click();
+  await footerText.filter({ hasText: 'Adding card 1 of 3…' }).waitFor();
+  await footerText.filter({ hasText: /^Added/ }).waitFor({ timeout: 60000 });
+  assert.equal(await footerText.innerText(), 'Added 2 cards. 1 line needs a target word: use + on it.');
+  const notes = anki.requests.slice(before).filter(request => at(request, 'action') === 'addNote').map(request => at(request, 'params', 'note', 'fields'));
+  console.log('Create 3 cards:', notes);
+  assert.deepEqual(notes.map(fields => [at(fields, 'Word'), at(fields, 'Sentence')]), [['魚', '猫が<b>魚</b>を食べた'], ['本', '<b>本</b>を読む']],
+    'one card for each line with one unknown word, with its line as the sentence');
+  for (const fields of notes) {
+    assert.match(String(at(fields, 'SentenceAudio')), /^\[sound:minerr-\d+\.webm\]$/, 'each card has the audio of its line');
+    assert.match(String(at(fields, 'Image')), /^<img src="minerr-\d+\.jpg">$/, 'each card has a screenshot');
+  }
+  assert.deepEqual(await selectedLines(), [1], 'the line that needs a target word stays selected');
+  await player.mouse.move(0, 0);
+  await player.screenshot({ path: join(out, 'sidebar-created.png') });
+  await footer.getByRole('button', { name: 'Clear' }).click();
+  await footer.waitFor({ state: 'hidden' });
+  assert.deepEqual(await selectedLines(), []);
+  console.log('Create 3 cards: 2 cards with line, audio, and screenshot; the line with two unknown words stays selected');
+
+  const { addNote } = anki.replies;
+  if (!addNote) throw new Error('The mock has no addNote');
+  delete anki.replies.addNote;
+  await setStorage({ 'w:魚': 'unknown' });
+  await cards.nth(4).locator('.ml-word.ml-unknown[data-ml-lemma="魚"]').waitFor();
+  await select(0);
+  await select(4);
+  await footer.getByRole('button', { name: 'Create 2 cards' }).click();
+  await footerText.filter({ hasText: 'Stopped.' }).waitFor({ timeout: 30000 });
+  assert.equal(await footerText.innerText(), 'Stopped. Added 0 cards. 1 card failed: the popup shows why.');
+  await popup.locator('.message', { hasText: 'The mock has no such action' }).waitFor();
+  assert.deepEqual(await selectedLines(), [0, 4], 'after an error, the lines without a card stay selected');
+  anki.replies.addNote = addNote;
+  await player.keyboard.press('Escape');
+  await footer.getByRole('button', { name: 'Clear' }).click();
+  await footer.waitFor({ state: 'hidden' });
+  console.log('Create 2 cards with an Anki error: the run stops, and the popup shows the error');
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('SIDEBAR E2E PASS');

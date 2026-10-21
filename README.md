@@ -516,6 +516,14 @@ The word of the card from **+**:
 - If the line has no unknown word, the list shows all words of the line.
 - To close the list, click **Cancel**, click **+** again, or press `Esc`. Use `Tab` and `Enter` to select a word with the keyboard.
 
+To add cards for many lines at one time:
+
+1. Click the box at the left of the time of each line. The bar at the bottom of the sidebar shows the number of selected lines.
+2. Click **Create N cards**. Minerr adds one card for each line, one after the other. Each card gets the line as the sentence, the audio of the line, and a screenshot of the line. The bar shows the progress.
+3. Read the result in the bar. A line that does not have exactly one unknown word gets no card, because only you can select its target word. That line stays selected. Use **+** on it.
+   - If Anki gives an error, Minerr stops. The popup of the line shows the error. The lines without a card stay selected.
+4. To stop the cards that are not added yet, click **Stop**. To clear the selection, click **Clear**, or press `Esc` while the sidebar has the focus.
+
 The sidebar follows the video. The card of the current line has a teal border, and the list scrolls to keep that card in view. While the sidebar does not follow the video, it shows **Scroll paused**:
 
 - While the mouse is on the sidebar, the list does not scroll. When the mouse leaves the sidebar, the list stays where it is.
@@ -1004,6 +1012,7 @@ The code is TypeScript with no framework and no bundler. `npm run build` copies 
 | `src/anywhere.ts` | The subtitle overlay on the largest video of a page that is not YouTube, with its buttons. |
 | `src/linelist.ts` | The subtitle sidebar: a full-height panel at the right side of the window, a card for each line, the word list of **+**, and the bookmarks. |
 | `src/linefilter.ts` | The filters of the subtitle sidebar. |
+| `src/lineselect.ts` | The selection of lines in the subtitle sidebar and **Create N cards**. |
 | `src/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
 | `src/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 | `server/whisper_server.py`, `server/media.py` | The local server: WhisperX jobs and the HTTP routes, and the video side (cache keys, `yt-dlp`, the audio cache, and line clips). |
@@ -1051,7 +1060,7 @@ The WhisperX server has two endpoints for the player:
 
 `node test/pages-unit.ts` tests the pure functions of the comprehension score, the word browser, and the reader. `node test/pages.ts` tests the comprehension score in the toolbar popup, the word browser, and the reader in Chromium. `npm test` runs both after `node test/media.ts`.
 
-`node test/sidebar.ts` tests the subtitle sidebar in the player: when the list follows the video. It uses port 8765 and `ffmpeg`. `npm test` runs it after `node test/player.ts`.
+`node test/sidebar.ts` tests the subtitle sidebar in the player: when the list follows the video, and **Create N cards**. It uses port 8765 and `ffmpeg`. `npm test` runs it after `node test/player.ts`.
 
 ## Third-party data
 

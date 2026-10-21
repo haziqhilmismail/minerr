@@ -5,8 +5,9 @@
 // The cards are page text (VIDEO in src/site.ts), so page.ts underlines their words and the popup works on them.
 import type { SubtitleSegment } from './captions.ts';
 import { statusOf } from './iplusone.ts';
-import { choices, FILTER_NAMES, LINE_FILTERS, type LineFilter, type LineWord, shownLines } from './linefilter.ts';
-import { addWordCard } from './popup.ts';
+import { choices, FILTER_NAMES, LINE_FILTERS, type LineFilter, type LineWord, shownLines, targetWord } from './linefilter.ts';
+import { createSelection, type Outcome, SELECT_CSS } from './lineselect.ts';
+import { addWordCard, closePopups } from './popup.ts';
 import { STATUSES } from './status.ts';
 import { applyTheme } from './theme.ts';
 import { themed } from './tokens.ts';
@@ -70,6 +71,7 @@ const STYLE = `
   .minerr-lines .pick button:hover, .minerr-lines-empty button:hover { background: var(--accent-soft); color: var(--text); }
   .minerr-lines-empty { padding: 16px; color: var(--muted); }
   .minerr-lines-empty p { margin: 0 0 10px; }
+  ${SELECT_CSS}
 `;
 
 const ADD_LABEL = 'Add a card for a word of the line';
@@ -113,6 +115,7 @@ interface Card {
   text: HTMLParagraphElement;
   add: HTMLButtonElement;
   mark: HTMLButtonElement;
+  check: HTMLButtonElement;
 }
 
 // A word of a line: its first span, and the text of all its parts.
@@ -212,12 +215,32 @@ export function createLineList(actions: LineActions): LineList {
     pick = null;
   }
 
-  async function addFor(card: Card, span: HTMLElement): Promise<void> {
+  // True when Anki has the card.
+  async function addFor(card: Card, span: HTMLElement): Promise<boolean> {
     closePick();
     follow(card.index);
     await actions.still(card.index);
-    if (span.isConnected) await addWordCard(span);
+    return span.isConnected && addWordCard(span);
   }
+
+  // Create N cards skips a line without exactly one unknown word: only the user can select its target word.
+  async function addLine(index: number): Promise<Outcome> {
+    const card = cards[index];
+    const target = card && targetWord(lineWords(card.text));
+    if (!card || !target) return 'skipped';
+    const added = await addFor(card, target.span);
+    // The popup would cover the progress in the footer. After an error it stays open, to show the cause.
+    if (added) closePopups();
+    return added ? 'added' : 'failed';
+  }
+
+  const selection = createSelection(panel, addLine, selected => {
+    for (const card of cards) {
+      const on = selected.has(card.index);
+      card.check.setAttribute('aria-pressed', String(on));
+      card.check.textContent = on ? '✓' : '';
+    }
+  });
 
   // Inputs, not buttons, hold the words: page.ts does not parse an input, so the words of a chooser are no page text.
   function openPick(card: Card, words: SpanWord[]): void {
@@ -247,9 +270,9 @@ export function createLineList(actions: LineActions): LineList {
   function plus(card: Card): void {
     if (pick?.card === card) return closePick();
     const words = lineWords(card.text);
-    const [only, ...more] = words.filter(word => word.status === 'unknown');
-    if (only && !more.length) {
-      addFor(card, only.span);
+    const target = targetWord(words);
+    if (target) {
+      addFor(card, target.span);
       return;
     }
     if (!words.length) return actions.toast('The line has no words that Minerr knows yet.');
@@ -263,7 +286,10 @@ export function createLineList(actions: LineActions): LineList {
       text: Object.assign(document.createElement('p'), { className: 'text', textContent: segment.text }),
       add: button('add', '+', ADD_LABEL),
       mark: button('mark', '★', 'Bookmark the line (B)'),
+      check: button('check', '', 'Select the line'),
     };
+    card.check.setAttribute('aria-pressed', 'false');
+    card.check.addEventListener('click', () => selection.toggle(index));
     const play = button('play', '▶', 'Play the line');
     play.addEventListener('click', () => {
       follow(index);
@@ -272,7 +298,7 @@ export function createLineList(actions: LineActions): LineList {
     card.add.addEventListener('click', () => plus(card));
     card.mark.addEventListener('click', () => toggleBookmark(index));
     const cardHead = Object.assign(document.createElement('div'), { className: 'card-head' });
-    cardHead.append(Object.assign(document.createElement('time'), { textContent: minutes(segment.start) }), play, card.add, card.mark);
+    cardHead.append(card.check, Object.assign(document.createElement('time'), { textContent: minutes(segment.start) }), play, card.add, card.mark);
     card.row.append(cardHead, card.text);
     card.row.addEventListener('click', event => {
       if (event.target instanceof Element && event.target.closest('.ml-word, button, .pick')) return;
@@ -290,6 +316,7 @@ export function createLineList(actions: LineActions): LineList {
     pick = null;
     cards = panel.hidden ? [] : segments.map(makeCard);
     list.replaceChildren(...cards.map(card => card.row));
+    selection.reset();
     current = -1;
     panel.removeAttribute('data-scroll-paused');
     apply();
