@@ -410,9 +410,10 @@ class Start(unittest.TestCase):
                 whisper_server.main([])
         self.assertEqual(caught.exception.code, f'Port {port} is in use: the WhisperX server already runs, or another program uses the port.')
 
-    def test_every_line_of_the_windows_launcher_ends_with_crlf_for_cmd_exe(self):
-        launcher = (Path(__file__).parents[1] / 'Start WhisperX server.cmd').read_bytes()
-        self.assertEqual({line[-2:] for line in launcher.splitlines(keepends=True)}, {b'\r\n'})
+    def test_every_line_of_the_windows_batch_files_ends_with_crlf_for_cmd_exe(self):
+        root = Path(__file__).parents[1]
+        for batch in (root / 'Start WhisperX server.cmd', root / 'server' / 'start-from-chrome.cmd'):
+            self.assertEqual({line[-2:] for line in batch.read_bytes().splitlines(keepends=True)}, {b'\r\n'}, batch.name)
 
 
 if __name__ == '__main__':

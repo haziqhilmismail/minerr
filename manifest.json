@@ -3,7 +3,7 @@
   "name": "Minerr",
   "version": "0.1.0",
   "description": "Colors Japanese words by status, shows dictionary definitions on hover, and adds Anki cards.",
-  "permissions": ["storage", "offscreen", "unlimitedStorage"],
+  "permissions": ["storage", "offscreen", "unlimitedStorage", "nativeMessaging"],
   "optional_permissions": ["clipboardRead"],
   "host_permissions": ["<all_urls>", "http://127.0.0.1:8765/*", "http://127.0.0.1:8766/*"],
   "background": { "service_worker": "background.js", "type": "module" },
