@@ -7,16 +7,18 @@ import { el } from './popup-view.ts';
 const STYLE = `
   .popup.editing > :not(form) { display: none; }
   .card-form { display: flex; flex-direction: column; min-height: 0; }
-  .card-form .fields { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px 16px 4px; }
-  .card-form label { display: block; margin-top: 10px; color: var(--muted); font-size: 12px; font-weight: 600; }
-  .card-form textarea { box-sizing: border-box; width: 100%; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-s);
-    background: var(--field); color: var(--text); font: 13px/1.4 var(--font-ui); resize: vertical; }
-  .card-form textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
-  .card-form img { display: block; max-width: 100%; margin-top: 8px; border-radius: var(--radius-s); }
-  .card-form audio { display: block; width: 100%; margin-top: 8px; }
-  .card-form .buttons { display: flex; gap: 8px; padding: 12px 16px 14px; border-top: 1px solid var(--line); }
-  .card-form .buttons button { flex: 1; min-height: 36px; padding: 8px 16px; border: 0; border-radius: var(--radius-pill); font-weight: 700; }
+  .card-form .fields { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: var(--space-2) var(--space-4) var(--space-3); }
+  .card-form label { display: block; margin: var(--space-3) 0 var(--space-1) var(--space-1); color: var(--muted); font-size: var(--text-caption); font-weight: 600; }
+  .card-form textarea { display: block; box-sizing: border-box; width: 100%; min-height: 36px; padding: var(--space-2) var(--space-3); border: 1px solid var(--line);
+    border-radius: var(--radius-s); corner-shape: var(--corner); background: var(--field); color: var(--text); font: var(--text-footnote)/1.45 var(--font-ui);
+    resize: vertical; transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease); }
+  .card-form textarea:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .card-form img { display: block; max-width: 100%; margin-top: var(--space-3); border-radius: var(--radius-s); corner-shape: var(--corner); }
+  .card-form audio { display: block; width: 100%; margin-top: var(--space-2); }
+  .card-form .buttons { display: flex; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-4); border-top: 1px solid var(--separator); }
+  .card-form .buttons button { flex: 1; min-height: 40px; padding: 0 var(--space-4); border: 0; border-radius: var(--radius-pill); font-weight: 600; }
   .card-form .buttons .cancel { background: var(--raised); }
+  .card-form .buttons .cancel:hover { background: var(--accent-soft); }
 `;
 
 const MIME: Record<string, string> = { jpg: 'image/jpeg', mp3: 'audio/mpeg', webm: 'audio/webm' };

@@ -2,7 +2,7 @@ import { setStatus, type Status, STATUS_NAMES, STATUSES, WORD_CSS, type WordId }
 import { minerrEnabled } from '../shared/settings.ts';
 import { TAG_CSS, tagClass } from '../dictionary/tags.ts';
 import { applyTheme } from '../shared/theme.ts';
-import { PRIMARY_BUTTON, TOKENS } from '../shared/design-tokens.ts';
+import { GLASS, PRIMARY_BUTTON, tokensOn } from '../shared/design-tokens.ts';
 import { wordText } from '../text/word-spans.ts';
 import { type Entry, entryStars, highs, morae, PITCH, pitchPattern } from '../dictionary/meta.ts';
 import type { Sense, Tag } from '../dictionary/yomitan.ts';
@@ -10,74 +10,82 @@ import type { Sense, Tag } from '../dictionary/yomitan.ts';
 const POWER_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>';
 
 const STYLE = `
-  :host { ${TOKENS} }
+  ${tokensOn(':host')}
   .popup {
     position: fixed; z-index: 2147483647; display: flex; flex-direction: column; box-sizing: border-box;
     width: 380px; max-width: calc(100vw - 8px); max-height: min(60vh, 480px); overflow: hidden;
-    border: 1px solid var(--line); border-radius: var(--radius-m);
-    background: var(--card); color: var(--text); color-scheme: light dark; text-align: left;
-    font: 14px/1.5 var(--font-ui);
-    box-shadow: inset 0 4px 0 var(--status, transparent), var(--shadow-3), var(--shadow-1);
+    border-radius: var(--radius-l); corner-shape: var(--corner);
+    ${GLASS} color: var(--text); color-scheme: light dark; text-align: left;
+    font: var(--text-body)/1.45 var(--font-ui); -webkit-font-smoothing: antialiased;
+    box-shadow: inset 0 3px 0 var(--status, transparent), var(--edge), var(--shadow-3);
+    transition: opacity var(--normal) var(--ease), translate var(--normal) var(--ease);
   }
+  @starting-style { .popup { opacity: 0; translate: 0 4px; } }
   .popup[data-theme="light"] { color-scheme: light; }
   .popup[data-theme="dark"] { color-scheme: dark; }
-  header { position: relative; padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
-  .title { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; padding-right: 72px; }
-  .title .tags { font-size: 15px; }
-  .lemma { font: 700 28px/1.25 var(--font-jp); }
-  .corner { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
+  header { position: relative; padding: var(--space-4) var(--space-4) var(--space-3); border-bottom: 1px solid var(--separator); }
+  .title { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--space-2); row-gap: 2px; padding-right: 72px; }
+  .title .tags { font-size: var(--text-footnote); }
+  .lemma { font: 700 var(--text-title1)/1.2 var(--font-jp); letter-spacing: .01em; }
+  .corner { position: absolute; top: var(--space-2); right: var(--space-2); display: flex; gap: var(--space-1); }
   .corner button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%;
-    background: transparent; color: var(--muted); font-size: 15px; }
-  .corner button:hover { background: var(--raised); color: var(--text); }
-  .reading { font: 16px/1.5 var(--font-jp); color: var(--muted); }
-  .surface { font-size: 12px; color: var(--muted); }
-  .inflection { font: 12px/1.5 var(--font-jp); color: var(--text); }
-  .statuses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: 12px; padding: 3px;
-    border-radius: var(--radius-pill); background: var(--raised); }
-  button { font: inherit; color: inherit; cursor: pointer; }
+    background: var(--raised); color: var(--muted); font-size: var(--text-footnote); }
+  .corner button:hover { background: var(--line); color: var(--text); }
+  .reading { font: var(--text-headline)/1.4 var(--font-jp); color: var(--muted); }
+  .surface { margin-top: 2px; font-size: var(--text-caption); color: var(--muted); }
+  .inflection { font: var(--text-caption)/1.5 var(--font-jp); color: var(--text); }
+  .statuses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: var(--space-3); padding: 2px;
+    border-radius: var(--radius-s); corner-shape: var(--corner); background: var(--raised); }
+  button { font: inherit; color: inherit; cursor: pointer; user-select: none;
+    transition: background-color var(--fast) var(--ease), color var(--fast) var(--ease), filter var(--fast) var(--ease), scale var(--fast) var(--ease); }
+  button:active:not(:disabled) { scale: 0.97; }
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .statuses button { min-height: 32px; padding: 4px 2px; border: 0; border-radius: var(--radius-pill); background: none;
-    color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .statuses button { min-height: 32px; padding: var(--space-1) 2px; border: 0; border-radius: calc(var(--radius-s) - 2px); corner-shape: var(--corner);
+    background: none; color: var(--muted); font-size: var(--text-caption); font-weight: 600; white-space: nowrap; }
   .statuses button:hover { color: var(--text); }
-  .statuses button[aria-pressed="true"] { background: var(--card); color: var(--text); font-weight: 700; box-shadow: var(--shadow-1); }
+  .statuses button[aria-pressed="true"] { background: var(--card); color: var(--text); box-shadow: var(--shadow-1); }
   .dot { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; vertical-align: 1px; }
   kbd { display: inline-block; min-width: 16px; box-sizing: border-box; padding: 0 3px; border: 1px solid currentColor;
-    border-radius: 4px; font: 600 10px/14px var(--font-ui); text-align: center; opacity: .7; }
-  .definitions { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px 16px 4px; }
+    border-radius: 4px; font: 600 11px/14px var(--font-ui); text-align: center; opacity: .6; }
+  .definitions { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: var(--space-3) var(--space-4) var(--space-1); }
   ol { margin: 0; padding-left: 22px; }
-  li { margin-bottom: 12px; white-space: pre-line; }
-  li::marker { color: var(--accent); font-size: 12px; font-weight: 700; }
-  .group { margin: 4px 0 8px; padding-top: 10px; border-top: 1px solid var(--line); }
-  .group .word { font: 700 16px/1.5 var(--font-jp); }
-  .group .reading { margin: 0 8px 0 6px; font-size: 14px; }
-  .dict { width: fit-content; margin-top: 4px; padding: 0 8px; border-radius: var(--radius-pill); background: var(--raised);
-    color: var(--muted); font-size: 11px; line-height: 18px; }
+  li { margin-bottom: var(--space-3); white-space: pre-line; }
+  li::marker { color: var(--accent); font-size: var(--text-caption); font-weight: 700; }
+  .group { margin: var(--space-1) 0 var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--separator); }
+  .group .word { font: 700 var(--text-headline)/1.5 var(--font-jp); }
+  .group .reading { margin: 0 var(--space-2) 0 6px; font-size: var(--text-body); }
+  .dict { width: fit-content; margin-top: var(--space-1); padding: 0 var(--space-2); border-radius: var(--radius-xs); background: var(--raised);
+    color: var(--muted); font-size: var(--text-caption); line-height: 20px; }
   ${TAG_CSS}
+  .tag { font-family: var(--font-ui); }
   ${WORD_CSS}
-  .empty { margin: 0 0 8px; color: var(--muted); }
-  .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin-top: 4px; font-size: 12px; color: var(--muted); }
+  .empty { margin: 0 0 var(--space-2); color: var(--muted); }
+  .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); margin-top: var(--space-1); font-size: var(--text-caption); color: var(--muted); }
   .group .meta { margin: 2px 0 0; }
-  .stars { color: var(--star); font-size: 13px; letter-spacing: 1px; }
+  .stars { color: var(--star); font-size: var(--text-footnote); letter-spacing: 1px; }
   .freq b { color: var(--text); font-weight: 600; }
   .pitch { display: inline-flex; align-items: baseline; gap: 6px; }
-  .morae { font-size: 14px; color: var(--text); }
+  .morae { font-size: var(--text-footnote); color: var(--text); }
   .mora { display: inline-block; padding-top: 1px; border-top: 1.5px solid transparent; }
   .mora.high { border-top-color: currentColor; }
   .mora.drop { border-right: 1.5px solid currentColor; }
   .pattern { font-weight: 600; }
   .toast { position: fixed; left: 50%; bottom: 56px; transform: translateX(-50%); z-index: 1; max-width: calc(100vw - 32px);
-    padding: 8px 18px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--bg) 94%, transparent);
-    color: var(--text); color-scheme: dark; text-align: center; font: 600 14px/1.5 var(--font-ui); box-shadow: var(--shadow-2); pointer-events: none; }
+    padding: var(--space-2) var(--space-4); border-radius: var(--radius-pill); color-scheme: dark;
+    ${GLASS} color: var(--text);
+    text-align: center; font: 600 var(--text-body)/1.45 var(--font-ui); box-shadow: var(--edge), var(--shadow-2); pointer-events: none;
+    transition: opacity var(--normal) var(--ease), translate var(--normal) var(--ease); }
+  @starting-style { .toast { opacity: 0; translate: 0 8px; } }
   .toast[hidden] { display: none; }
-  footer { padding: 12px 16px 14px; border-top: 1px solid var(--line); }
-  .actions { display: flex; gap: 8px; }
-  .add, .edit { min-height: 36px; padding: 8px 16px; border: 0; border-radius: var(--radius-pill); font-weight: 700; }
+  footer { padding: var(--space-3) var(--space-4) var(--space-4); border-top: 1px solid var(--separator); }
+  .actions { display: flex; gap: var(--space-2); }
+  .add, .edit { min-height: 40px; padding: 0 var(--space-4); border: 0; border-radius: var(--radius-pill); font-weight: 600; }
   .add { flex: 1; }
   ${PRIMARY_BUTTON}
   .add:disabled { cursor: progress; opacity: .65; }
   .edit { background: var(--raised); }
   .edit:hover { background: var(--accent-soft); }
-  .message { margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--ok); }
+  .message { margin-top: var(--space-2); font-size: var(--text-footnote); font-weight: 600; color: var(--ok); }
   .message:empty { display: none; }
   .message.error { color: var(--error); }
 `;
@@ -108,8 +116,12 @@ export function createBox(): HTMLDivElement {
 export const showBox = (box: HTMLDivElement) => shadow.append(box);
 export const hideBox = (box: HTMLDivElement) => box.remove();
 
-// The popup goes into the full screen element when there is one, so it shows over a full screen video.
-export const mount = () => (document.fullscreenElement ?? document.documentElement).append(host);
+// The popup goes into the full screen element when there is one, so it shows over a full screen video. It goes last,
+// over the rest of the page, but only moves when it is not last: a move inserts the open boxes again, and they fade in again.
+export function mount(): void {
+  const parent = document.fullscreenElement ?? document.documentElement;
+  if (parent.lastElementChild !== host) parent.append(host);
+}
 
 const toastBox = el('div', { className: 'toast', role: 'status', hidden: true });
 shadow.append(toastBox);
