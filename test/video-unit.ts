@@ -7,6 +7,7 @@ import { autoPause, cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted, o
 import { isStatus } from '../src/status/status.ts';
 import { keyLabel, keyName, videoKey } from '../src/video/videokeys.ts';
 import { serverHint } from '../src/video/whisper.ts';
+import { nextStatus, type ServerStatus } from '../src/video/server-status.ts';
 
 const LINES = [{ start: 1, end: 3, text: '一' }, { start: 3, end: 5, text: '二' }, { start: 8, end: 10, text: '三' }];
 
@@ -190,4 +191,27 @@ test('serverHint tells a Windows user to double-click the launcher, and other us
     'Start the WhisperX server: uv run server/whisper_server.py',
     'Start the WhisperX server: uv run server/whisper_server.py',
   ]);
+});
+
+test('nextStatus: a health reply runs the server; no reply keeps setup, failed, and a fresh start, else the server is off', () => {
+  const health = { model: 'large-v3-turbo', device: 'cpu' };
+  const starting: ServerStatus = { state: 'starting', since: 1000 };
+  assert.deepEqual(nextStatus({ state: 'checking' }, { type: 'health', health }, 1000), { state: 'running', health });
+  assert.deepEqual(nextStatus({ state: 'checking' }, { type: 'health', health: null }, 1000), { state: 'off' });
+  assert.deepEqual(nextStatus({ state: 'running', health }, { type: 'health', health: null }, 1000), { state: 'off' });
+  assert.deepEqual(nextStatus(starting, { type: 'health', health: null }, 90_999), starting);
+  assert.deepEqual(nextStatus(starting, { type: 'health', health: null }, 91_000), { state: 'failed' });
+  assert.deepEqual(nextStatus(starting, { type: 'health', health }, 91_000), { state: 'running', health });
+  assert.deepEqual(nextStatus({ state: 'setup' }, { type: 'health', health: null }, 1000), { state: 'setup' });
+  assert.deepEqual(nextStatus({ state: 'failed' }, { type: 'health', health: null }, 1000), { state: 'failed' });
+});
+
+test('nextStatus: Start begins a start; a missing or forbidden host means setup, any other host result keeps the start', () => {
+  const starting: ServerStatus = { state: 'starting', since: 5000 };
+  assert.deepEqual(nextStatus({ state: 'off' }, { type: 'start' }, 5000), starting);
+  assert.deepEqual(nextStatus({ state: 'failed' }, { type: 'start' }, 5000), starting);
+  assert.deepEqual(nextStatus(starting, { type: 'host', error: 'Specified native messaging host not found.' }, 5001), { state: 'setup' });
+  assert.deepEqual(nextStatus(starting, { type: 'host', error: 'Access to the specified native messaging host is forbidden.' }, 5001), { state: 'setup' });
+  assert.deepEqual(nextStatus(starting, { type: 'host', error: 'Native host has exited.' }, 5001), starting);
+  assert.deepEqual(nextStatus(starting, { type: 'host', error: null }, 5001), starting);
 });
