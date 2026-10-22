@@ -34,6 +34,11 @@ const STYLE = `
   .minerr-subs-stack[data-align="left"] > * { text-align: left; }
   .minerr-subs-stack[data-align="right"] > * { text-align: right; }
   .minerr-subs-second { padding: 0.12em 0.7em 0.16em; font: 400 0.72em/1.45 var(--font-ui); }
+  /* A roll up, as in the captions of YouTube: the rows that went (data-gone, not text of the line) slide up out of the
+     line, and the rows that stay slide up into their place. The box keeps the height of the rows that stay. */
+  .minerr-subs-line[data-rolling] { overflow: clip; }
+  .minerr-subs-rows[data-gone]::before { content: attr(data-gone) "\\A"; }
+  .minerr-subs-rows[data-gone] { margin-bottom: calc(-1lh * var(--minerr-roll)); }
   .minerr-subs[data-second="hover"]:not([data-paused]) .minerr-subs-stack:not(:hover) .minerr-subs-second { visibility: hidden; }
   .minerr-subs-line[hidden], .minerr-subs-second[hidden], .minerr-subs-toast[hidden] { display: none; }
   .minerr-subs[data-obscure="blur"]:not([data-paused]) .minerr-subs-line:not(:hover) { filter: blur(0.3em); }
@@ -51,6 +56,22 @@ const STYLE = `
 `;
 
 const TOAST_MS = 2500;
+const ROLL_MS = 300;
+
+// The first rows of before that text no longer has, when text keeps the rows after them at its start: YouTube rolls its
+// captions up by a row. The last row that stays can have more words in text. [] when text is no roll up of before.
+export function goneRows(before: string, text: string): string[] {
+  const old = before.split('\n');
+  const now = text.split('\n');
+  for (let gone = 1; gone < old.length; gone++) {
+    const kept = old.slice(gone);
+    const last = kept.length - 1;
+    if (kept.join('') && kept.length <= now.length && kept.every((row, i) => (i === last ? now[i]?.startsWith(row) : now[i] === row))) {
+      return old.slice(0, gone);
+    }
+  }
+  return [];
+}
 
 // The caption window of the site: the side of its text, and its distance from that side of the video, as a fraction of
 // the width of the video. null is a centered window.
@@ -88,6 +109,8 @@ export function createOverlay(): Overlay {
   const layer = Object.assign(document.createElement('div'), { className: 'minerr-subs' });
   const stack = Object.assign(document.createElement('div'), { className: 'minerr-subs-stack' });
   const line = Object.assign(document.createElement('div'), { className: 'minerr-subs-line', hidden: true });
+  const rows = Object.assign(document.createElement('div'), { className: 'minerr-subs-rows' });
+  line.append(rows);
   // The second line is the secondary track, for example English, under the Japanese line.
   const secondLine = Object.assign(document.createElement('div'), { className: 'minerr-subs-second', hidden: true });
   const note = Object.assign(document.createElement('div'), { className: 'minerr-subs-toast', hidden: true, role: 'status' });
@@ -96,11 +119,28 @@ export function createOverlay(): Overlay {
   document.head.append(Object.assign(document.createElement('style'), { textContent: STYLE }));
   const shown = new Map<HTMLElement, string>();
   // Replace the text only when it changes: page.ts swaps the text node for word spans, and that must stay.
-  const set = (element: HTMLElement, text: string) => {
+  const set = (element: HTMLElement, text: string, holder = element) => {
     if (shown.get(element) === text) return;
     shown.set(element, text);
-    element.textContent = text;
+    holder.textContent = text;
     element.hidden = !text;
+  };
+  const still = matchMedia('(prefers-reduced-motion: reduce)');
+  let rolling: Animation | null = null;
+  const roll = (gone: string[]) => {
+    if (!gone.length || still.matches) return;
+    rolling?.cancel();
+    rows.dataset.gone = gone.join('\n');
+    rows.style.setProperty('--minerr-roll', String(gone.length));
+    line.dataset.rolling = '';
+    const animation = rows.animate({ translate: ['0 0', `0 calc(-1lh * ${gone.length})`] }, { duration: ROLL_MS, easing: 'ease-out' });
+    rolling = animation;
+    animation.onfinish = animation.oncancel = () => {
+      if (rolling !== animation) return;
+      rolling = null;
+      delete rows.dataset.gone;
+      delete line.dataset.rolling;
+    };
   };
   const show = (text: string, second: string, anchor: CaptionAnchor = null) => {
     if (anchor) {
@@ -110,7 +150,9 @@ export function createOverlay(): Overlay {
       delete stack.dataset.align;
       stack.style.removeProperty('--minerr-inset');
     }
-    set(line, text);
+    const before = shown.get(line) ?? '';
+    set(line, text, rows);
+    if (text && before) roll(goneRows(before, text));
     set(secondLine, second);
   };
   let timer: ReturnType<typeof setTimeout> | undefined;

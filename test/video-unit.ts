@@ -321,3 +321,13 @@ test('isNoHostError knows the two errors of Chrome for a missing host; a host th
   assert.deepEqual(['Specified native messaging host not found.', 'Access to the specified native messaging host is forbidden.',
     'Native host has exited.', 'Error when communicating with the native messaging host.', ''].map(isNoHostError), [true, true, false, false, false]);
 });
+
+test('goneRows names the rows that a roll up of the captions takes away', async () => {
+  const { goneRows } = await import('../src/video/overlay.ts');
+  assert.deepEqual(goneRows('so this is a\ntest of the rows', 'test of the rows\nand a'), ['so this is a']);
+  assert.deepEqual(goneRows('so this is a\ntest of', 'test of the rows\nand a'), ['so this is a'], 'the row that stays got more words');
+  assert.deepEqual(goneRows('a\nb\nc', 'c\nd'), ['a', 'b']);
+  assert.deepEqual(goneRows('so this is a\ntest', 'so this is a\ntest of the rows'), [], 'a new word is no roll up');
+  assert.deepEqual(goneRows('so this is a', 'so this is a\ntest'), [], 'a new row under the row is no roll up');
+  assert.deepEqual(goneRows('猫が魚を食べた', '今日は雨'), [], 'a new line is no roll up');
+});

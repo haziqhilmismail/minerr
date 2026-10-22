@@ -671,6 +671,16 @@ try {
   assert.equal(before.align, 'left', 'the line takes the side of the YouTube caption window');
   assert.ok(Math.abs(before.left - windowLeft) <= 1, `the line starts where the YouTube caption window starts: ${before.left} and ${windowLeft}`);
   assert.deepEqual(await boxOf(), before, 'a new word of a left caption window does not move the line');
+  await tab.evaluate(() => {
+    const [top, bottom] = document.querySelectorAll('.ytp-caption-segment');
+    if (!top || !bottom) throw new Error('The page has no two caption lines');
+    top.textContent = 'test of the rows';
+    bottom.textContent = 'and a';
+  });
+  await tab.waitForFunction(() => document.querySelector('.minerr-subs-rows')?.getAttribute('data-gone') === 'so this is a');
+  assert.equal(await line.innerText(), 'test of the rows\nand a', 'the row that rolls up is no text of the line');
+  await tab.waitForFunction(() => !document.querySelector('.minerr-subs-rows')?.hasAttribute('data-gone'));
+  console.log('a roll up of the YouTube captions slides the old row up and out of the line');
   await shot(tab, 'overlay-english-left.png');
   await tab.evaluate(() => { const window = document.querySelector<HTMLElement>('.caption-window'); if (window) Object.assign(window.style, { textAlign: '', left: '', transform: '' }); });
   await options.evaluate(() => chrome.storage.local.set({ enabled: false }));
