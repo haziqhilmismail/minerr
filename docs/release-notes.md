@@ -14,16 +14,17 @@ To update, replace the files in the same `minerr` folder. Then click the reload 
 
 ## WhisperX server (optional)
 
-The server makes Japanese subtitles for videos that have none. It needs [uv](https://docs.astral.sh/uv/), `yt-dlp`, and `ffmpeg`. See [Generate subtitles with WhisperX](https://github.com/haziqhilmismail/minerr#generate-subtitles-with-whisperx) in the README.
+The server makes Japanese subtitles for videos that have none. It needs [uv](https://docs.astral.sh/uv/). On Windows, the launcher downloads uv for you. The server uses `yt-dlp` and `ffmpeg` from the `PATH`, else its own copies. See [Generate subtitles with WhisperX](https://github.com/haziqhilmismail/minerr#generate-subtitles-with-whisperx) in the README.
 
 | Platform | Start the server |
 | --- | --- |
-| Windows, x64 or ARM | The server runs in WSL. Double-click `Start WhisperX server.cmd` in the `minerr` folder one time. After that, the Minerr toolbar popup has a **Start the server** button. |
+| Windows, x64 | Double-click `Start WhisperX server (Windows).cmd` in the `minerr` folder one time. It asks before it downloads uv, then installs the server. You do not need WSL. After that, the Minerr toolbar popup has a **Start the server** button. |
+| Windows, x64 or ARM, with WSL | The server runs in WSL. Double-click `Start WhisperX server (WSL).cmd` in the `minerr` folder one time. After that, the Minerr toolbar popup has a **Start the server** button. |
 | Linux, x64 or ARM64 | Run `uv run server/whisper_server.py` in the `minerr` folder. |
 | macOS, Apple silicon | Run `uv run server/whisper_server.py` in the `minerr` folder. This platform is not tested. |
 | macOS, Intel | Not supported, because PyTorch 2.8 has no package for Intel Macs. |
 
-The first start of the server installs about 2.6 GB of packages. The first job downloads the model, about 1.6 GB.
+The first start of the server installs about 2.6 GB of packages on Linux, and about 3.7 GB on Windows. The first job downloads the model, about 1.6 GB.
 
 ## Check the download
 

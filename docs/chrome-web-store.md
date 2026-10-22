@@ -8,7 +8,7 @@ This guide is for the owner of Minerr. It gives the changes that Minerr needs be
 | --- | --- |
 | Add PNG icons (16, 32, 48, and 128 pixels) and the `icons` field to `manifest.json`. | The store needs a 128 x 128 PNG icon in the ZIP file. Google recommends 96 x 96 artwork with 16 pixels of transparent padding on each side. At 16 and 32 pixels, use the pickaxe of `docs/logo.svg` without 日本語. |
 | Make a store ZIP with `manifest.json` at the root. | The store does not accept a ZIP with the manifest in a folder. The GitHub release ZIP has the top folder `minerr`, so you cannot upload it. |
-| Leave `server/` and `Start WhisperX server.cmd` out of the store ZIP. | A store install has no folder that the user can open, so the launcher cannot start from there. Store users get the server from the GitHub release. |
+| Leave `server/` and the two launchers (`Start WhisperX server (Windows).cmd` and `Start WhisperX server (WSL).cmd`) out of the store ZIP. | A store install has no folder that the user can open, so a launcher cannot start from there. Store users get the server from the GitHub release. |
 | Add the store item ID to the allowed origins in `server/chrome_start.py`, and change the hint of the popup. | The store gives Minerr a fixed ID. It is not the ID that `chrome_start.py` calculates from the folder path, so Chrome refuses the Start button for a store install. The popup hint tells the user to double-click a file in the Minerr folder, and a store install has no such folder. |
 | Add a `LICENSE` file. | The store does not need a license. But without one, Minerr is not open source, and other people have no right to use or change the code. |
 | Write a privacy policy, for example `PRIVACY.md`. | The Privacy practices tab asks for a privacy policy URL. See [Privacy practices](#4-fill-in-the-privacy-practices-tab). |
@@ -33,7 +33,7 @@ This guide is for the owner of Minerr. It gives the changes that Minerr needs be
    ```sh
    npm run build
    rm -rf /tmp/minerr-store && cp -r dist /tmp/minerr-store
-   rm -r /tmp/minerr-store/server "/tmp/minerr-store/Start WhisperX server.cmd"
+   rm -r /tmp/minerr-store/server /tmp/minerr-store/*.cmd
    python3 -c "import shutil; shutil.make_archive('minerr-store', 'zip', '/tmp/minerr-store')"
    ```
 

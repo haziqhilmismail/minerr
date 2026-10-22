@@ -365,37 +365,56 @@ Some videos have no Japanese captions, or captions of low quality. For these vid
 
 ### Requirements
 
-- Linux, or WSL on Windows.
-- [uv](https://docs.astral.sh/uv/). uv installs Python 3.12, WhisperX, and PyTorch for the server.
-- `yt-dlp` and `ffmpeg` in your `PATH`. `yt-dlp` uses Node.js for the YouTube JavaScript challenges.
-- On Windows, `Start WhisperX server.cmd` finds `uv`, `yt-dlp`, and `ffmpeg` in the `PATH` that `~/.profile` sets in WSL. It runs a login shell that is not interactive, so the `PATH` changes in `~/.bashrc` do not apply.
-- About 4 GB of free memory and 5 GB of free disk space. The server uses about 3.5 GB of memory with the default model.
+- Windows on an x64 processor, Linux, or WSL on Windows. On Windows on ARM, use WSL.
+- [uv](https://docs.astral.sh/uv/). uv installs Python 3.12, WhisperX, PyTorch, `yt-dlp`, and `ffmpeg` for the server. On Windows, `Start WhisperX server (Windows).cmd` downloads uv if your computer does not have it.
+- If your `PATH` has `yt-dlp` and `ffmpeg`, the server uses them. If not, the server uses its own copies: the `yt-dlp` package and the `ffmpeg` of the `imageio-ffmpeg` package. `yt-dlp` uses Node.js for the YouTube JavaScript challenges, if Node.js is in the `PATH`.
+- In WSL, `Start WhisperX server (WSL).cmd` finds `uv`, `yt-dlp`, and `ffmpeg` in the `PATH` that `~/.profile` sets. It runs a login shell that is not interactive, so the `PATH` changes in `~/.bashrc` do not apply.
+- About 4 GB of free memory. The server uses about 3.5 GB of memory with the default model.
+- About 5 GB of free disk space on Linux, and 6 GB on Windows.
 
 The server uses the CPU. It does not need a GPU, so it also works on a computer with an AMD GPU or with no CUDA.
 
 ### Start the server
 
-On Windows, click the Minerr button in the Chrome toolbar, then click **Start the server**. A window opens, and the server starts in WSL. Keep the window open while you use the server. To stop the server, close the window.
+The Minerr folder has two launchers for Windows. This is the folder that you load in `chrome://extensions`.
 
-The button works after one double-click of `Start WhisperX server.cmd` in the Minerr folder. This is the folder that you load in `chrome://extensions`. Before that double-click, the popup tells you to do it:
+- `Start WhisperX server (Windows).cmd` runs the server on Windows itself. You do not need WSL.
+- `Start WhisperX server (WSL).cmd` runs the server in WSL.
+
+On Windows, click the Minerr button in the Chrome toolbar, then click **Start the server**. A window opens, and the server starts in it. Keep the window open while you use the server. To stop the server, close the window.
+
+The button works after one double-click of a launcher. Before that double-click, the popup tells you to do it:
 
 1. Click **Show the Minerr folder**. The page of Minerr in `chrome://extensions` opens.
 2. Click the path after **Loaded from**. The Minerr folder opens.
-3. Double-click `Start WhisperX server.cmd`. The server starts, and the button is set up.
+3. Double-click `Start WhisperX server (Windows).cmd`. If you use WSL, double-click `Start WhisperX server (WSL).cmd`. The server starts, and the button is set up.
 
-Each start of `Start WhisperX server.cmd` sets up the button again. It writes two things for Chrome:
+Each start of a launcher sets up the button again for that launcher. Thus the button starts the launcher that you double-clicked last. A launcher writes two things for Chrome:
 
-- The file `%LOCALAPPDATA%\Minerr\com.minerr.whisperx.json`. It names the host, `server\start-from-chrome.cmd` in the Minerr folder, and the extension that can use it.
+- The file `%LOCALAPPDATA%\Minerr\com.minerr.whisperx.json`. It names the host of the launcher in the Minerr folder, `server\start-from-chrome-windows.cmd` or `server\start-from-chrome.cmd` (WSL), and the extension that can use it.
 - The registry value `HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.minerr.whisperx`, which points at that file.
 
-When you click **Start the server**, Chrome runs the host, and the host opens `Start WhisperX server.cmd` in a window of its own. If the server does not answer in 90 seconds, the popup says so. Look at the window for the error. If you move the Minerr folder, double-click `Start WhisperX server.cmd` in the new folder one time. If the button still asks for the double-click after one double-click, start the server with the double-click.
+When you click **Start the server**, Chrome runs the host, and the host opens its launcher in a window of its own. If the server does not answer in 90 seconds, the popup says so. Look at the window for the error. If you move the Minerr folder, double-click the launcher in the new folder one time. If the button still asks for the double-click after one double-click, start the server with the double-click.
 
-To remove the two things that the launcher writes, run these commands in a Command Prompt:
+#### The Windows launcher
+
+`Start WhisperX server (Windows).cmd` needs no admin rights. It does not change the `PATH` or other settings of Windows. It does these steps:
+
+1. It finds uv in your `PATH` or in `%LOCALAPPDATA%\Minerr\uv`. If it finds no uv, it asks you first. When you press Y, it downloads uv 0.13.5 (15 MB) from GitHub with `curl.exe`, checks the SHA-256 of the file, and unpacks it to `%LOCALAPPDATA%\Minerr\uv`.
+2. It sets up the **Start the server** button.
+3. It gets the newest `yt-dlp`, because YouTube often breaks old versions. If your computer is offline, the server starts with the `yt-dlp` that it has. This works after one start with internet access from the same Minerr folder.
+4. It starts the server. At the first start, uv downloads Python 3.12 and the packages of the server.
+
+The launcher keeps the bytecode of Python in `%LOCALAPPDATA%\Minerr\pycache`, so the Minerr folder does not change. The launcher does not work on Windows on ARM, because ctranslate2, the engine of WhisperX, has no package for it. On Windows on ARM, use WSL.
+
+To remove what the launchers write, run these commands in a Command Prompt. `%LOCALAPPDATA%\Minerr` holds the file for Chrome, and the uv and the bytecode of the Windows launcher.
 
 ```bat
 reg delete HKCU\Software\Google\Chrome\NativeMessagingHosts\com.minerr.whisperx /f
 rmdir /s /q %LOCALAPPDATA%\Minerr
 ```
+
+The Windows launcher also fills the cache of uv in `%LOCALAPPDATA%\uv` and the Python of uv in `%APPDATA%\uv\python`. The model is in `%USERPROFILE%\.cache\huggingface`. If you do not use uv and Hugging Face for other work, delete these folders too.
 
 On Linux, run this command in the Minerr folder. Keep the terminal open while you use the server.
 
@@ -403,18 +422,20 @@ On Linux, run this command in the Minerr folder. Keep the terminal open while yo
 uv run server/whisper_server.py
 ```
 
-The first start installs about 2.6 GB of packages. The first job also downloads the model, about 1.6 GB.
+If your `PATH` has no `yt-dlp`, the server uses the `yt-dlp` package of its environment. To update that package, run `uv sync --script server/whisper_server.py --upgrade-package yt-dlp`.
 
-Chrome on Windows connects to the server in WSL at `http://127.0.0.1:8766`, because WSL forwards localhost ports to Windows.
+The first start installs about 2.6 GB of packages on Linux, and about 3.7 GB on Windows. The first job also downloads the model, about 1.6 GB. In a test on Windows, the first job also waited about 5 minutes before the transcription started. This wait occurs one time only.
 
-If the window or the terminal shows `Port 8766 is in use: the WhisperX server already runs, or another program uses the port.`, the server already runs, or another program uses the port.
+With the WSL launcher, Chrome on Windows connects to the server in WSL at `http://127.0.0.1:8766`, because WSL forwards localhost ports to Windows.
 
-To start the server when you log in to Windows, put a shortcut to `Start WhisperX server.cmd` in the Startup folder:
+If the window or the terminal shows `Port 8766 is in use: the WhisperX server already runs, or another program uses the port.`, the server already runs, or another program uses the port. Only one server can run at a time. Thus the second launcher shows this message while the server of the first launcher runs.
+
+To start the server when you log in to Windows, put a shortcut to your launcher in the Startup folder:
 
 1. Press Win+R.
 2. Type `shell:startup`.
 3. Press Enter. The Startup folder opens.
-4. With the right mouse button, drag `Start WhisperX server.cmd` from the Minerr folder to the Startup folder.
+4. With the right mouse button, drag your launcher from the Minerr folder to the Startup folder.
 5. Click **Create shortcuts here**.
 
 The default model is `large-v3-turbo`. To use a different model, add `--model`, for example `--model small`. The `small` model is about 2.5 times faster, but it makes more mistakes in Japanese. For example, it wrote 自身 for 地震, 部身 for 文, and 感じに振り金 for 漢字にふりがな.
@@ -444,7 +465,9 @@ The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.<model>.8s.js
 
 The server also keeps the audio of each video in `~/.cache/minerr/audio/`, for the sentence audio of the cards. A 20-minute video needs about 20 MB. To free the disk space, delete the files in this folder.
 
-The audio stays on your computer. Only `yt-dlp` connects to YouTube, to download the audio. WhisperX downloads its models from Hugging Face the first time. The server accepts connections only from your computer.
+On Windows, `~` is your user folder, for example `C:\Users\<you>`.
+
+The audio stays on your computer. Only `yt-dlp` connects to YouTube, to download the audio. WhisperX downloads its models from Hugging Face the first time. The server accepts connections only from your computer. The Windows launcher downloads uv from GitHub one time, and uv downloads Python and the packages from the internet. At each start of the Windows launcher, uv asks PyPI for a new version of `yt-dlp`.
 
 ## Mine a local video
 
@@ -1037,7 +1060,7 @@ The theme does not change the Anki card. The card follows the night mode of Anki
 
 ## Development
 
-The code is TypeScript with no framework and no bundler. `npm run build` copies `manifest.json`, the HTML pages, `vendor`, the WhisperX server (`server/whisper_server.py`, `server/media.py`, `server/chrome_start.py`, and `server/start-from-chrome.cmd`), and `Start WhisperX server.cmd` to `dist`. Then `tsc` compiles each `.ts` file to a `.js` file in `dist`. `npm run typecheck` checks the types of the extension, the tests, and the scripts.
+The code is TypeScript with no framework and no bundler. `npm run build` copies `manifest.json`, the HTML pages, `vendor`, the WhisperX server (`server/whisper_server.py`, `server/media.py`, `server/chrome_start.py`, and the hosts `server/*.cmd`), and the launchers (`*.cmd`) to `dist`. Then `tsc` compiles each `.ts` file to a `.js` file in `dist`. `npm run typecheck` checks the types of the extension, the tests, and the scripts.
 
 ### Code map
 
@@ -1116,10 +1139,11 @@ The path of a word from a page to a card:
 | `src/video/sidebar/sidebar-select.ts` | The selection of lines in the subtitle sidebar and **Create N cards**. |
 | `src/video/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
 | `src/video/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
-| `server/whisper_server.py`, `server/media.py` | The local server: WhisperX jobs and the HTTP routes, and the video side (cache keys, `yt-dlp`, the audio cache, and line clips). |
-| `Start WhisperX server.cmd` | Starts the WhisperX server in WSL from the extension folder on Windows, after `server/chrome_start.py` sets up the Start button of the popup. Git writes the `.cmd` files with CRLF line ends (`.gitattributes`), because they are Windows batch files. |
-| `server/chrome_start.py` | Writes the manifest of the native messaging host `com.minerr.whisperx` to `%LOCALAPPDATA%\Minerr` and the registry value that points at it, for the extension in this folder. |
-| `server/start-from-chrome.cmd` | The native messaging host. Chrome runs it when you click **Start the server**. It opens `Start WhisperX server.cmd` in a window of its own and exits. |
+| `server/whisper_server.py`, `server/media.py` | The local server: WhisperX jobs and the HTTP routes, and the video side (cache keys, `yt-dlp`, `ffmpeg`, the audio cache, and line clips). The server uses `yt-dlp` and `ffmpeg` from the `PATH`, else the `yt-dlp` package and the `ffmpeg` of `imageio-ffmpeg`. |
+| `Start WhisperX server (Windows).cmd` | Starts the WhisperX server on Windows without WSL, after `server/chrome_start.py` sets up the Start button of the popup. It downloads uv when it finds none, and it gets the newest `yt-dlp` at each start. |
+| `Start WhisperX server (WSL).cmd` | Starts the WhisperX server in WSL from the extension folder on Windows, after `server/chrome_start.py` sets up the Start button of the popup. Git writes the `.cmd` files with CRLF line ends (`.gitattributes`), because they are Windows batch files. |
+| `server/chrome_start.py` | Writes the manifest of the native messaging host `com.minerr.whisperx` to `%LOCALAPPDATA%\Minerr` and the registry value that points at it, for the extension in this folder. Python of Windows runs it for the Windows launcher, and Python of WSL for the WSL launcher. Each registers the host of its own launcher. |
+| `server/start-from-chrome-windows.cmd`, `server/start-from-chrome.cmd` | The native messaging hosts of the Windows launcher and of the WSL launcher. Chrome runs the registered host when you click **Start the server**. The host opens its launcher in a window of its own and exits. |
 | `scripts/logo.py`, `docs/logo.svg` | `scripts/logo.py` draws the logo as pixel art and writes `docs/logo.svg`: `python3 scripts/logo.py docs/logo.svg`. |
 | `scripts/package.ts` | Packs `dist` into `release/minerr-v<version>.zip`, with one top folder `minerr`, and writes its SHA-256 to a `.sha256` file. |
 | `.github/workflows/release.yml`, `docs/release-notes.md` | For a pushed tag such as `v0.1.0`, the workflow builds and packs the extension and makes a draft GitHub release with the text of `docs/release-notes.md`. |
