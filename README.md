@@ -1120,8 +1120,9 @@ The path of a word from a page to a card:
 | `Start WhisperX server.cmd` | Starts the WhisperX server in WSL from the extension folder on Windows, after `server/chrome_start.py` sets up the Start button of the popup. Git writes the `.cmd` files with CRLF line ends (`.gitattributes`), because they are Windows batch files. |
 | `server/chrome_start.py` | Writes the manifest of the native messaging host `com.minerr.whisperx` to `%LOCALAPPDATA%\Minerr` and the registry value that points at it, for the extension in this folder. |
 | `server/start-from-chrome.cmd` | The native messaging host. Chrome runs it when you click **Start the server**. It opens `Start WhisperX server.cmd` in a window of its own and exits. |
-| `scripts/logo.py`, `docs/logo.svg` | `scripts/logo.py` draws the logo as pixel art and writes `docs/logo.svg`: `python3 scripts/logo.py docs/logo.svg`. |
-| `scripts/package.ts` | Packs `dist` into `release/minerr-v<version>.zip`, with one top folder `minerr`, and writes its SHA-256 to a `.sha256` file. |
+| `scripts/logo.py`, `docs/logo.svg`, `icons/` | `scripts/logo.py` draws the logo and the extension icons as pixel art in one palette. It writes `docs/logo.svg` and `icons/icon-16.png`, `-32`, `-48`, and `-128`, a 16 x 16 pickaxe at a whole scale. Run `python3 scripts/logo.py`. |
+| `scripts/package.ts` | Packs `dist` into three zips in `release`, each with a `.sha256` file: `minerr-whisperx-v<version>.zip` (the WhisperX add-on, the server and its launchers), `minerr-v<version>.zip` (the whole extension in the top folder `minerr`, for Load unpacked), and `minerr-store-v<version>.zip` (the extension without the add-on, with `manifest.json` at the root, for the Chrome Web Store). |
+| `LICENSE`, `PRIVACY.md` | The MIT License, and the privacy policy that the Chrome Web Store listing links to. |
 | `.github/workflows/release.yml`, `docs/release-notes.md` | For a pushed tag such as `v0.1.0`, the workflow builds and packs the extension and makes a draft GitHub release with the text of `docs/release-notes.md`. |
 | `src/video/server-status.ts` | Pure function: the status of the WhisperX server as the toolbar popup shows it, from the last health check and the last click on **Start the server**. |
 | `src/status/stats.ts` | The comprehension score and the recommended sentences of a tab, for the toolbar popup. |
@@ -1183,6 +1184,10 @@ The WhisperX server has two endpoints for the player:
 The workflow stops when the tag is not the version in `manifest.json` and `package.json`. One zip works on all platforms, because the extension has no native code, and uv installs the packages of the WhisperX server for the platform at the first start. To make the zip on your computer, run `npm run build`, then `node scripts/package.ts`. The zip goes to the `release` folder.
 
 To publish Minerr in the Chrome Web Store, see [docs/chrome-web-store.md](docs/chrome-web-store.md).
+
+## License
+
+Minerr is under the MIT License. See [LICENSE](LICENSE). The privacy policy is in [PRIVACY.md](PRIVACY.md).
 
 ## Third-party data
 

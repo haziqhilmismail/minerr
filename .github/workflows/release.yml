@@ -1,4 +1,5 @@
-# Makes a draft GitHub release with the packed extension when a tag such as v0.1.0 is pushed.
+# Makes a draft GitHub release with the WhisperX add-on and the packed extension when a tag such as v0.2.0 is pushed.
+# The zip for the Chrome Web Store goes to the page of the run, not to the release.
 # Tag only a commit of main that passed all tests (README: Make a release).
 name: Release
 
@@ -25,10 +26,16 @@ jobs:
           test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
       - run: npm run build
       - run: node scripts/package.ts
+      - name: Keep the zip for the Chrome Web Store on the page of the run
+        uses: actions/upload-artifact@v4
+        with:
+          name: minerr-store-${{ github.ref_name }}
+          path: release/minerr-store-${{ github.ref_name }}.zip
       - name: Make the draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
           gh release create "$GITHUB_REF_NAME"
+          "release/minerr-whisperx-$GITHUB_REF_NAME.zip" "release/minerr-whisperx-$GITHUB_REF_NAME.zip.sha256"
           "release/minerr-$GITHUB_REF_NAME.zip" "release/minerr-$GITHUB_REF_NAME.zip.sha256"
           --draft --verify-tag --title "Minerr $GITHUB_REF_NAME" --notes-file docs/release-notes.md

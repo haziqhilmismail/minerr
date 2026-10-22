@@ -1,8 +1,13 @@
-"""Draws the Minerr logo as pixel art: a pickaxe and 日本語 from top to bottom, on a dark tile. Writes an SVG.
+"""Draws the Minerr art as pixel art, in one palette: docs/logo.svg (a pickaxe and 日本語 from top to bottom, on a dark
+tile) and the extension icons icons/icon-16.png, -32, -48, and -128 (a 16 x 16 pickaxe).
 
-Run: python3 scripts/logo.py docs/logo.svg"""
+Run: python3 scripts/logo.py"""
 import math
-import sys
+import struct
+import zlib
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
 
 SIZE = 48
 INK, OUTLINE = '#0f1d24', '#050d0c'
@@ -98,4 +103,49 @@ svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {SIZE} {SIZE}" wid
        '<title>Minerr</title>'
        '<defs><linearGradient id="text" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6f61"/><stop offset="1" stop-color="#ffb238"/></linearGradient></defs>'
        f'<path d="{tile}" fill="{INK}"/>' + ''.join(parts) + '</svg>\n')
-open(sys.argv[1], 'w').write(svg)
+(ROOT / 'docs' / 'logo.svg').write_text(svg)
+
+# The extension icons: the 16 x 16 pickaxe at a whole scale, so each pixel stays sharp. The 128 icon has 96 x 96 art and
+# 16 pixels of clear padding on each side, as the Chrome Web Store asks.
+ICON = [
+    '...oooo.........',
+    '..oLSLLooo......',
+    '.oDDTTTLLLoo....',
+    '..ooooDTTLLwo...',
+    '......oDTTLLo...',
+    '.......oDDTLLo..',
+    '.......owDTTLo..',
+    '......owBoDTLo..',
+    '.....owBo.oDTTo.',
+    '....owBo...oDDo.',
+    '...owBo....oDDo.',
+    '..ogBo.....oDDo.',
+    '.ogGo......oDo..',
+    'ogGo........o...',
+    'oGo.............',
+    '.o..............',
+]
+ICON_COLORS = {'o': OUTLINE, 'L': TEAL_LIGHT, 'S': SHINE, 'T': TEAL, 'D': TEAL_DARK, 'w': WOOD_LIGHT, 'B': WOOD_DARK,
+               'g': GRIP_LIGHT, 'G': GRIP}
+
+
+def png(path, size, scale, pad):
+    """Writes the icon as an RGBA PNG of size x size: the map at scale, pad pixels from each edge."""
+    def pixel(x, y):
+        cell = ICON[(y - pad) // scale][(x - pad) // scale] if pad <= x < size - pad and pad <= y < size - pad else '.'
+        color = ICON_COLORS.get(cell)
+        return bytes.fromhex(color[1:]) + b'\xff' if color else b'\x00\x00\x00\x00'
+
+    rows = b''.join(b'\x00' + b''.join(pixel(x, y) for x in range(size)) for y in range(size))
+
+    def chunk(tag, data):
+        return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', zlib.crc32(tag + data))
+
+    path.write_bytes(b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 6, 0, 0, 0))
+                     + chunk(b'IDAT', zlib.compress(rows, 9)) + chunk(b'IEND', b''))
+
+
+assert all(len(row) == 16 for row in ICON) and len(ICON) == 16, 'the icon map is 16 x 16'
+(ROOT / 'icons').mkdir(exist_ok=True)
+for size, scale, pad in ((16, 1, 0), (32, 2, 0), (48, 3, 0), (128, 6, 16)):
+    png(ROOT / 'icons' / f'icon-{size}.png', size, scale, pad)
