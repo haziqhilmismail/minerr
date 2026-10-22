@@ -27,7 +27,17 @@ The privacy policies of these services apply to these requests.
 
 ## The WhisperX add-on
 
-The WhisperX add-on is a separate program. You install it yourself, and it runs on your computer at `http://127.0.0.1:8766`. Minerr sends it the address of the video, or the video file that you open in the Minerr player. The add-on downloads the audio of the video with `yt-dlp`, and its speech model from Hugging Face. It keeps the subtitles and the audio on your computer.
+The WhisperX add-on is a separate program. You install it yourself, and it runs on your computer at `http://127.0.0.1:8766`. Minerr sends it the address of the video, or the video file that you open in the Minerr player. The add-on keeps the subtitles and the audio on your computer.
+
+The add-on and its launchers download these files:
+
+- **uv.** If your computer has no uv, the Windows launcher asks you first. When you agree, it downloads uv from GitHub (`github.com/astral-sh/uv`).
+- **Python and the packages of the server.** At the first start, uv downloads Python from GitHub (`github.com/astral-sh/python-build-standalone`) if your computer has no Python 3.12. uv downloads the packages from PyPI (`pypi.org`), and PyTorch from the PyTorch index (`download.pytorch.org`).
+- **A newer `yt-dlp`.** At each start, the Windows launcher asks PyPI for a newer version of `yt-dlp`, because YouTube often breaks old versions.
+- **The speech model.** The first job downloads the model from Hugging Face (`huggingface.co`).
+- **The audio of the video.** `yt-dlp` downloads the audio from the site of the video, for example YouTube.
+
+The privacy policies of these services apply to these requests.
 
 ## Delete your data
 
