@@ -1,5 +1,6 @@
 // Saves a light and a dark screenshot of every Minerr surface to OUT_DIR (default /tmp/minerr-ui), as <surface>-<scheme>.png.
 // With SUFFIX=before, the names are <surface>-<scheme>-before.png. To shoot a different build, set EXTENSION_DIR.
+// With STORE=1, the reader (in vertical text) and the word browser are 1280 x 800, the size of a Chrome Web Store screenshot.
 // Needs test/fixtures/JMdict_english.zip and ffmpeg, and uses port 8765. If the system has no Japanese font, set CJK_FONT_DIR to a folder of fonts.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -11,6 +12,7 @@ import { launch, listen, useCjkFonts } from './harness.ts';
 
 const out = process.env.OUT_DIR ?? '/tmp/minerr-ui';
 const suffix = process.env.SUFFIX ? `-${process.env.SUFFIX}` : '';
+const store = process.env.STORE === '1';
 const jmdict = join(import.meta.dirname, 'fixtures', 'JMdict_english.zip');
 const work = mkdtempSync(join(tmpdir(), 'ml-shots-'));
 mkdirSync(out, { recursive: true });
@@ -158,20 +160,22 @@ try {
   });
 
   const reader = await context.newPage();
-  await reader.setViewportSize({ width: 1000, height: 720 });
+  await reader.setViewportSize(store ? { width: 1280, height: 800 } : { width: 1000, height: 720 });
   await reader.goto(page('reader.html'));
   const book = join(work, '猫の話.txt');
-  writeFileSync(book, `${LINES.join('')}\n\n${TEXT}\n\n${LINES.slice().reverse().join('')}`);
+  const story = `${LINES.join('')}\n\n${TEXT}\n\n${LINES.slice().reverse().join('')}`;
+  writeFileSync(book, store ? [story, story, story].join('\n\n') : story);
   await reader.setInputFiles('#file', book);
   await reader.waitForSelector('#article .ml-word[data-ml-lemma="魚"]', { timeout: 20000 });
+  if (store) await reader.click('#vertical');
   await both(reader, 'reader');
 
   const words = await context.newPage();
-  await words.setViewportSize({ width: 1000, height: 900 });
+  await words.setViewportSize(store ? { width: 1280, height: 800 } : { width: 1000, height: 900 });
   await words.goto(page('words.html'));
   await words.locator('#rows tr').first().waitFor();
   await words.locator('#rows input[type="checkbox"]').nth(1).check();
-  await both(words, 'words', async () => {}, true);
+  await both(words, 'words', async () => {}, !store);
 } finally {
   await context.close();
   site.close();

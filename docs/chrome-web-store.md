@@ -58,19 +58,32 @@ This guide is for the owner of Minerr. It gives the state of the changes for the
 
 Google's image guide is from 2018. Use the sizes that the dashboard shows.
 
-A description that obeys the store policies on impersonation, keyword spam, and misleading listings:
+The description, as plain text for the **Description** field. It obeys the store policies on impersonation, keyword spam, and misleading listings, and it names no other learning tool:
 
-> Minerr helps you read Japanese on web pages and in videos, and make Anki cards from them.
->
-> - It underlines each word in the color of its status: unknown, learning, known, or ignored.
-> - A popup shows the dictionary entry of a word when the mouse is on it.
-> - One key adds an Anki card with the sentence, a screenshot, and audio.
-> - On YouTube, Netflix, and other video sites, it shows Japanese subtitles that you can mine.
-> - For a video with no Japanese subtitles, the free WhisperX add-on makes them on your computer. Get it from https://github.com/haziqhilmismail/minerr/releases/latest
->
-> Minerr supports only Japanese. It keeps all of your data in your browser and has no account or cloud sync. It needs Anki with the AnkiConnect add-on. It is free and open source: https://github.com/haziqhilmismail/minerr
->
-> Minerr is not affiliated with YouTube, Netflix, or the WhisperX project.
+```text
+Minerr helps you read Japanese on web pages and in videos, and turn the words you meet into Anki cards.
+
+What it does:
+• Status colors. Each Japanese word gets an underline that shows whether it is unknown, learning, or known. Point at a word and press 1 to 4 to change its status.
+• Hover lookup. Rest the mouse on a word to see its reading and meaning from the dictionaries you import, such as JMdict. With the right dictionaries, you also see pitch accent and word frequency.
+• One-key Anki cards. Press A, and the card gets the word, the sentence, the definition, a screenshot, and audio. Press E to edit the card before it goes to Anki.
+• Video subtitles. On YouTube, on Netflix, and in your own video files, Minerr shows the Japanese subtitles in its own overlay, so you can look up every word. A sidebar lists all lines, and you can turn many of them into cards at once. Netflix protects its video, so cards from Netflix have no screenshot or audio.
+• Reader. Open EPUB, TXT, and SRT files, or paste text. Vertical text works too.
+• Comprehension score. See how much of a page you already know. Sentences with exactly one unknown word get a soft highlight, because they make the best cards.
+
+Minerr reads a website only after you turn it on for that site. Video subtitles work everywhere.
+
+WhisperX add-on (optional and free): for a video with no Japanese subtitles, the add-on makes them on your own computer. Get it from GitHub: https://github.com/haziqhilmismail/minerr/releases
+
+Privacy: your word statuses and dictionaries stay in your browser. Minerr has no account, no ads, and no analytics.
+
+To add cards, you need Anki with the AnkiConnect add-on.
+
+Minerr is free and open source under the MIT License: https://github.com/haziqhilmismail/minerr
+Minerr is not affiliated with YouTube, Netflix, or Anki.
+```
+
+The images: `icons/icon-128.png` is the store icon (96 x 96 art and 16 pixels of padding). `node test/readme-shots.ts page` makes `docs/page.png`, and `STORE=1 node test/screenshots.ts` makes the video player, the subtitle sidebar, the reader in vertical text, and the word browser, all at 1280 x 800. `node test/store-tiles.ts` makes both promo tiles. Set `CJK_FONT_DIR` to a folder with Japanese fonts and Segoe UI, for example `/mnt/c/Windows/Fonts`.
 
 If you name another product, name it one time, say only true things about it, and add that Minerr is not affiliated with it. Do not put the name of another product in the name, the summary, the icon, or the screenshots of Minerr.
 
