@@ -90,12 +90,19 @@ try {
       return rect.top >= box.top && rect.bottom <= box.bottom && row.querySelector('.ml-word.ml-unknown');
     });
   });
+  // The mouse on the list stops the follow first, so a line change of the playing video does not move the list between
+  // the read of its top and the wheel. The wheel scrolls smoothly; the top is read when it stops.
   const wheel = async (by: number) => {
-    const before = await listTop();
     await sidebar.locator('ol').hover();
+    const before = await listTop();
     await panel.mouse.wheel(0, by);
     await panel.waitForFunction(top => Math.round(document.querySelector('.minerr-lines ol')?.scrollTop ?? 0) !== top, before);
-    return listTop();
+    for (let top = await listTop(); ; ) {
+      await panel.waitForTimeout(100);
+      const now = await listTop();
+      if (now === top) return now;
+      top = now;
+    }
   };
   const hoverWord = async () => {
     const index = await visibleCard();
@@ -137,7 +144,12 @@ try {
   await video('pause');
   console.log('sidebar: play goes back to the current line, and the list follows the video again');
 
+  // The tab tells the panel about a user play over the port. A scroll before that message arrives would be undone by it,
+  // so the list is scrolled first, and the end of its scroll pause shows that the panel got the play.
+  await wheel(-200);
+  await panel.mouse.move(0, 0);
   await video('play');
+  await panel.waitForFunction(() => !document.querySelector('[data-scroll-paused]'));
   const heldTop = await wheel(-500);
   await hoverWord();
   await player.waitForFunction(() => document.querySelector('video')?.paused === true);
