@@ -40,7 +40,7 @@ interface Protocol {
   ankiModelFields: { request: { model: string }; reply: string[] };
   // Imports the Lapis note type into Anki and replies with the result for the options page.
   ankiInstallLapis: { request: {}; reply: string };
-  whisperHealth: { request: {}; reply: Health };
+  whisperHealth: { request: {}; reply: Health | null };
   whisperStart: { request: { url: string }; reply: { id: string } };
   whisperJob: { request: { id: string }; reply: Job | null };
   whisperCached: { request: { videoId: string }; reply: SubtitleSegment[] | null };

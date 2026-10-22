@@ -6,13 +6,15 @@ export type ServerStatus =
   | { state: 'checking' }
   | { state: 'running'; health: Health }
   | { state: 'off' }
+  // Something answers on the port of the server, but not with its health.
+  | { state: 'broken'; error: string }
   | { state: 'starting' }
   // Chrome has no host for this extension: the user has to double-click the launcher one time.
   | { state: 'setup' }
   // The server did not answer within START_LIMIT_MS of the click on Start the server.
   | { state: 'failed' };
 
-export type HealthCheck = { kind: 'off' } | { kind: 'ok'; health: Health };
+export type HealthCheck = { kind: 'off' } | { kind: 'broken'; error: string } | { kind: 'ok'; health: Health };
 
 // What the popup knows. check is the last health check, undefined before the first one ends. click is the last click on
 // Start the server: its time until the server answers, or 'no host' when Chrome has no host for this extension.
@@ -27,6 +29,7 @@ export const START_LIMIT_MS = 90_000;
 
 export function serverStatus({ check, click }: ServerFacts, now: number): ServerStatus {
   if (check?.kind === 'ok') return { state: 'running', health: check.health };
+  if (check?.kind === 'broken') return { state: 'broken', error: check.error };
   if (click === 'no host') return { state: 'setup' };
   if (click !== null) return now - click < START_LIMIT_MS ? { state: 'starting' } : { state: 'failed' };
   return check ? { state: 'off' } : { state: 'checking' };

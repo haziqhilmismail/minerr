@@ -64,7 +64,13 @@ const JSON3 = JSON.stringify({ events: [
 const whisperRequests: string[] = [];
 let cached = false;
 let jobPolls = 0;
+// Another program on the port of the server.
+let otherProgram = false;
 const whisper = createServer((req, res) => {
+  if (otherProgram) {
+    res.writeHead(404, { 'Content-Type': 'text/html' });
+    return res.end('<p>Not found</p>');
+  }
   let body = '';
   req.on('data', chunk => { body += chunk; });
   req.on('end', () => {
@@ -574,11 +580,15 @@ try {
   assert.ok(normal.seconds > 3.2, 'without a gap mode the gap plays at the normal speed');
   await setStorage({ cleanSubs: false });
 
+  otherProgram = true;
+  await action.locator('#server.error').waitFor({ timeout: 5000 });
+  assert.equal(await action.textContent('#server'), 'The WhisperX server answered 404.', 'an answer that is not the health keeps its error');
+  otherProgram = false;
   await new Promise(resolve => whisper.close(resolve));
   whisper.closeAllConnections();
   await action.emulateMedia({ colorScheme: 'light' });
-  await action.locator('#server.error').waitFor({ timeout: 5000 });
-  assert.equal(await action.textContent('#server'), 'Start the WhisperX server: uv run server/whisper_server.py');
+  await action.locator('#server', { hasText: 'uv run' }).waitFor({ timeout: 5000 });
+  assert.equal(await action.textContent('#server'), 'Start the WhisperX server: uv run server/whisper_server.py', 'a refused connection is not running');
   await shot(action, 'action-server-down-light.png', { fullPage: true });
 
   const lineText = (text: string) => tab.waitForFunction(t => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === t, text, { timeout: 20000 });

@@ -96,8 +96,12 @@ function toJob(value: unknown): Job {
   }
 }
 
-export async function health(): Promise<Health> {
-  const reply = await request('/health');
+// The health of the server, or null when nothing answers on its port. Any other answer throws its error.
+export async function health(): Promise<Health | null> {
+  const response = await fetch(`${SERVER}/health`).catch(() => null);
+  if (!response) return null;
+  if (!response.ok) return fail(response);
+  const reply: unknown = await response.json().catch(() => null);
   const model = at(reply, 'model');
   const device = at(reply, 'device');
   if (typeof model !== 'string' || typeof device !== 'string') unexpected();
