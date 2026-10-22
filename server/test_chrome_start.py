@@ -1,4 +1,4 @@
-"""Run: python3 -I -B -m unittest discover -s server -v (needs no WSL: wslpath and reg.exe are mocked)."""
+"""Run: python3 -I -B -m unittest discover -s server -v (needs no WSL and no Windows: wslpath and reg.exe are mocked)."""
 
 import contextlib
 import io
@@ -43,6 +43,7 @@ class Register(unittest.TestCase):
             return subprocess.CompletedProcess(args, 0, windows_paths[root] + args[2][len(root):].replace('/', '\\') + '\n', '')
         mock.patch.object(chrome_start.subprocess, 'run', run).start()
         mock.patch.object(chrome_start, '__file__', f'{EXTENSION}/server/chrome_start.py').start()
+        mock.patch.object(chrome_start, 'NATIVE', False).start()
         self.addCleanup(mock.patch.stopall)
 
     def test_writes_the_manifest_for_this_extension_and_points_the_registry_value_at_it(self):
@@ -67,10 +68,53 @@ class Register(unittest.TestCase):
                          f'HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.minerr.whisperx -> {MANIFEST}\n')
         self.reg_error = subprocess.CalledProcessError(1, REG_ADD)
         self.assertEqual(self.main_output({'LOCALAPPDATA': self.local}),
-                         'Minerr could not set up the Start button of the popup. Start the server with a double-click of "Start WhisperX server.cmd". '
+                         'Minerr could not set up the Start button of the popup. Start the server with a double-click of "Start WhisperX server (WSL).cmd". '
                          f"The error: Command '{REG_ADD}' returned non-zero exit status 1.\n")
         self.assertEqual(self.main_output({}), 'Minerr could not set up the Start button of the popup, because WSL did not get LOCALAPPDATA '
-                         'from Windows. Start the server with a double-click of "Start WhisperX server.cmd".\n')
+                         'from Windows. Start the server with a double-click of "Start WhisperX server (WSL).cmd".\n')
+
+
+class RegisterNative(unittest.TestCase):
+    """Python of Windows runs chrome_start.py for the native launcher. The paths are Windows paths already."""
+
+    def setUp(self):
+        local = tempfile.TemporaryDirectory()
+        self.addCleanup(local.cleanup)
+        self.local = local.name
+        self.manifest = str(Path(self.local, 'Minerr', 'com.minerr.whisperx.json'))
+        self.reg_add = ['reg.exe', 'add', r'HKCU\Software\Google\Chrome\NativeMessagingHosts\com.minerr.whisperx', '/ve', '/d', self.manifest, '/f']
+        self.commands = []
+        self.reg_error = None
+        def run(args, check, capture_output, text=False):
+            self.commands.append(args)
+            if self.reg_error:
+                raise self.reg_error
+            return subprocess.CompletedProcess(args, 0, '', '')
+        mock.patch.object(chrome_start.subprocess, 'run', run).start()
+        mock.patch.object(chrome_start, 'NATIVE', True).start()
+        self.addCleanup(mock.patch.stopall)
+
+    def test_registers_the_host_of_the_native_launcher_with_the_paths_as_they_are(self):
+        self.assertEqual(register(r'C:\Users\haziq\minerr', self.local), ('lfmbihboldmlhbolbfdfdpdcnajbmkbo', self.manifest))
+        self.assertEqual(json.loads(Path(self.manifest).read_text())['path'], r'C:\Users\haziq\minerr\server\start-from-chrome-windows.cmd')
+        self.assertEqual(self.commands, [self.reg_add], 'no wslpath')
+
+    def test_main_names_the_native_launcher(self):
+        self.reg_error = subprocess.CalledProcessError(1, self.reg_add)
+        with mock.patch.dict(os.environ, {'LOCALAPPDATA': self.local}, clear=True), contextlib.redirect_stdout(io.StringIO()) as out:
+            chrome_start.main()
+        self.assertEqual(out.getvalue(), 'Minerr could not set up the Start button of the popup. Start the server with a double-click of '
+                         f'"Start WhisperX server (Windows).cmd". The error: Command \'{self.reg_add}\' returned non-zero exit status 1.\n')
+
+
+class Hosts(unittest.TestCase):
+    def test_the_host_of_each_launcher_starts_that_launcher(self):
+        root = Path(__file__).parents[1]
+        for native in (True, False):
+            with mock.patch.object(chrome_start, 'NATIVE', native):
+                name, host = chrome_start.launcher()
+            self.assertTrue((root / name).is_file(), name)
+            self.assertIn(f'cmd /c ""{name}""', (root / 'server' / host).read_text(), host)
 
 
 if __name__ == '__main__':

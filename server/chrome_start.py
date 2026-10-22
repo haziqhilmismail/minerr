@@ -2,10 +2,21 @@ import hashlib
 import json
 import os
 import subprocess
-from pathlib import Path
+import sys
+from pathlib import Path, PureWindowsPath
 
 HOST = 'com.minerr.whisperx'
 REGISTRY_KEY = rf'HKCU\Software\Google\Chrome\NativeMessagingHosts\{HOST}'
+# Python of Windows runs this file for the native launcher, Python of WSL for the WSL launcher.
+NATIVE = sys.platform == 'win32'
+
+
+def launcher():
+    """The file names of the launcher that runs this file and of its host in server/. Each launcher registers its own host, so
+    the Start button starts the launcher of the last double-click."""
+    if NATIVE:
+        return 'Start WhisperX server (Windows).cmd', 'start-from-chrome-windows.cmd'
+    return 'Start WhisperX server (WSL).cmd', 'start-from-chrome.cmd'
 
 
 def extension_id(windows_path):
@@ -19,6 +30,8 @@ def extension_id(windows_path):
 
 
 def windows_path(path):
+    if NATIVE:
+        return str(path)
     return subprocess.run(['wslpath', '-w', str(path)], check=True, capture_output=True, text=True).stdout.strip()
 
 
@@ -30,8 +43,10 @@ def host_manifest(extension, host_path):
 def register(extension_folder, local_app_data):
     manifest = Path(local_app_data) / 'Minerr' / f'{HOST}.json'
     manifest.parent.mkdir(parents=True, exist_ok=True)
-    extension = extension_id(windows_path(extension_folder))
-    host = windows_path(Path(extension_folder) / 'server' / 'start-from-chrome.cmd')
+    _, host_file = launcher()
+    folder = windows_path(extension_folder)
+    extension = extension_id(folder)
+    host = str(PureWindowsPath(folder, 'server', host_file))
     manifest.write_text(json.dumps(host_manifest(extension, host), indent=2) + '\n')
     manifest_path = windows_path(manifest)
     subprocess.run(['reg.exe', 'add', REGISTRY_KEY, '/ve', '/d', manifest_path, '/f'], check=True, capture_output=True)
@@ -39,7 +54,8 @@ def register(extension_folder, local_app_data):
 
 
 def main():
-    double_click = 'Start the server with a double-click of "Start WhisperX server.cmd".'
+    name, _ = launcher()
+    double_click = f'Start the server with a double-click of "{name}".'
     local_app_data = os.environ.get('LOCALAPPDATA')
     if not local_app_data:
         print(f'Minerr could not set up the Start button of the popup, because WSL did not get LOCALAPPDATA from Windows. {double_click}', flush=True)

@@ -421,7 +421,10 @@ class Start(unittest.TestCase):
 
     def test_every_line_of_the_windows_batch_files_ends_with_crlf_for_cmd_exe(self):
         root = Path(__file__).parents[1]
-        for batch in (root / 'Start WhisperX server.cmd', root / 'server' / 'start-from-chrome.cmd'):
+        batches = [*root.glob('*.cmd'), *root.glob('server/*.cmd')]
+        self.assertEqual(sorted(batch.name for batch in batches), ['Start WhisperX server (WSL).cmd', 'Start WhisperX server (Windows).cmd',
+                                                                   'start-from-chrome-windows.cmd', 'start-from-chrome.cmd'])
+        for batch in batches:
             self.assertEqual({line[-2:] for line in batch.read_bytes().splitlines(keepends=True)}, {b'\r\n'}, batch.name)
 
 
