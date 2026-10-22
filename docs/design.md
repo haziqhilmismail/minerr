@@ -4,7 +4,7 @@ Minerr uses the teal and coral colors of its own, and the feel of the Apple Huma
 
 - `npm run build` writes `PAGE_CSS` to `dist/theme.css` for the extension pages: the tokens and the base rules of the pages (body, titles, buttons, fields, switches, segmented controls, grouped lists `.group`, keys, focus rings, and the classes `.muted`, `.ok`, `.error`, `.dot`, and `.column`).
 - `tokensOn(selector)` puts the tokens on the root of a surface, with the rules for reduced motion and reduced transparency. The word popup uses it on its shadow host. The subtitle layer `.minerr-subs` uses it with `color-scheme: dark`.
-- `themed(selector)` is `tokensOn()` plus the theme of `applyTheme(root)` (`src/shared/theme.ts`). The extension pages and the subtitle sidebar `.minerr-lines` use it. The sidebar follows the Minerr theme, not the theme of the host page.
+- `themed(selector)` is `tokensOn()` plus the theme of `applyTheme(root)` (`src/shared/theme.ts`). The extension pages use it, the subtitle sidebar page too: the sidebar follows the Minerr theme, not the theme of the video page.
 - The `.primary` class gives a button the coral to amber gradient (`PRIMARY_BUTTON`), on the pages and in the word popup.
 - `GLASS` holds the declarations of frosted glass, for the popup, the toasts, and the button bar on other sites.
 

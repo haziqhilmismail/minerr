@@ -534,7 +534,7 @@ Minerr can show its subtitle overlay on the video of a page that is not YouTube.
    - **WhisperX** makes the subtitles from the audio of the page. The server downloads the audio with `yt-dlp`.
 5. To remove the buttons, click **Hide these buttons**. The overlay stays until you reload the page.
 
-The keys, the play modes, the subtitle sidebar, and the sentence audio work as on YouTube. A fixed bar at the top of such a site can stay under the sidebar.
+The keys, the play modes, the subtitle sidebar, and the sentence audio work as on YouTube.
 
 Limits:
 
@@ -602,13 +602,10 @@ More settings in **Video**:
 
 ## Subtitle sidebar
 
-The subtitle sidebar shows all lines of the video as cards. It is a panel at the right side of the window, from the top to the bottom. The page gets narrower and moves to the left of the panel, so the panel does not cover the page. It needs subtitles with times.
+The subtitle sidebar shows all lines of the video as cards. It opens in the side panel of Chrome, at the right side of the window. Chrome makes the page narrower, so the panel covers nothing on the page. It needs subtitles with times.
 
-- On YouTube, the full page moves to the left of the panel, also the bar at the top. In theater mode, the video fills the width at the left of the panel.
-- On YouTube, the recommended videos are hidden while the panel is open. The video gets their width.
-- In YouTube full screen, the panel does not show. It shows again when you leave full screen.
-- In the video player, the panel stays at the right side in full screen too.
-- When you close the panel, the page gets its full width again.
+- The panel belongs to the tab of the video. On another tab, Chrome hides it. When you come back to the tab, Chrome shows it again.
+- In full screen, Chrome shows no side panel. The panel shows again when you leave full screen.
 - The panel has the colors of the Minerr theme (**Theme** on the options page), not the colors of the page.
 
 1. Press `G` on the video. The sidebar opens.
@@ -618,7 +615,7 @@ The subtitle sidebar shows all lines of the video as cards. It is a panel at the
    - Click **▶** to play the line one time. The video pauses at the end of the line.
    - Click **+** to add a card for a word of the line. The card gets the line as the sentence, the audio of the line, and a screenshot of the line. The video pauses at the start of the line for the screenshot.
    - Click **★** to bookmark the line.
-4. Press `G` again, or click **×**, to close the sidebar.
+4. Press `G` again, or click **×** at the top of the side panel, to close the sidebar.
 
 The word of the card from **+**:
 
@@ -637,7 +634,7 @@ To add cards for many lines at one time:
 
 The sidebar follows the video. The card of the current line has a teal border, and the list scrolls to keep that card in view. While the sidebar does not follow the video, it shows **Scroll paused**:
 
-- While the mouse is on the sidebar, the list does not scroll. When the mouse leaves the sidebar, the list stays where it is.
+- While the mouse is on the list, the list does not scroll. When the mouse leaves the list, the list stays where it is.
 - When you scroll the list, or click in it, the list stays where you put it. A pause of the video for a popup does not change this.
 - When you play the video, the list goes to the current line and follows the video again.
 - When you click a card, its time, **▶**, or **+**, the list goes to that line and follows the video again.
@@ -661,7 +658,7 @@ If no line matches the filter, the sidebar shows a message. Click **Clear filter
 
 To bookmark the current line, press `B`, or click **★** on its card. Press `B` again to remove the bookmark. Minerr keeps the bookmarks of each video. The bookmarks of a YouTube video belong to its video ID, and the bookmarks of a file belong to its name and size.
 
-When Minerr is off, the sidebar is hidden.
+When Minerr is off, the sidebar shows that Minerr is off.
 
 ## Subtitle display
 
@@ -686,7 +683,7 @@ These keys work on a video with the Minerr subtitle overlay: on YouTube, in the 
 | `Alt+D` | Go forward 5 seconds. | |
 | `C` | Copy the current line. | |
 | `J` | Join the next line to the current line. A card then gets both lines as the sentence, and the audio of both. Press `J` again to stop. | Needs subtitles with times. |
-| `G` | Open or close the subtitle sidebar. On YouTube captions with no times, the sidebar shows a message. | |
+| `G` | Open or close the subtitle sidebar in the side panel of Chrome. On YouTube captions with no times, the sidebar shows a message. | |
 | `B` | Bookmark the current line, or remove its bookmark. | Needs subtitles with times. |
 | `.` | Go one frame forward. The video pauses. | Needs subtitles with times. |
 | `,` | Go one frame back. The video pauses. | Needs subtitles with times. |
@@ -1111,7 +1108,7 @@ The extension code is in `src/`, with one folder for each concern. The extension
 
 | Folder | What it holds |
 | --- | --- |
-| `pages/` | The extension pages: the toolbar popup, the options, the video player, the reader, the word browser, and the offscreen document that parses text. Each page is an `.html` file and a `.ts` file. |
+| `pages/` | The extension pages: the toolbar popup, the options, the video player, the subtitle sidebar, the reader, the word browser, and the offscreen document that parses text. Each page is an `.html` file and a `.ts` file. |
 | `src/text/` | Japanese text to words: kuromoji tokens to words, the dictionary entry of each word, inflections, sentences, and the word spans of parsed text, on a page and in a subtitle line. |
 | `src/dictionary/` | The Yomitan dictionaries: the zip reader, the import, the IndexedDB storage, the frequency and pitch data, and the tag colors. |
 | `src/page-text/` | The page text of a website: the parse of the page, the switch for each site, furigana, pitch colors, the i+1 highlight, and the sentence highlight. |
@@ -1177,7 +1174,10 @@ The path of a word from a page to a card:
 | `src/video/playback.ts`, `src/video/videokeys.ts` | Pure rules for timed lines (jumps, play modes, gaps, text clean-up), and the table of the video keys. |
 | `src/video/videosettings.ts`, `src/video/videooptions.ts` | The video settings, and their part of the options page. |
 | `src/video/other-sites.ts` | The subtitle overlay on the largest video of a page that is not YouTube, with its buttons. |
-| `src/video/sidebar/sidebar.ts` | The subtitle sidebar: a full-height panel at the right side of the window, a card for each line, the word list of **+**, and the bookmarks. |
+| `pages/sidepanel.html`, `pages/sidepanel.ts` | The subtitle sidebar page, in the side panel of Chrome next to the tab of the video. The service worker opens it for the `G` key. The page connects a port to the tab for the lines and the current line. It loads `src/page-text/page.ts`, `src/popup/popup.ts`, and `src/page-text/iplusone.ts` itself. |
+| `src/video/sidebar/sidebar.ts` | The subtitle sidebar: a card for each line, the word list of **+**, and the bookmark stars. |
+| `src/video/sidebar/sidebar-port.ts` | The messages between the tab and the sidebar page: the lines, the current line, and the line of the open popup. |
+| `src/video/sidebar/bookmarks.ts` | The bookmarked lines of each video, in the storage. |
 | `src/video/sidebar/sidebar-filter.ts` | The filters of the subtitle sidebar. |
 | `src/video/sidebar/sidebar-select.ts` | The selection of lines in the subtitle sidebar and **Create N cards**. |
 | `src/video/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
@@ -1238,7 +1238,7 @@ The WhisperX server has two endpoints for the player:
 
 `node test/pages-unit.ts` tests the pure functions of the comprehension score, the word browser, and the reader. `node test/pages.ts` tests the comprehension score in the toolbar popup, the word browser, and the reader in Chromium. `npm test` runs both after `node test/media.ts`.
 
-`node test/sidebar.ts` tests the subtitle sidebar in the player: when the list follows the video, and **Create N cards**. It uses port 8765 and `ffmpeg`. `npm test` runs it after `node test/player.ts`.
+`node test/sidebar.ts` tests the subtitle sidebar of the player: the `G` key opens and closes the side panel of Chrome, and in the sidebar page, when the list follows the video, and **Create N cards**. The tests open the sidebar page in a tab of its own, because Playwright cannot reach the side panel of Chrome. It uses port 8765 and `ffmpeg`. `npm test` runs it after `node test/player.ts`.
 
 ### Make a release
 

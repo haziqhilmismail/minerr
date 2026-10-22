@@ -99,6 +99,7 @@ If you name another product, name it one time, say only true things about it, an
 | `unlimitedStorage` | Keeps the dictionaries that the user imports, such as JMdict, in IndexedDB. They are larger than the default quota. |
 | `offscreen` | Runs the Japanese word splitter (kuromoji) and the dictionary lookups in an offscreen document. |
 | `nativeMessaging` | On Windows, the Start button of the popup starts the user's local WhisperX server, which makes subtitles. |
+| `sidePanel` | Shows the subtitle sidebar, the list of the lines of a video, in the side panel next to the video tab. |
 | Host permission `<all_urls>` and the content script on all sites | Reads the Japanese text of the pages where the user turns on Minerr, and shows the popup there. Page text is off by default. The user turns it on for each site. |
 | Host permissions `http://127.0.0.1:8765/*` and `http://127.0.0.1:8766/*` | Connect to AnkiConnect and to the local WhisperX server on the user's computer. |
 | Content scripts in the page world on YouTube and Netflix | Read the subtitle track that the video player loads, for the subtitle overlay. |
