@@ -18,7 +18,9 @@
   progress { margin-top: var(--space-3); }
   #job { margin-top: var(--space-2); font-size: var(--text-footnote); }
   #job:empty { display: none; }
-  #server { display: flex; gap: var(--space-2); margin: var(--space-3) var(--space-1) 0; font-size: var(--text-caption); color: var(--muted); }
+  #server-gives { margin: var(--space-3) var(--space-1) 0; font-size: var(--text-caption); }
+  #server-gives ul { margin: 2px 0 0; padding-left: var(--space-4); }
+  #server { display: flex; gap: var(--space-2); margin: var(--space-2) var(--space-1) 0; font-size: var(--text-caption); color: var(--muted); }
   #server::before { content: ""; flex: none; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; background: var(--muted); }
   #server.ok::before { background: var(--ok); }
   #server.error::before { background: var(--error); }
@@ -120,6 +122,14 @@
     <button class="open" id="words"><span class="icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h9"/></svg></span><span class="text"><strong>Word browser</strong><small>Find and change the status of words.</small></span></button>
   </div>
 </section>
+<div id="server-gives" class="muted">
+  <p>The WhisperX server gives you:</p>
+  <ul>
+    <li>Japanese subtitles from WhisperX. They are much better than the automatic subtitles of YouTube.</li>
+    <li>The subtitles of YouTube and other video sites with times, for the subtitle sidebar.</li>
+    <li>Sentence audio for cards at one loudness. The video does not play the line again.</li>
+  </ul>
+</div>
 <p id="server">Checking the WhisperX server…</p>
 <div id="server-start" hidden><button class="primary" id="start">Start the server</button></div>
 <div id="setup" hidden>

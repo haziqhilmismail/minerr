@@ -365,6 +365,14 @@ The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.captions.ja.v
 
 Some videos have no Japanese captions, or captions of low quality. For these videos, Minerr can make subtitles from the audio with [WhisperX](https://github.com/m-bain/whisperX). WhisperX runs in a small server on your computer.
 
+The server does more than WhisperX. It gives Minerr these items:
+
+- Japanese subtitles from WhisperX. They are much better than the automatic subtitles of YouTube.
+- The subtitles of YouTube and other video sites with their times, through `yt-dlp`. The subtitle sidebar, the score of all the lines of a video, and the sentence audio need these times. See [Subtitles on YouTube](#subtitles-on-youtube) and [Subtitles on other video sites](#subtitles-on-other-video-sites).
+- Sentence audio for cards as an MP3 file at one loudness. Without the server, the video plays the line again while the tab records it. See [Sentence audio](#sentence-audio).
+
+The toolbar popup shows a short form of this list above the status of the server.
+
 ### Get the WhisperX add-on
 
 The server and its Windows launcher are the WhisperX add-on. A source checkout and the `minerr` folder of `minerr-v<version>.zip` already hold the add-on. If you installed Minerr from the Chrome Web Store, get the add-on from GitHub:
