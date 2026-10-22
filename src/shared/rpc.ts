@@ -38,6 +38,9 @@ interface Protocol {
   ankiVersion: { request: {}; reply: number };
   ankiModels: { request: {}; reply: string[] };
   ankiModelFields: { request: { model: string }; reply: string[] };
+  // The number of notes of a word in Anki, and the Anki browser with them. words are the spellings of the word (src/anki/anki.ts wordSearch).
+  ankiCount: { request: { words: string[] }; reply: number };
+  ankiBrowse: { request: { words: string[] }; reply: void };
   // Imports the Lapis note type into Anki and replies with the result for the options page.
   ankiInstallLapis: { request: {}; reply: string };
   whisperHealth: { request: {}; reply: Health | null };

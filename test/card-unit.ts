@@ -192,3 +192,11 @@ test('addDraft does not change a Lapis that has the ExpressionKanji field and li
     globalThis.fetch = saved;
   }
 });
+
+test('wordSearch finds the word field with each spelling, and escapes the characters that Anki reads', async () => {
+  const { BUILTIN, LAPIS, wordSearch, wordSpellings } = await import('../src/anki/anki.ts');
+  const kawaii: Entry = { ...TABERU, expression: '可愛い', reading: 'かわいい' };
+  assert.equal(wordSearch(LAPIS, wordSpellings('かわいい', kawaii)), '"Expression:かわいい" OR "Expression:可愛い"');
+  assert.equal(wordSearch(BUILTIN, wordSpellings('食べる', TABERU)), '"Word:食べる"');
+  assert.equal(wordSearch({ kind: 'custom', model: 'Mining', fields: { Front: '{word}' } }, ['a"b*c_d\\e']), '"Front:a\\"b\\*c\\_d\\\\e"');
+});

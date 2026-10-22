@@ -1,4 +1,4 @@
-import { type CardFields, definitionHtml, escapeHtml, type NoteDraft } from '../anki/anki.ts';
+import { type CardFields, definitionHtml, escapeHtml, type NoteDraft, wordSpellings } from '../anki/anki.ts';
 import { cardForm } from './cardform.ts';
 import { JAPANESE } from '../text/group.ts';
 import { type HoverMode, hoverDelay, hoverMode } from './hover.ts';
@@ -6,7 +6,7 @@ import { installKeys, type PopupKeys } from './keys.ts';
 import type { Entry } from '../dictionary/meta.ts';
 import {
   addLabel, type Anchor, anchorRect, anchorText, createBox, hideBox, isPopup, type Layer, markStatus, mount, position, render,
-  setPopupVisible, showBox, showMessage, toast, type View,
+  setPopupVisible, showAnkiCount, showBox, showMessage, toast, type View,
 } from './popup-view.ts';
 import { call, messageOf } from '../shared/rpc.ts';
 import { sentenceAround } from '../text/sentence.ts';
@@ -143,8 +143,9 @@ async function open(
   const box = (boxes[depth] ??= createBox());
   mount();
   showBox(box);
-  const layer = render(box, view, { addCard, editCard, close: () => close() });
+  const layer = render(box, view, { addCard, editCard, browseAnki, close: () => close() });
   layers.push(layer);
+  countInAnki(layer);
   if (by === 'key') keyed = layer;
   position(box, anchorRect(anchor));
   markActive();
@@ -202,6 +203,22 @@ function cardOf(view: View): CardFields {
   };
 }
 
+const ankiWords = (view: View) => wordSpellings(view.lemma, view.groups[0] ?? null);
+
+// Without Anki or AnkiConnect the line stays hidden: a hover does not show an error.
+function countInAnki(layer: Layer): void {
+  call({ type: 'ankiCount', words: ankiWords(layer.view) }).then(count => showAnkiCount(layer, count), () => undefined);
+}
+
+// V, or a click on the Anki line (the click closes the popups over it first): the Anki browser with the notes of the word of the top popup.
+function browseAnki(): void {
+  const layer = top();
+  if (!layer) return;
+  call({ type: 'ankiBrowse', words: ankiWords(layer.view) }).catch(error => {
+    if (layers.includes(layer)) showMessage(layer, messageOf(error), true);
+  });
+}
+
 // Runs work with the add button busy, and shows its error in the popup. hide: the popup hides first, for the screenshot.
 async function busy<T>(layer: Layer, label: string, hide: boolean, work: () => Promise<T>): Promise<T | null> {
   const button = layer.addButton;
@@ -227,7 +244,10 @@ async function busy<T>(layer: Layer, label: string, hide: boolean, work: () => P
 // True when Anki has the card.
 async function send(layer: Layer, card: CardFields, hide: boolean, draft?: NoteDraft): Promise<boolean> {
   const added = await busy(layer, 'Adding to Anki…', hide, () => call({ type: 'addCard', card, word: layer.view.word, ...(draft ? { draft } : {}) }));
-  if (added !== null && layers.includes(layer)) showMessage(layer, 'Added to Anki.');
+  if (added !== null && layers.includes(layer)) {
+    showMessage(layer, 'Added to Anki.');
+    countInAnki(layer);
+  }
   return added !== null;
 }
 
@@ -340,6 +360,7 @@ installKeys({
   pointed,
   addCard,
   editCard,
+  browseAnki,
   close: () => { if (!stopEdit()) close(); },
   firstSpan: () => spanOf(layers[0]),
   openWord,

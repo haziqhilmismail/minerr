@@ -27,6 +27,8 @@ const DEFINITION = '<div class="tags"><span class="tag tag-popular" title="high 
   + ' to eat (fixture)<span class="dict">Fixture</span></li></ol>';
 
 const ankiRequests: unknown[] = [];
+// Each popup asks for the number of notes of its word (findNotes "Field:word"); these go here, so ankiRequests has the other actions in order.
+const ankiCounts: unknown[] = [];
 const ankiReplies: Record<string, (params: unknown) => unknown> = {
   createDeck: () => 1,
   modelNames: () => ['Basic'],
@@ -42,7 +44,8 @@ const anki = createServer((req, res) => {
   req.on('data', chunk => { body += chunk; });
   req.on('end', () => {
     const request: unknown = JSON.parse(body);
-    ankiRequests.push(request);
+    const count = at(request, 'action') === 'findNotes' && String(at(request, 'params', 'query')).startsWith('"');
+    (count ? ankiCounts : ankiRequests).push(request);
     res.setHeader('Content-Type', 'application/json');
     let reply: { result: unknown; error: string | null };
     try {
@@ -235,6 +238,7 @@ try {
   console.log('turned on again: underline and popup back');
 
   assert.deepEqual(ankiRequests.map(r => at(r, 'action')), ['modelNames'], 'the options page lists the note types');
+  assert.equal(at(ankiCounts.at(-1), 'params', 'query'), '"Word:食べる"', 'the popup asks Anki for the notes of the word in the Word field');
   const firstAdd = ankiRequests.length;
   await popup.getByRole('button', { name: 'Add to Anki A' }).click();
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();

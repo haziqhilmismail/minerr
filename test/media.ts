@@ -32,6 +32,8 @@ const dictionary = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
 const ankiRequests: unknown[] = [];
 const ankiReplies: Record<string, (params: unknown) => unknown> = {
   createDeck: () => 1, modelNames: () => ['Basic'], createModel: () => ({}), addNote: () => 1700000000000, storeMediaFile: params => at(params, 'filename'),
+  // The popup asks for the number of notes of its word.
+  findNotes: () => [],
 };
 const anki = createServer((req, res) => {
   let body = '';

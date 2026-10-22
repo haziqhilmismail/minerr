@@ -129,7 +129,7 @@ Each unknown word of the page then gets an underline. The other words get their 
 
 The words that Minerr reads have the hand cursor. Move the mouse onto a word and stop it there. The popup of the word opens after 0.3 seconds. To open the popup at once, hold `Shift` while the mouse is on a word. To change when the popup opens, see [Word popup](#word-popup). The popup does not open while text is selected or a mouse button is down.
 
-Use these keys on a word. The status keys, `1` to `4`, also work with no popup open. `A`, `E`, and `Esc` work when the popup is open.
+Use these keys on a word. The status keys, `1` to `4`, also work with no popup open. `A`, `E`, `V`, and `Esc` work when the popup is open.
 
 | Key | Action |
 | --- | --- |
@@ -139,6 +139,7 @@ Use these keys on a word. The status keys, `1` to `4`, also work with no popup o
 | `4` | Set the word to ignored. |
 | `A` | Add an Anki card. |
 | `E` | Edit the card, then send it to Anki. See [Edit a card before you add it](#edit-a-card-before-you-add-it). |
+| `V` | Show the notes of the word in the Anki browser. See [Is the word in Anki?](#is-the-word-in-anki). |
 | `Esc` | Close the card form, or close the popup. |
 
 A status key changes the first of these that applies:
@@ -978,7 +979,7 @@ Japanese text in the definitions of a popup is also cut into words. Hold `Shift`
 
 - `Esc` closes the top popup only.
 - A click in a popup closes the popups over it.
-- `A` and `E` act on the word of the top popup. A status key acts on the word under the mouse, else on the popup under the mouse. See [Read and set statuses](#read-and-set-statuses).
+- `A`, `E`, and `V` act on the word of the top popup. A status key acts on the word under the mouse, else on the popup under the mouse. See [Read and set statuses](#read-and-set-statuses).
 
 ### Sentence highlight
 
@@ -989,6 +990,14 @@ To turn the sentence highlight off or on, press `Alt+Shift+S` on a page. Or, on 
 ### Count on the page
 
 Under the word, the popup shows how many times the word appears on the page, for example `Appears 4 times on this page`. Minerr counts the words with the same status key, so 食べた and 食べなかった both count for 食べる, and ねこ and ネコ both count for 猫.
+
+### Is the word in Anki?
+
+Under the word, the popup shows how many notes of the word Anki has, for example `In Anki: 2 notes`, or `Not in Anki`. Minerr searches the word field of your note type: `Expression` for Lapis, `Word` for the classic note type, and the field with `{word}` for your own note type. It finds the notes of all note types that have a field with that name. For a word in kana, Minerr also searches its kanji spelling, so かわいい also finds a note of 可愛い. The field must contain only the word.
+
+To see these notes, press `V` or click the line. The Anki browser opens with the search, for example `"Expression:かわいい" OR "Expression:可愛い"`.
+
+If Anki is not open, or AnkiConnect does not answer, the popup shows no line. `V` then shows the error in the popup.
 
 ### How the word is built
 

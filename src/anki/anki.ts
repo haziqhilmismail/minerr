@@ -86,6 +86,9 @@ export type MediaHtml = Record<'image' | 'audio' | 'wordaudio', string>;
 export const kanjiSpelling = (word: string, entry: Group | null): string =>
   (!hasKanji(word) && entry && hasKanji(entry.expression) ? entry.expression : '');
 
+// The spellings that a note of the word can have in Anki: the word, and the kanji spelling of a word in kana.
+export const wordSpellings = (word: string, entry: Group | null): string[] => [word, kanjiSpelling(word, entry)].filter(Boolean);
+
 export function markerValues(card: CardFields, page: PageInfo, media: MediaHtml): MarkerValues {
   const word = escapeHtml(card.word);
   const reading = escapeHtml(card.reading);
@@ -429,6 +432,25 @@ export async function version(): Promise<number> {
   const value = await invoke('version');
   if (typeof value !== 'number') unexpected('version');
   return value;
+}
+
+// Text in a quoted Anki search: a backslash before the characters that Anki reads as a quote, an escape, or a wildcard.
+const searchText = (text: string) => text.replace(/[\\"*_]/g, '\\$&');
+
+// The Anki search for the notes whose word field (the field of the note type in use) is one of words, in any note type with that field.
+export const wordSearch = (noteType: NoteType, words: string[]): string =>
+  words.map(word => `"${wordField(noteType)}:${searchText(word)}"`).join(' OR ');
+
+// The number of notes in Anki of a word, with words its spellings.
+export async function countWordNotes(words: string[]): Promise<number> {
+  const ids = await invoke('findNotes', { query: wordSearch(await getNoteType(), words) });
+  if (!isList(ids)) unexpected('findNotes');
+  return ids.length;
+}
+
+// Opens the Anki browser with the notes of a word.
+export async function browseWordNotes(words: string[]): Promise<void> {
+  await invoke('guiBrowse', { query: wordSearch(await getNoteType(), words) });
 }
 
 const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim();

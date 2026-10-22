@@ -34,6 +34,10 @@ const STYLE = `
   .reading { font: var(--text-headline)/1.4 var(--font-jp); color: var(--muted); }
   .surface { margin-top: 2px; font-size: var(--text-caption); color: var(--muted); }
   .inflection { font: var(--text-caption)/1.5 var(--font-jp); color: var(--text); }
+  .anki { display: block; margin-top: 2px; padding: 0; border: 0; background: none; color: var(--muted); font-size: var(--text-caption); text-align: left; }
+  .anki.found { color: var(--ok); font-weight: 600; }
+  .anki:hover { text-decoration: underline; }
+  .anki[hidden] { display: none; }
   .statuses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: var(--space-3); padding: 2px;
     border-radius: var(--radius-s); corner-shape: var(--corner); background: var(--raised); }
   button { font: inherit; color: inherit; cursor: pointer; user-select: none;
@@ -168,6 +172,8 @@ export interface Layer {
   message: HTMLDivElement;
   addButton: HTMLButtonElement;
   statusButtons: Map<Status, HTMLButtonElement>;
+  // How many notes Anki has of the word; hidden until Anki answers, and when Anki does not answer.
+  ankiLine: HTMLButtonElement;
 }
 
 export function showMessage({ message }: Layer, text: string, isError = false): void {
@@ -178,6 +184,12 @@ export function showMessage({ message }: Layer, text: string, isError = false): 
 export function markStatus({ box, statusButtons }: Layer, status: Status): void {
   for (const [name, button] of statusButtons) button.setAttribute('aria-pressed', String(name === status));
   box.style.setProperty('--status', STATUSES[status].color);
+}
+
+export function showAnkiCount({ ankiLine }: Layer, count: number): void {
+  ankiLine.replaceChildren(count ? `In Anki: ${count} ${count === 1 ? 'note' : 'notes'} ` : 'Not in Anki ', el('kbd', { textContent: 'V' }));
+  ankiLine.classList.toggle('found', count > 0);
+  ankiLine.hidden = false;
 }
 
 export const addLabel = () => ['Add to Anki ', el('kbd', { textContent: 'A' })];
@@ -227,10 +239,11 @@ function metaRow({ reading, frequencies, pitches }: Entry): HTMLElement | '' {
 export interface Actions {
   addCard: () => void;
   editCard: () => void;
+  browseAnki: () => void;
   close: () => void;
 }
 
-export function render(box: HTMLDivElement, view: View, { addCard, editCard, close }: Actions): Layer {
+export function render(box: HTMLDivElement, view: View, { addCard, editCard, browseAnki, close }: Actions): Layer {
   const { lemma, word, groups } = view;
   const [first, ...others] = groups;
   const title = view.headword?.text ?? lemma;
@@ -264,6 +277,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, editCard, clo
   const addButton = el('button', { className: 'add primary', onclick: addCard }, ...addLabel());
   const editButton = el('button', { className: 'edit', title: 'Edit the card before Minerr sends it', onclick: editCard }, 'Edit ', el('kbd', { textContent: 'E' }));
   const message = el('div', { className: 'message', role: 'status' });
+  const ankiLine = el('button', { className: 'anki', hidden: true, title: 'Show the notes of the word in the Anki browser', onclick: browseAnki });
   box.replaceChildren(
     el('header', {},
       el('div', { className: 'title' },
@@ -272,6 +286,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, editCard, clo
         first?.termTags.length ? el('span', { className: 'tags' }, ...chips(first.termTags)) : ''),
       first ? metaRow(first) : '',
       notes.length ? el('div', { className: 'surface', textContent: notes.join(' · ') }) : '',
+      ankiLine,
       view.inflection ? el('div', { className: 'inflection', textContent: `${title} → ${view.inflection}` }) : '',
       statusRow,
       el('div', { className: 'corner' },
@@ -280,7 +295,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, editCard, clo
     el('div', { className: 'definitions' }, ...definitions),
     el('footer', {}, el('div', { className: 'actions' }, addButton, editButton), message),
   );
-  const layer = { box, view, message, addButton, statusButtons };
+  const layer = { box, view, message, addButton, statusButtons, ankiLine };
   markStatus(layer, view.status);
   return layer;
 }

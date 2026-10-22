@@ -19,6 +19,8 @@ export interface PopupKeys {
   addCard: () => void;
   // Opens the card form of the top popup.
   editCard: () => void;
+  // Opens the Anki browser with the notes of the word of the top popup.
+  browseAnki: () => void;
   // Closes the card form, else the top popup.
   close: () => void;
   // The word span of the first popup, if it is open.
@@ -131,6 +133,7 @@ export function installKeys(popup: PopupKeys): void {
     ...Object.fromEntries(STATUS_NAMES.map(status => [STATUSES[status].hotkey, statusKey(status)])),
     a: whenOpen(popup.addCard),
     e: whenOpen(popup.editCard),
+    v: whenOpen(popup.browseAnki),
     // Shift+N is the next video on YouTube; only a popup that Shift opened takes it.
     n: event => (!event.shiftKey || popup.isOpen()) && nextUnknown(),
     Escape: whenOpen(popup.close),

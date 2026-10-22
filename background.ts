@@ -1,5 +1,5 @@
 import {
-  addDraft, fieldValues, getDeck, getNoteType, installLapis, type MediaFile, modelFieldNames, modelNames, type NoteDraft, noteDraft, usesWordAudio, version,
+  addDraft, browseWordNotes, countWordNotes, fieldValues, getDeck, getNoteType, installLapis, type MediaFile, modelFieldNames, modelNames, type NoteDraft, noteDraft, usesWordAudio, version,
 } from './src/anki/anki.ts';
 import { isPageCommand } from './src/popup/chord.ts';
 import { listDictionaries } from './src/dictionary/db.ts';
@@ -109,6 +109,8 @@ serve(
     ankiVersion: version,
     ankiModels: modelNames,
     ankiModelFields: ({ model }) => modelFieldNames(model),
+    ankiCount: ({ words }) => countWordNotes(words),
+    ankiBrowse: ({ words }) => browseWordNotes(words),
     whisperHealth: health,
     whisperStart: ({ url }) => startJob(url),
     whisperJob: ({ id }) => getJob(id),

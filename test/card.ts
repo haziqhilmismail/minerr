@@ -1,4 +1,5 @@
-// The Lapis note type, the word audio, and the card form (E), with a mock AnkiConnect on port 8765 and a mock JapanesePod101.
+// The Lapis note type, the word audio, the card form (E), and the Anki line of the popup (V), with a mock AnkiConnect on port 8765
+// and a mock JapanesePod101.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
@@ -7,9 +8,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LAPIS_FIELDS, LAPIS_PACKAGE_URL } from '../src/anki/lapis.ts';
 import { at } from '../src/shared/guards.ts';
-import { launch, listen, makeDictionary, mockAnki } from './harness.ts';
+import { launch, listen, makeDictionary, mockAnki, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-card-'));
+const out = process.env.OUT_DIR ?? work;
+useCjkFonts(work);
 const fixture = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
   ['食べる', 'たべる', 'v1', 'v1', 100, ['to eat (fixture)'], 1, ''],
   ['猫', 'ねこ', 'n', '', 100, ['cat (fixture)'], 2, ''],
@@ -21,8 +24,16 @@ const fixture = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
 ]);
 
 const anki = await mockAnki();
-const actions = (from: number) => anki.requests.slice(from).map(request => at(request, 'action'));
-const params = (from: number, action: string) => anki.requests.slice(from).filter(request => at(request, 'action') === action).map(request => at(request, 'params'));
+// Each popup asks for the number of notes of its word when it opens; actions and params leave these requests out.
+const isCount = (request: unknown) => at(request, 'action') === 'findNotes' && String(at(request, 'params', 'query')).startsWith('"Expression:');
+const counts = () => anki.requests.filter(isCount).map(request => at(request, 'params', 'query'));
+const since = (from: number) => anki.requests.slice(from).filter(request => !isCount(request));
+const until = async (check: () => boolean, what: string) => {
+  for (let i = 0; i < 50 && !check(); i++) await new Promise(resolve => setTimeout(resolve, 100));
+  assert.ok(check(), what);
+};
+const actions = (from: number) => since(from).map(request => at(request, 'action'));
+const params = (from: number, action: string) => since(from).filter(request => at(request, 'action') === action).map(request => at(request, 'params'));
 
 const site = createServer((_req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -63,6 +74,10 @@ try {
     await popup.locator('.lemma', { hasText: lemma }).waitFor();
   };
   await open('食べる');
+  await until(() => counts().length === 1, 'the popup asks Anki for the notes of the word');
+  assert.deepEqual(counts(), ['"Expression:食べる"']);
+  await tab.waitForTimeout(300);
+  assert.equal(await popup.locator('.anki').isHidden(), true, 'no Anki line when AnkiConnect gives an error');
   let from = anki.requests.length;
   await tab.keyboard.press('a');
   await popup.locator('.message.error').waitFor();
@@ -76,7 +91,8 @@ try {
   anki.replies.importPackage = () => { models = ['Basic', 'Lapis']; return true; };
   anki.replies.deleteMediaFile = () => null;
   anki.replies.deckNames = () => ['Default', 'Lapis'];
-  anki.replies.findNotes = () => [5];
+  let inAnki: number[] = [];
+  anki.replies.findNotes = search => (at(search, 'query') === 'deck:"Lapis"' ? [5] : inAnki);
   anki.replies.notesInfo = () => [{ noteId: 5, modelName: 'Lapis', fields: { Expression: { value: '十中八九', order: 0 } } }];
   anki.replies.deleteDecks = () => null;
   // The Lapis of the user: no ExpressionKanji field, and the word line of the hand-edited back template.
@@ -139,8 +155,12 @@ try {
   console.log('Lapis card: addNote with the Lapis fields and the word audio; the first add gives Lapis the ExpressionKanji field and its line');
 
   await tab.mouse.move(0, 0);
+  const asked = counts().length;
   await tab.hover('#kana .ml-word[data-ml-lemma="かわいい"]');
   await popup.locator('.lemma', { hasText: '可愛い' }).waitFor();
+  await popup.locator('.anki', { hasText: 'Not in Anki' }).waitFor();
+  assert.deepEqual(counts().slice(asked), ['"Expression:かわいい" OR "Expression:可愛い"'], 'a word in kana: the search has its kanji spelling too');
+  inAnki = [9];
   from = anki.requests.length;
   await tab.keyboard.press('a');
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
@@ -149,6 +169,18 @@ try {
   const kana = at(params(from, 'addNote')[0], 'note', 'fields');
   assert.deepEqual([at(kana, 'Expression'), at(kana, 'ExpressionKanji'), at(kana, 'ExpressionReading')], ['かわいい', '可愛い', 'かわいい']);
   console.log('a word in kana: Expression かわいい, ExpressionKanji 可愛い');
+
+  await popup.locator('.anki', { hasText: 'In Anki: 1 note' }).waitFor();
+  console.log('Anki line: Not in Anki, then In Anki: 1 note after A');
+  await popup.screenshot({ path: join(out, 'popup-in-anki.png') });
+  anki.replies.guiBrowse = () => [9];
+  const browsed = () => anki.requests.filter(request => at(request, 'action') === 'guiBrowse').map(request => at(request, 'params'));
+  await tab.keyboard.press('v');
+  await until(() => browsed().length === 1, 'V opens the Anki browser');
+  await popup.locator('.anki').click();
+  await until(() => browsed().length === 2, 'a click on the Anki line opens the Anki browser');
+  assert.deepEqual(browsed(), Array(2).fill({ query: '"Expression:かわいい" OR "Expression:可愛い"' }));
+  console.log('V and a click on the Anki line open the Anki browser with the search');
 
   jpodHasAudio = false;
   await open('魚');
