@@ -6,8 +6,7 @@ import { summary } from '../src/video/sidebar/sidebar-select.ts';
 import { autoPause, cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted, onLine } from '../src/video/playback.ts';
 import { isStatus } from '../src/status/status.ts';
 import { keyLabel, keyName, videoKey } from '../src/video/videokeys.ts';
-import { serverHint } from '../src/video/whisper.ts';
-import { isNoHostError, serverStatus } from '../src/video/server-status.ts';
+import { isNoHostError, serverHint, serverStatus, serverView } from '../src/video/server-status.ts';
 
 const LINES = [{ start: 1, end: 3, text: '一' }, { start: 3, end: 5, text: '二' }, { start: 8, end: 10, text: '三' }];
 
@@ -186,11 +185,25 @@ test('summary tells what Create N cards did', () => {
 });
 
 test('serverHint tells a Windows user to use the Start button of the popup or the launcher, and other users to run uv', () => {
-  assert.deepEqual(['Win32', 'Linux x86_64', 'MacIntel'].map(serverHint), [
+  assert.deepEqual([{ windows: true }, { windows: false }].map(serverHint), [
     'Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in the Minerr folder. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.',
     'Start the WhisperX server: uv run server/whisper_server.py',
-    'Start the WhisperX server: uv run server/whisper_server.py',
   ]);
+});
+
+test('serverView: the Start button only on Windows, and Show the Minerr folder when Chrome has no host', () => {
+  const windows = { windows: true };
+  assert.deepEqual(serverView({ state: 'off' }, windows), { className: 'error', text: 'The WhisperX server is not running.', buttons: ['start'] });
+  assert.deepEqual(serverView({ state: 'off' }, { windows: false }), { className: 'error', text: 'Start the WhisperX server: uv run server/whisper_server.py', buttons: [] });
+  assert.deepEqual(serverView({ state: 'setup' }, windows), {
+    className: 'error',
+    text: 'To set up the Start button, double-click "Start WhisperX server (Windows).cmd" in the Minerr folder one time. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.',
+    buttons: ['folder'],
+  });
+  assert.deepEqual(serverView({ state: 'failed' }, windows),
+    { className: 'error', text: 'The WhisperX server did not answer in 90 seconds. Look at the WhisperX window.', buttons: ['start'] });
+  assert.deepEqual(serverView({ state: 'running', health: { model: 'large-v3-turbo', device: 'cpu' } }, windows),
+    { className: 'ok', text: 'WhisperX server is running: large-v3-turbo on the CPU.', buttons: [] });
 });
 
 test('serverStatus: a click on Start shows a start until the limit and a failed start after it, also in a popup that opens later', () => {

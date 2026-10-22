@@ -37,3 +37,46 @@ export function serverStatus({ check, click }: ServerFacts, now: number): Server
 // If a release rewords them, a start without a host shows starting until START_LIMIT_MS, then failed.
 export const isNoHostError = (error: string): boolean =>
   error === 'Specified native messaging host not found.' || error === 'Access to the specified native messaging host is forbidden.';
+
+// Where Minerr runs. Only Windows has the Start button, because the native messaging hosts of the server are .cmd files.
+export interface Place {
+  windows: boolean;
+}
+
+// The help to start the server where the popup is not, for example in the error of Generate with WhisperX.
+export const serverHint = ({ windows }: Place): string => (windows
+  ? 'Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in the Minerr folder. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.'
+  : 'Start the WhisperX server: uv run server/whisper_server.py');
+
+export type ServerButton = 'start' | 'folder';
+
+// The line of the server in the toolbar popup, and the buttons under it.
+export interface ServerView {
+  className: '' | 'ok' | 'error';
+  text: string;
+  buttons: ServerButton[];
+}
+
+type StatusOf<S extends ServerStatus['state']> = Extract<ServerStatus, { state: S }>;
+type View<S extends ServerStatus['state']> = Pick<ServerView, 'className' | 'buttons'> & { text: (status: StatusOf<S>, place: Place) => string };
+
+// The buttons that each state offers. SHOWN keeps the ones that the place has.
+const VIEW: { [S in ServerStatus['state']]: View<S> } = {
+  checking: { className: '', buttons: [], text: () => 'Checking the WhisperX server…' },
+  running: { className: 'ok', buttons: [], text: ({ health }) => `WhisperX server is running: ${health.model} on the ${health.device.toUpperCase()}.` },
+  off: { className: 'error', buttons: ['start'], text: (_, place) => (place.windows ? 'The WhisperX server is not running.' : serverHint(place)) },
+  error: { className: 'error', buttons: [], text: ({ error }) => error },
+  starting: { className: '', buttons: [], text: () => 'Starting the WhisperX server…' },
+  setup: { className: 'error', buttons: ['folder'], text: () => 'To set up the Start button, double-click "Start WhisperX server (Windows).cmd" in the Minerr folder one time. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.' },
+  failed: { className: 'error', buttons: ['start'], text: () => `The WhisperX server did not answer in ${START_LIMIT_MS / 1000} seconds. Look at the WhisperX window.` },
+};
+
+const SHOWN: Record<ServerButton, (place: Place) => boolean> = {
+  start: ({ windows }) => windows,
+  folder: () => true,
+};
+
+export function serverView<S extends ServerStatus['state']>(status: StatusOf<S>, place: Place): ServerView {
+  const view = VIEW[status.state];
+  return { className: view.className, text: view.text(status, place), buttons: view.buttons.filter(button => SHOWN[button](place)) };
+}
