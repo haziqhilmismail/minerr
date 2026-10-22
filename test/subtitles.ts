@@ -654,6 +654,7 @@ try {
   await win.click('#start');
   await win.locator('#setup:not([hidden])').waitFor({ timeout: 5000 });
   assert.equal(await win.textContent('#server'), 'To set up the Start button, double-click "Start WhisperX server.cmd" in the Minerr folder one time.');
+  assert.ok(await win.locator('#server-start').isHidden(), 'no Start button until the double-click');
   await shot(win, 'action-server-setup-light.png', { fullPage: true });
   const [extensions] = await Promise.all([context.waitForEvent('page'), win.click('#folder')]);
   await extensions.waitForURL(`chrome://extensions/?id=${extensionId}`);
@@ -663,6 +664,7 @@ try {
   writeFileSync(join(work, 'profile', 'NativeMessagingHosts', 'com.minerr.whisperx.json'), JSON.stringify({
     name: 'com.minerr.whisperx', description: 'Test host', path: hostScript, type: 'stdio', allowed_origins: [`chrome-extension://${extensionId}/`],
   }));
+  await win.reload();
   await win.click('#start');
   await win.locator('#server', { hasText: 'Starting the WhisperX server…' }).waitFor();
   assert.ok(await win.locator('#server-start').isHidden(), 'no Start button while the server starts');

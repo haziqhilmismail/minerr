@@ -73,15 +73,13 @@ const setup = byId('setup', HTMLElement);
 
 type StatusOf<S extends ServerStatus['state']> = Extract<ServerStatus, { state: S }>;
 type View<S extends ServerStatus['state']> = { className: '' | 'ok' | 'error'; start: boolean; folder: boolean; text: (status: StatusOf<S>) => string };
-// Each status of the server in the popup: the color of its dot, whether a Windows user gets the Start button,
-// whether Show the Minerr folder shows, and its text.
 const VIEW: { [S in ServerStatus['state']]: View<S> } = {
   checking: { className: '', start: false, folder: false, text: () => 'Checking the WhisperX server…' },
   running: { className: 'ok', start: false, folder: false, text: ({ health }) => `WhisperX server is running: ${health.model} on the ${health.device.toUpperCase()}.` },
   off: { className: 'error', start: true, folder: false, text: () => (windows ? 'The WhisperX server is not running.' : serverHint(navigator.platform)) },
   broken: { className: 'error', start: false, folder: false, text: ({ error }) => error },
   starting: { className: '', start: false, folder: false, text: () => 'Starting the WhisperX server… The first start installs its packages, which takes some minutes.' },
-  setup: { className: 'error', start: true, folder: true, text: () => 'To set up the Start button, double-click "Start WhisperX server.cmd" in the Minerr folder one time.' },
+  setup: { className: 'error', start: false, folder: true, text: () => 'To set up the Start button, double-click "Start WhisperX server.cmd" in the Minerr folder one time.' },
   failed: { className: 'error', start: true, folder: false, text: () => `The WhisperX server did not answer in ${START_LIMIT_MS / 1000} seconds. Look at the WhisperX window.` },
 };
 

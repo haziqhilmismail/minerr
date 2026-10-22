@@ -22,8 +22,7 @@
   #server.ok::before { background: var(--ok); }
   #server.error::before { background: var(--error); }
   #server.ok, #server.error { font-weight: 400; color: var(--muted); }
-  #server-start, #setup { display: grid; gap: var(--space-2); }
-  #server-start { margin: var(--space-2) var(--space-1) 0; }
+  #server-start, #setup { display: grid; gap: var(--space-2); margin: var(--space-2) var(--space-1) 0; }
   #setup .muted { font-size: var(--text-caption); }
   code { font: var(--text-caption)/1.4 var(--font-mono); overflow-wrap: anywhere; }
   /* The page text switch is the main action on a web page: a large card that fills with the accent color when it is on. */
@@ -121,11 +120,9 @@
   </div>
 </section>
 <p id="server">Checking the WhisperX server…</p>
-<div id="server-start" hidden>
-  <button class="primary" id="start">Start the server</button>
-  <div id="setup" hidden>
-    <button id="folder">Show the Minerr folder</button>
-    <p class="muted">On the page that opens, click the path after "Loaded from". If the Start button still asks for the double-click after one double-click, start the server with the double-click.</p>
-  </div>
+<div id="server-start" hidden><button class="primary" id="start">Start the server</button></div>
+<div id="setup" hidden>
+  <p class="muted">On the page that opens, click the path after "Loaded from". If the Start button still asks for the double-click after one double-click, start the server with the double-click.</p>
+  <button class="primary" id="folder">Show the Minerr folder</button>
 </div>
 <script src="action.js" type="module"></script>
