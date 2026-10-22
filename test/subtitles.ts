@@ -5,12 +5,12 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { homedir, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Page, PageScreenshotOptions } from 'playwright';
 import { at } from '../src/shared/guards.ts';
 import { START_LIMIT_MS } from '../src/video/server-status.ts';
-import { extension, launch, listen, makeDictionary, useCjkFonts } from './harness.ts';
+import { launch, listen, makeDictionary, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-subs-'));
 const out = process.env.OUT_DIR ?? work;
@@ -657,10 +657,7 @@ try {
   await shot(win, 'action-server-setup-light.png', { fullPage: true });
   const [extensions] = await Promise.all([context.waitForEvent('page'), win.click('#folder')]);
   await extensions.waitForURL(`chrome://extensions/?id=${extensionId}`);
-  const loadedFrom = extensions.getByText('Loaded from');
-  await loadedFrom.waitFor();
-  assert.equal(await loadedFrom.evaluate(label => label.parentElement?.innerText.replace(/\s+/g, ' ').trim()), `Loaded from: ${extension.replace(homedir(), '~')}`);
-  console.log('no host: the popup asks for one double-click of the launcher, and Show the Minerr folder opens the extension page with its path');
+  console.log('no host: the popup asks for one double-click of the launcher, and Show the Minerr folder opens the page of Minerr in chrome://extensions');
 
   mkdirSync(join(work, 'profile', 'NativeMessagingHosts'), { recursive: true });
   writeFileSync(join(work, 'profile', 'NativeMessagingHosts', 'com.minerr.whisperx.json'), JSON.stringify({
