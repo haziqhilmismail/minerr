@@ -657,6 +657,32 @@ try {
   await extensions.waitForURL(`chrome://extensions/?id=${extensionId}`);
   console.log('no host: the popup asks for one double-click of the launcher, and Show the Minerr folder opens the page of Minerr in chrome://extensions');
 
+  assert.equal(await worker.evaluate(async () => (await chrome.management.getSelf()).installType), 'development',
+    'Load unpacked, read without the management permission');
+  const store = await context.newPage();
+  await store.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, 'platform', { get: () => 'Win32' });
+    Object.defineProperty(chrome.management, 'getSelf', { value: async () => ({ installType: 'normal' }) });
+  });
+  await store.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${otherTabId}`);
+  await store.locator('#server.error').waitFor();
+  assert.equal(await store.textContent('#server'), 'The WhisperX server is not running.');
+  assert.ok(await store.locator('#start').isVisible(), 'a store install keeps the Start button');
+  assert.ok(await store.locator('#addon:not(.primary)').isVisible(), 'and offers the add-on after it, before the first click');
+  await shot(store, 'action-store-off-light.png', { fullPage: true });
+  await store.click('#start');
+  await store.locator('#addon.primary').waitFor({ timeout: 5000 });
+  assert.equal(await store.textContent('#server'), 'To set up the Start button, get the free WhisperX add-on from GitHub and unzip it. Then double-click "Start WhisperX server (Windows).cmd" in its folder one time. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.');
+  assert.ok(await store.locator('#setup').isHidden(), 'a store install has no Minerr folder');
+  assert.ok(await store.locator('#server-start').isHidden(), 'no Start button until the double-click');
+  await shot(store, 'action-store-setup-light.png', { fullPage: true });
+  // The tab has no network here, so Playwright sees an error page. Chrome keeps the address of the tab.
+  const [releases] = await Promise.all([context.waitForEvent('page'), store.click('#addon')]);
+  assert.deepEqual(await worker.evaluate(async () => (await chrome.tabs.query({ url: 'https://github.com/*' })).map(tab => tab.url)),
+    ['https://github.com/haziqhilmismail/minerr/releases/latest']);
+  await releases.close();
+  console.log('store install: the popup offers the WhisperX add-on from GitHub next to Start, and in place of the Minerr folder');
+
   // Chromium on Linux reads user-level hosts from <user data dir>/NativeMessagingHosts.
   mkdirSync(join(work, 'profile', 'NativeMessagingHosts'), { recursive: true });
   writeFileSync(join(work, 'profile', 'NativeMessagingHosts', 'com.minerr.whisperx.json'), JSON.stringify({
@@ -685,6 +711,11 @@ try {
   assert.equal(await win.textContent('#server'), 'The WhisperX server is not running.', 'the popup forgets a start after the server answered');
   console.log('Start the server: Chrome ran the host, a reopened popup shows the start, and after the limit a failed start;',
     'it shows the server when the server answers, then forgets the start');
+
+  await action.click('#generate');
+  await action.locator('#job.error').waitFor({ timeout: 5000 });
+  assert.equal(await action.textContent('#job'), 'Start the WhisperX server: uv run server/whisper_server.py', 'the service worker knows the install');
+  console.log('Generate without the server: the error of the service worker tells an unpacked install to run uv');
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('SUBTITLES E2E PASS');

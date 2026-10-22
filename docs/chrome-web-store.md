@@ -1,17 +1,18 @@
 # Publish Minerr in the Chrome Web Store
 
-This guide is for the owner of Minerr. It gives the changes that Minerr needs before a store release, and the steps in the Chrome Web Store Developer Dashboard. The facts come from the Chrome Web Store documentation of October 2026. The dashboard can change, so do what the dashboard shows when it differs from this guide.
+This guide is for the owner of Minerr. It gives the state of the changes for the store, and the steps in the Chrome Web Store Developer Dashboard. The facts come from the Chrome Web Store documentation of October 2026. The dashboard can change, so do what the dashboard shows when it differs from this guide.
 
-## Changes that Minerr needs first
+## Changes for the store
 
-| Change | Why |
+| Change | State |
 | --- | --- |
-| Add PNG icons (16, 32, 48, and 128 pixels) and the `icons` field to `manifest.json`. | The store needs a 128 x 128 PNG icon in the ZIP file. Google recommends 96 x 96 artwork with 16 pixels of transparent padding on each side. At 16 and 32 pixels, use the pickaxe of `docs/logo.svg` without 日本語. |
-| Make a store ZIP with `manifest.json` at the root. | The store does not accept a ZIP with the manifest in a folder. The GitHub release ZIP has the top folder `minerr`, so you cannot upload it. |
-| Leave `server/` and the two launchers (`Start WhisperX server (Windows).cmd` and `Start WhisperX server (WSL).cmd`) out of the store ZIP. | A store install has no folder that the user can open, so a launcher cannot start from there. Store users get the server from the GitHub release. |
-| Add the store item ID to the allowed origins in `server/chrome_start.py`, and change the hint of the popup. | The store gives Minerr a fixed ID. It is not the ID that `chrome_start.py` calculates from the folder path, so Chrome refuses the Start button for a store install. The popup hint tells the user to double-click a file in the Minerr folder, and a store install has no such folder. |
-| Add a `LICENSE` file. | The store does not need a license. But without one, Minerr is not open source, and other people have no right to use or change the code. |
-| Write a privacy policy, for example `PRIVACY.md`. | The Privacy practices tab asks for a privacy policy URL. See [Privacy practices](#4-fill-in-the-privacy-practices-tab). |
+| PNG icons (16, 32, 48, and 128 pixels) and the `icons` field in `manifest.json`. The store needs a 128 x 128 PNG icon in the ZIP file. | Done. `scripts/logo.py` draws the icons. |
+| A store ZIP with `manifest.json` at the root, without `server/` and the two launchers. The store does not accept a ZIP with the manifest in a folder. A store install has no folder where a launcher can start. | Done. `node scripts/package.ts` writes `release/minerr-store-v<version>.zip`. |
+| A `LICENSE` file. Without a license, other people have no right to use or change the code. | Done. The MIT License. |
+| A privacy policy. The Privacy practices tab asks for its URL. | Done. `PRIVACY.md`. See [Privacy practices](#4-fill-in-the-privacy-practices-tab). |
+| Texts for a store install. A store install has no Minerr folder, so the popup must not tell the user to open it. | Done. The popup tells a store install to get the WhisperX add-on from GitHub (`src/video/server-status.ts`). |
+| The item ID in `STORE_EXTENSION_ID` in `server/chrome_start.py`. The store gives Minerr a fixed ID, and Chrome refuses the Start button for an ID that the host manifest does not name. | Left. Fill it in after the first upload, then make a new release of the add-on. See [step 3](#3-upload-the-zip-and-fill-in-the-store-listing). |
+| The store address in `README.md` and `docs/release-notes.md`. | Left. Both say that Minerr comes to the store soon. When the store listing is live, put its address there. |
 
 ## 1. Register a developer account
 
@@ -28,22 +29,20 @@ This guide is for the owner of Minerr. It gives the changes that Minerr needs be
 
 1. Set a new version in `manifest.json` and `package.json`. Each upload needs a higher version than the upload before it.
 2. Run all tests.
-3. Make the ZIP:
-
-   ```sh
-   npm run build
-   rm -rf /tmp/minerr-store && cp -r dist /tmp/minerr-store
-   rm -r /tmp/minerr-store/server /tmp/minerr-store/*.cmd
-   python3 -c "import shutil; shutil.make_archive('minerr-store', 'zip', '/tmp/minerr-store')"
-   ```
-
-4. Check that `manifest.json` is at the root of the ZIP: `python3 -m zipfile -l minerr-store.zip | grep manifest.json` must show `manifest.json`, not `minerr/manifest.json`.
+3. Make the ZIP in one of these ways:
+   - Run `npm run build`, then `node scripts/package.ts`. The store ZIP is `release/minerr-store-v<version>.zip`.
+   - Push the version tag (README: Make a release). The release workflow keeps the store ZIP on the page of its run, as the artifact `minerr-store-v<version>`. GitHub puts the artifact in a ZIP of its own, so unzip the download one time to get `minerr-store-v<version>.zip`.
+4. Check that `manifest.json` is at the root of the ZIP: `python3 -m zipfile -l release/minerr-store-v<version>.zip | grep manifest.json` must show `manifest.json`, not `minerr/manifest.json`.
 
 ## 3. Upload the ZIP and fill in the store listing
 
-1. In the dashboard, click **Add new item**, then upload `minerr-store.zip`. The largest package that the store accepts is 2 GB.
-2. Write down the item ID that the dashboard shows. Put it in `server/chrome_start.py` (see the table at the top), then make a new GitHub release of the server.
-3. On the **Store listing** tab, fill in these fields:
+1. In the dashboard, click **Add new item**, then upload `minerr-store-v<version>.zip`. The largest package that the store accepts is 2 GB.
+2. Write down the item ID that the dashboard shows. The ID does not change.
+3. Put the item ID in `STORE_EXTENSION_ID` in `server/chrome_start.py`.
+4. When the store listing is live, put its address in `README.md` and `docs/release-notes.md`, where they say that Minerr comes to the store soon, and remove the TODO comments. Until the review ends, the address shows no page.
+5. Set a higher version, and make a new release (README: Make a release). The WhisperX add-on of that release lets the store version use the Start button of the popup.
+6. On the **Package** tab, upload the store ZIP of the new version.
+7. On the **Store listing** tab, fill in these fields:
 
 | Field | Value |
 | --- | --- |
@@ -67,8 +66,11 @@ A description that obeys the store policies on impersonation, keyword spam, and 
 > - A popup shows the dictionary entry of a word when the mouse is on it.
 > - One key adds an Anki card with the sentence, a screenshot, and audio.
 > - On YouTube, Netflix, and other video sites, it shows Japanese subtitles that you can mine.
+> - For a video with no Japanese subtitles, the free WhisperX add-on makes them on your computer. Get it from https://github.com/haziqhilmismail/minerr/releases/latest
 >
 > Minerr supports only Japanese. It keeps all of your data in your browser and has no account or cloud sync. It needs Anki with the AnkiConnect add-on. It is free and open source: https://github.com/haziqhilmismail/minerr
+>
+> Minerr is not affiliated with YouTube, Netflix, or the WhisperX project.
 
 If you name another product, name it one time, say only true things about it, and add that Minerr is not affiliated with it. Do not put the name of another product in the name, the summary, the icon, or the screenshots of Minerr.
 
@@ -101,7 +103,7 @@ The store reviews items with broad host permissions, such as `<all_urls>`, for l
 
 Then certify the statements about the use of data, including the limited use policy.
 
-**Privacy policy.** Give the URL of the privacy policy, for example `https://github.com/haziqhilmismail/minerr/blob/main/PRIVACY.md`. It must agree with the data usage that you declare. Write in it what the list above says, and that the WhisperX server, which the user installs separately, downloads videos with `yt-dlp` and its model from Hugging Face.
+**Privacy policy.** Give the URL of the privacy policy: `https://github.com/haziqhilmismail/minerr/blob/main/PRIVACY.md`. It must agree with the data usage that you declare. `PRIVACY.md` says what the list above says, and what the WhisperX add-on downloads. If the data usage changes, change `PRIVACY.md` too.
 
 ## 5. Set the distribution
 

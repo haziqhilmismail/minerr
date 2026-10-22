@@ -45,7 +45,12 @@ All data stays on your computer, with two exceptions. The extension sends reques
 
 ## Install
 
-To install a release, download the `.zip` file from the [Releases](https://github.com/haziqhilmismail/minerr/releases) page, unzip it, and go to step 2. The zip has one folder, `minerr`, and the same zip works on all platforms. To build the extension from the source code, do step 1.
+Install Minerr from the Chrome Web Store, or load it unpacked.
+
+- **Chrome Web Store.** Minerr comes to the store soon. Until then, load it unpacked. The store version does not include the WhisperX add-on. See [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx).
+- **Load unpacked.** Download `minerr-v<version>.zip` from the [Releases](https://github.com/haziqhilmismail/minerr/releases) page, and unzip it. Then go to step 2. The zip has one folder, `minerr`, and the same zip works on all platforms. To build the extension from the source code, do step 1 first.
+
+<!-- TODO(owner): When the store listing is live, put its address in the Chrome Web Store item, with the step to click Add to Chrome and then go to step 3 (docs/chrome-web-store.md, step 3). -->
 
 ### 1. Build the extension
 
@@ -363,6 +368,16 @@ The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.captions.ja.v
 
 Some videos have no Japanese captions, or captions of low quality. For these videos, Minerr can make subtitles from the audio with [WhisperX](https://github.com/m-bain/whisperX). WhisperX runs in a small server on your computer.
 
+### Get the WhisperX add-on
+
+The server and its launchers are the WhisperX add-on. A source checkout and the `minerr` folder of `minerr-v<version>.zip` already hold the add-on. If you installed Minerr from the Chrome Web Store, get the add-on from GitHub:
+
+1. Open the [latest release](https://github.com/haziqhilmismail/minerr/releases/latest). The **Get the WhisperX add-on** button of the Minerr popup opens the same page.
+2. Download `minerr-whisperx-v<version>.zip`, and unzip it. The zip has one folder, `minerr-whisperx`.
+3. Put the folder in a place where it can stay, for example your user folder.
+
+The release page has the install steps for each platform. In this section, the add-on folder is the `minerr-whisperx` folder, or the Minerr folder of an unpacked install.
+
 ### Requirements
 
 - Windows on an x64 processor, Linux, or WSL on Windows. On Windows on ARM, use WSL.
@@ -376,25 +391,27 @@ The server uses the CPU. It does not need a GPU, so it also works on a computer 
 
 ### Start the server
 
-The Minerr folder has two launchers for Windows. This is the folder that you load in `chrome://extensions`.
+The add-on folder has two launchers for Windows.
 
 - `Start WhisperX server (Windows).cmd` runs the server on Windows itself. You do not need WSL.
 - `Start WhisperX server (WSL).cmd` runs the server in WSL.
 
 On Windows, click the Minerr button in the Chrome toolbar, then click **Start the server**. A window opens, and the server starts in it. Keep the window open while you use the server. To stop the server, close the window.
 
-The button works after one double-click of a launcher. Before that double-click, the popup tells you to do it:
+The button works after one double-click of a launcher. Before that double-click, the popup of an unpacked Minerr tells you to do it:
 
 1. Click **Show the Minerr folder**. The page of Minerr in `chrome://extensions` opens.
 2. Click the path after **Loaded from**. The Minerr folder opens.
 3. Double-click `Start WhisperX server (Windows).cmd`. If you use WSL, double-click `Start WhisperX server (WSL).cmd`. The server starts, and the button is set up.
 
+If you installed Minerr from the Chrome Web Store, the popup shows **Get the WhisperX add-on** in place of **Show the Minerr folder**. The button opens the latest release on GitHub. Download and unzip the add-on, then double-click a launcher in the `minerr-whisperx` folder. When the server is off, the popup of a store install also shows this button under **Start the server**.
+
 Each start of a launcher sets up the button again for that launcher. Thus the button starts the launcher that you double-clicked last. A launcher writes two things for Chrome:
 
-- The file `%LOCALAPPDATA%\Minerr\com.minerr.whisperx.json`. It names the host of the launcher in the Minerr folder, `server\start-from-chrome-windows.cmd` or `server\start-from-chrome.cmd` (WSL), and the extension that can use it.
+- The file `%LOCALAPPDATA%\Minerr\com.minerr.whisperx.json`. It names the host of the launcher in the add-on folder, `server\start-from-chrome-windows.cmd` or `server\start-from-chrome.cmd` (WSL). It also names the extensions that can use the host: Minerr from the Chrome Web Store, and the unpacked extension in the add-on folder, if the folder holds one.
 - The registry value `HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.minerr.whisperx`, which points at that file.
 
-When you click **Start the server**, Chrome runs the host, and the host opens its launcher in a window of its own. If the server does not answer in 90 seconds, the popup says so. Look at the window for the error. If you move the Minerr folder, double-click the launcher in the new folder one time. If the button still asks for the double-click after one double-click, start the server with the double-click.
+When you click **Start the server**, Chrome runs the host, and the host opens its launcher in a window of its own. If the server does not answer in 90 seconds, the popup says so. Look at the window for the error. If you move the add-on folder, double-click the launcher in the new folder one time. If the button still asks for the double-click after one double-click, start the server with the double-click.
 
 #### The Windows launcher
 
@@ -402,10 +419,10 @@ When you click **Start the server**, Chrome runs the host, and the host opens it
 
 1. It finds uv in your `PATH` or in `%LOCALAPPDATA%\Minerr\uv`. If it finds no uv, it asks you first. When you press Y, it downloads uv 0.13.5 (15 MB) from GitHub with `curl.exe`, checks the SHA-256 of the file, and unpacks it to `%LOCALAPPDATA%\Minerr\uv`.
 2. It sets up the **Start the server** button.
-3. It gets the newest `yt-dlp`, because YouTube often breaks old versions. If your computer is offline, the server starts with the `yt-dlp` that it has. This works after one start with internet access from the same Minerr folder.
+3. It gets the newest `yt-dlp`, because YouTube often breaks old versions. If your computer is offline, the server starts with the `yt-dlp` that it has. This works after one start with internet access from the same add-on folder.
 4. It starts the server. At the first start, uv downloads Python 3.12 and the packages of the server.
 
-The launcher keeps the bytecode of Python in `%LOCALAPPDATA%\Minerr\pycache`, so the Minerr folder does not change. The launcher does not work on Windows on ARM, because ctranslate2, the engine of WhisperX, has no package for it. On Windows on ARM, use WSL.
+The launcher keeps the bytecode of Python in `%LOCALAPPDATA%\Minerr\pycache`, so the add-on folder does not change. The launcher does not work on Windows on ARM, because ctranslate2, the engine of WhisperX, has no package for it. On Windows on ARM, use WSL.
 
 To remove what the launchers write, run these commands in a Command Prompt. `%LOCALAPPDATA%\Minerr` holds the file for Chrome, and the uv and the bytecode of the Windows launcher.
 
@@ -416,7 +433,7 @@ rmdir /s /q %LOCALAPPDATA%\Minerr
 
 The Windows launcher also fills the cache of uv in `%LOCALAPPDATA%\uv` and the Python of uv in `%APPDATA%\uv\python`. The model is in `%USERPROFILE%\.cache\huggingface`. If you do not use uv and Hugging Face for other work, delete these folders too.
 
-On Linux, run this command in the Minerr folder. Keep the terminal open while you use the server.
+On Linux, run this command in the add-on folder. Keep the terminal open while you use the server.
 
 ```sh
 uv run server/whisper_server.py
@@ -435,7 +452,7 @@ To start the server when you log in to Windows, put a shortcut to your launcher 
 1. Press Win+R.
 2. Type `shell:startup`.
 3. Press Enter. The Startup folder opens.
-4. With the right mouse button, drag your launcher from the Minerr folder to the Startup folder.
+4. With the right mouse button, drag your launcher from the add-on folder to the Startup folder.
 5. Click **Create shortcuts here**.
 
 The default model is `large-v3-turbo`. To use a different model, add `--model`, for example `--model small`. The `small` model is about 2.5 times faster, but it makes more mistakes in Japanese. For example, it wrote 自身 for 地震, 部身 for 文, and 感じに振り金 for 漢字にふりがな.
@@ -1118,7 +1135,7 @@ The path of a word from a page to a card:
 | `src/anki/lapis.ts` | The pure parts of the Lapis fields: the furigana, the frequency rank, and the pitch accent. |
 | `src/anki/wordaudio.ts` | The word audio from JapanesePod101, and the check for its placeholder clip. |
 | `src/popup/cardform.ts` | The card form of the popup (`E`). |
-| `src/video/whisper.ts` | The client for the WhisperX server. |
+| `src/video/whisper.ts` | The client for the WhisperX server, and `currentPlace`: Windows or not, and the install of Minerr from `chrome.management.getSelf`. |
 | `src/anki/lineaudio.ts`, `src/video/record.ts` | The sentence audio of a card: the server cuts it, or the tab records the line. |
 | `src/dictionary/db.ts` | The dictionary storage in IndexedDB. |
 | `src/text/entry.ts` | The dictionary entry and the status key of each word, and the join of word overrides and compound nouns. |
@@ -1142,13 +1159,13 @@ The path of a word from a page to a card:
 | `server/whisper_server.py`, `server/media.py` | The local server: WhisperX jobs and the HTTP routes, and the video side (cache keys, `yt-dlp`, `ffmpeg`, the audio cache, and line clips). The server uses `yt-dlp` and `ffmpeg` from the `PATH`, else the `yt-dlp` package and the `ffmpeg` of `imageio-ffmpeg`. |
 | `Start WhisperX server (Windows).cmd` | Starts the WhisperX server on Windows without WSL, after `server/chrome_start.py` sets up the Start button of the popup. It downloads uv when it finds none, and it gets the newest `yt-dlp` at each start. |
 | `Start WhisperX server (WSL).cmd` | Starts the WhisperX server in WSL from the extension folder on Windows, after `server/chrome_start.py` sets up the Start button of the popup. Git writes the `.cmd` files with CRLF line ends (`.gitattributes`), because they are Windows batch files. |
-| `server/chrome_start.py` | Writes the manifest of the native messaging host `com.minerr.whisperx` to `%LOCALAPPDATA%\Minerr` and the registry value that points at it, for the extension in this folder. Python of Windows runs it for the Windows launcher, and Python of WSL for the WSL launcher. Each registers the host of its own launcher. |
+| `server/chrome_start.py` | Writes the manifest of the native messaging host `com.minerr.whisperx` to `%LOCALAPPDATA%\Minerr` and the registry value that points at it. The manifest lets Minerr from the Chrome Web Store use the host (`STORE_EXTENSION_ID`, empty until the first upload), and the unpacked extension in this folder, if the folder has `manifest.json`. The folder of the add-on has no `manifest.json`. If no extension can use the host, the file registers nothing. Python of Windows runs it for the Windows launcher, and Python of WSL for the WSL launcher. Each registers the host of its own launcher. |
 | `server/start-from-chrome-windows.cmd`, `server/start-from-chrome.cmd` | The native messaging hosts of the Windows launcher and of the WSL launcher. Chrome runs the registered host when you click **Start the server**. The host opens its launcher in a window of its own and exits. |
 | `scripts/logo.py`, `docs/logo.svg`, `icons/` | `scripts/logo.py` draws the logo and the extension icons as pixel art in one palette. It writes `docs/logo.svg` and `icons/icon-16.png`, `-32`, `-48`, and `-128`, a 16 x 16 pickaxe at a whole scale. Run `python3 scripts/logo.py`. |
 | `scripts/package.ts` | Packs `dist` into three zips in `release`, each with a `.sha256` file: `minerr-whisperx-v<version>.zip` (the WhisperX add-on, the server and its launchers), `minerr-v<version>.zip` (the whole extension in the top folder `minerr`, for Load unpacked), and `minerr-store-v<version>.zip` (the extension without the add-on, with `manifest.json` at the root, for the Chrome Web Store). |
 | `LICENSE`, `PRIVACY.md` | The MIT License, and the privacy policy that the Chrome Web Store listing links to. |
 | `.github/workflows/release.yml`, `docs/release-notes.md` | For a pushed tag such as `v0.2.0`, the workflow builds and packs the extension. It makes a draft GitHub release with the WhisperX add-on, the zip for Load unpacked, and the text of `docs/release-notes.md`, and it keeps the store zip on the page of the run. |
-| `src/video/server-status.ts` | Pure function: the status of the WhisperX server as the toolbar popup shows it, from the last health check and the last click on **Start the server**. |
+| `src/video/server-status.ts` | Pure functions: the status of the WhisperX server as the toolbar popup shows it, from the last health check and the last click on **Start the server**, and the text and the buttons of each status. `serverHint` gives the help to start the server where the popup is not, for example in the error of **Generate with WhisperX**. The texts and the buttons depend on the platform and on the install. Load unpacked has the Minerr folder, which holds the add-on. Other installs, such as the Chrome Web Store, get the add-on from GitHub. |
 | `src/status/stats.ts` | The comprehension score and the recommended sentences of a tab, for the toolbar popup. |
 | `src/status/score.ts` | Pure functions for the score, its label, and the text of the i+1 sentences. |
 | `pages/words.html`, `pages/words.ts` | The word browser page. |
@@ -1202,10 +1219,10 @@ The WhisperX server has two endpoints for the player:
 1. Set the new version in `manifest.json` and in `package.json`.
 2. Run all tests. Then commit, and push to `main`.
 3. Run `git tag v<version>`, then `git push origin v<version>`.
-4. Open the [Releases](https://github.com/haziqhilmismail/minerr/releases) page. GitHub Actions makes a draft release with `minerr-v<version>.zip` and its `.sha256` file in about 2 minutes.
+4. Open the [Releases](https://github.com/haziqhilmismail/minerr/releases) page. In about 2 minutes, GitHub Actions makes a draft release with `minerr-whisperx-v<version>.zip`, `minerr-v<version>.zip`, and their `.sha256` files. The text of the draft is `docs/release-notes.md`, the install guide of the WhisperX add-on.
 5. Add what changed to the text of the draft, then click **Publish release**.
 
-The workflow stops when the tag is not the version in `manifest.json` and `package.json`. One zip works on all platforms, because the extension has no native code, and uv installs the packages of the WhisperX server for the platform at the first start. To make the zip on your computer, run `npm run build`, then `node scripts/package.ts`. The zip goes to the `release` folder.
+The workflow stops when the tag is not the version in `manifest.json` and `package.json`. Each zip works on all platforms, because the extension has no native code, and uv installs the packages of the WhisperX server for the platform at the first start. To make the zips on your computer, run `npm run build`, then `node scripts/package.ts`. The zips go to the `release` folder.
 
 To publish Minerr in the Chrome Web Store, see [docs/chrome-web-store.md](docs/chrome-web-store.md).
 

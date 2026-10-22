@@ -6,8 +6,7 @@ import { summary } from '../src/video/sidebar/sidebar-select.ts';
 import { autoPause, cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted, onLine } from '../src/video/playback.ts';
 import { isStatus } from '../src/status/status.ts';
 import { keyLabel, keyName, videoKey } from '../src/video/videokeys.ts';
-import { serverHint } from '../src/video/whisper.ts';
-import { isNoHostError, serverStatus } from '../src/video/server-status.ts';
+import { isNoHostError, type Place, serverHint, serverStatus, serverView } from '../src/video/server-status.ts';
 
 const LINES = [{ start: 1, end: 3, text: '一' }, { start: 3, end: 5, text: '二' }, { start: 8, end: 10, text: '三' }];
 
@@ -185,12 +184,50 @@ test('summary tells what Create N cards did', () => {
   assert.equal(summary(['added', 'failed'], 4), 'Stopped. Added 1 card. 1 card failed: the popup shows why.');
 });
 
+const UNPACKED_WINDOWS: Place = { windows: true, install: 'unpacked' };
+const UNPACKED_LINUX: Place = { windows: false, install: 'unpacked' };
+const STORE_WINDOWS: Place = { windows: true, install: 'store' };
+const STORE_LINUX: Place = { windows: false, install: 'store' };
+
 test('serverHint tells a Windows user to use the Start button of the popup or the launcher, and other users to run uv', () => {
-  assert.deepEqual(['Win32', 'Linux x86_64', 'MacIntel'].map(serverHint), [
+  assert.deepEqual([UNPACKED_WINDOWS, UNPACKED_LINUX].map(serverHint), [
     'Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in the Minerr folder. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.',
     'Start the WhisperX server: uv run server/whisper_server.py',
-    'Start the WhisperX server: uv run server/whisper_server.py',
   ]);
+});
+
+test('serverHint sends a store install, which has no Minerr folder, to the folder of the WhisperX add-on', () => {
+  assert.deepEqual([STORE_WINDOWS, STORE_LINUX].map(serverHint), [
+    'Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in the folder of the WhisperX add-on. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.',
+    'Start the WhisperX server: in the folder of the WhisperX add-on, run "uv run server/whisper_server.py".',
+  ]);
+});
+
+test('serverView: the Start button only on Windows, and Show the Minerr folder when Chrome has no host', () => {
+  assert.deepEqual(serverView({ state: 'off' }, UNPACKED_WINDOWS), { className: 'error', text: 'The WhisperX server is not running.', buttons: ['start'] });
+  assert.deepEqual(serverView({ state: 'off' }, UNPACKED_LINUX), { className: 'error', text: 'Start the WhisperX server: uv run server/whisper_server.py', buttons: [] });
+  assert.deepEqual(serverView({ state: 'setup' }, UNPACKED_WINDOWS), {
+    className: 'error',
+    text: 'To set up the Start button, double-click "Start WhisperX server (Windows).cmd" in the Minerr folder one time. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.',
+    buttons: ['folder'],
+  });
+  assert.deepEqual(serverView({ state: 'failed' }, UNPACKED_WINDOWS),
+    { className: 'error', text: 'The WhisperX server did not answer in 90 seconds. Look at the WhisperX window.', buttons: ['start'] });
+  assert.deepEqual(serverView({ state: 'running', health: { model: 'large-v3-turbo', device: 'cpu' } }, UNPACKED_WINDOWS),
+    { className: 'ok', text: 'WhisperX server is running: large-v3-turbo on the CPU.', buttons: [] });
+});
+
+test('serverView: a store install gets the WhisperX add-on from GitHub, in place of the Minerr folder and before a first Start', () => {
+  assert.deepEqual(serverView({ state: 'off' }, STORE_WINDOWS), { className: 'error', text: 'The WhisperX server is not running.', buttons: ['start', 'addOn'] });
+  assert.deepEqual(serverView({ state: 'off' }, STORE_LINUX),
+    { className: 'error', text: 'Start the WhisperX server: in the folder of the WhisperX add-on, run "uv run server/whisper_server.py".', buttons: ['addOn'] });
+  assert.deepEqual(serverView({ state: 'setup' }, STORE_WINDOWS), {
+    className: 'error',
+    text: 'To set up the Start button, get the free WhisperX add-on from GitHub and unzip it. Then double-click "Start WhisperX server (Windows).cmd" in its folder one time. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.',
+    buttons: ['addOn'],
+  });
+  assert.deepEqual(serverView({ state: 'failed' }, STORE_WINDOWS),
+    { className: 'error', text: 'The WhisperX server did not answer in 90 seconds. Look at the WhisperX window.', buttons: ['start'] });
 });
 
 test('serverStatus: a click on Start shows a start until the limit and a failed start after it, also in a popup that opens later', () => {

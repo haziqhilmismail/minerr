@@ -1,5 +1,6 @@
 import { parseCaptions, type SubtitleSegment } from './captions.ts';
 import { at, isList } from '../shared/guards.ts';
+import { type Place, serverHint } from './server-status.ts';
 
 const SERVER = 'http://127.0.0.1:8766';
 
@@ -36,15 +37,17 @@ export async function waitForJob(
 // A job as the toolbar popup shows it, without the subtitles.
 export type JobStatus = Exclude<Job, { state: 'done' }> | { state: 'done' };
 
-export const serverHint = (navigatorPlatform: string): string => (navigatorPlatform.startsWith('Win')
-  ? 'Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in the Minerr folder. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.'
-  : 'Start the WhisperX server: uv run server/whisper_server.py');
+// chrome.management.getSelf needs no permission.
+export async function currentPlace(): Promise<Place> {
+  const { installType } = await chrome.management.getSelf();
+  return { windows: navigator.platform.startsWith('Win'), install: installType === 'development' ? 'unpacked' : 'store' };
+}
 
 async function send(path: string, init?: RequestInit): Promise<Response> {
   try {
     return await fetch(SERVER + path, init);
   } catch {
-    throw new Error(serverHint(navigator.platform));
+    throw new Error(serverHint(await currentPlace()));
   }
 }
 
