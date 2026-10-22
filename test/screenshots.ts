@@ -123,7 +123,7 @@ try {
   const menu = await context.newPage();
   await menu.setViewportSize({ width: 340, height: 600 });
   await menu.goto(page(`action.html?tab=${tabId}`));
-  await menu.locator('#sentences li').first().waitFor();
+  await menu.locator('#score-percent').filter({ hasText: '%' }).waitFor();
   for (const scheme of SCHEMES) {
     await menu.emulateMedia({ colorScheme: scheme });
     await shot(menu, `menu-${scheme}`, true);

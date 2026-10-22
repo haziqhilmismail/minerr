@@ -59,11 +59,6 @@
   .score strong { font: 700 var(--text-title1)/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
   .score span { font-weight: 600; }
   .counts { display: flex; flex-wrap: wrap; gap: 2px var(--space-3); margin: var(--space-2) 0 var(--space-1); padding: 0; list-style: none; font-size: var(--text-footnote); }
-  h3 { margin: var(--space-3) 0 var(--space-1); font-size: var(--text-footnote); font-weight: 600; }
-  #sentences { max-height: 168px; margin: 0 calc(-1 * var(--space-2)); padding: 0; overflow: auto; list-style: none; }
-  #sentences button { width: 100%; min-height: 32px; padding: var(--space-1) var(--space-2); border-radius: var(--radius-s); background: none;
-    font: 400 var(--text-body)/1.5 var(--font-jp); text-align: left; }
-  #sentences button:hover { background: var(--raised); }
   .links { display: grid; gap: 2px; margin: 0 calc(-1 * var(--space-2)); }
 </style>
 <header>
@@ -99,8 +94,6 @@
     <p class="score"><strong id="score-percent"></strong><span id="score-label"></span></p>
     <ul id="score-counts" class="counts" aria-label="Different words by status"></ul>
     <p id="score-basis" class="muted"></p>
-    <h3 id="sentences-title"></h3>
-    <ol id="sentences" aria-labelledby="sentences-title"></ol>
   </div>
 </section>
 <section aria-labelledby="subs-title">

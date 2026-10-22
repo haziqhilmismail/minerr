@@ -18,6 +18,9 @@ export const isStatus = (value: unknown): value is Status => typeof value === 's
 // The statuses in the order of their hotkeys.
 export const STATUS_NAMES: Status[] = Object.keys(STATUSES).filter(isStatus);
 
+// The status of a word span, from its class.
+export const statusOf = (span: Element): Status | null => STATUS_NAMES.find(status => span.classList.contains(STATUSES[status].className)) ?? null;
+
 // currentColor keeps the hover highlight visible on light text over video and on dark text over a light page.
 export const WORD_CSS = [
   '.ml-word { border-radius: 2px; text-underline-offset: 0.2em; text-decoration-skip-ink: none; }',

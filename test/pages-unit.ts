@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { isPosition, pageMove, positionKey, textChapters, textParagraphs, turn, zipPath } from '../src/reader/book.ts';
-import { comprehension, iPlusOneTexts, ratingOf } from '../src/status/score.ts';
+import { comprehension, ratingOf } from '../src/status/score.ts';
 import { keysOf, listWords, wordsOfLines } from '../src/status/wordlist.ts';
 
 test('ratingOf gives the Migaku label for each score band', () => {
@@ -20,15 +20,6 @@ test('comprehension counts known and ignored words as understood, rounds down, a
     percent: 66, rating: 'Challenging', words: 6, unique: { unknown: 1, learning: 1, known: 2, ignored: 1 },
   });
   assert.equal(comprehension([]), null);
-});
-
-test('iPlusOneTexts returns the text of each sentence with one unknown word', () => {
-  assert.deepEqual(iPlusOneTexts([
-    { text: '猫', status: 'known' }, { text: 'が', status: null }, { text: '魚', status: 'unknown' }, { text: 'を', status: null },
-    { text: '食べた', status: 'known' }, { text: '。\n', status: null }, { text: '雨', status: 'unknown' }, { text: 'と', status: null },
-    { text: '風', status: 'unknown' }, { text: '。', status: null }, { text: '本', status: 'known' }, { text: 'を', status: null },
-    { text: '読む', status: 'unknown' },
-  ]), ['猫が魚を食べた。', '本を読む']);
 });
 
 test('listWords filters by status and text, and sorts by word or by status then word', () => {

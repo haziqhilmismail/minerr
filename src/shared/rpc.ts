@@ -16,7 +16,7 @@ import type { Health, Job } from '../video/whisper.ts';
 // The content scripts of a YouTube tab handle subsState, subsGenerate, and subsUse.
 // The page with the video overlay (a content script, or the player page) handles videoLine and videoRecord.
 // The content scripts of a page that is not YouTube handle videoAttach.
-// The content scripts of every tab, and the reader page, handle pageStats and pageStatsShow (src/status/stats.ts).
+// The content scripts of every tab, and the reader page, handle pageStats (src/status/stats.ts).
 // The content scripts and the pages of Minerr handle command (src/popup/keys.ts).
 interface Protocol {
   parse: { request: { texts: string[] }; reply: Segment[][] };
@@ -52,7 +52,6 @@ interface Protocol {
   videoRecord: { request: { start: number; end: number }; reply: MediaFile | null };
   videoAttach: { request: {}; reply: string };
   pageStats: { request: {}; reply: PageStats };
-  pageStatsShow: { request: { index: number }; reply: void };
   // A browser shortcut of manifest.json for the page of the active tab.
   command: { request: { command: PageCommand }; reply: void };
 }

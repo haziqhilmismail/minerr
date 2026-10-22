@@ -35,7 +35,7 @@ async function toolbarPopup(url: string): Promise<Page> {
   return action;
 }
 
-const scoreText = (action: Page) => action.$$eval('#score-percent, #score-label, #score-counts li, #score-basis, #sentences-title, #sentences li',
+const scoreText = (action: Page) => action.$$eval('#score-percent, #score-label, #score-counts li, #score-basis',
   nodes => nodes.map(node => node.textContent));
 
 try {
@@ -50,12 +50,7 @@ try {
   assert.deepEqual(shown, [
     '50%', 'Ambitious', 'Unknown 4', 'Learning 0', 'Known 3', 'Ignored 0',
     '10 words on this page. Known and ignored words are understood.',
-    'Recommended sentences (2)', '猫が魚を食べた。', '本を読む。',
   ]);
-  assert.equal(await article.evaluate(() => scrollY), 0);
-  await action.click('#sentences button >> text=本を読む。');
-  await article.waitForFunction(() => scrollY > 1000 && CSS.highlights.has('minerr-focus'));
-  console.log('a click on a recommended sentence scrolls the tab to it');
   await action.close();
 
   await worker.evaluate(() => chrome.storage.local.set({ 'w:魚': 'known', 'w:雨': 'ignored', 'w:風': 'known', 'w:読む': 'known' }));
@@ -81,9 +76,7 @@ try {
   assert.deepEqual(videoShown, [
     '40%', 'Ambitious', 'Unknown 3', 'Learning 0', 'Known 2', 'Ignored 0',
     '5 words in the 2 subtitle lines that the overlay showed. Known and ignored words are understood.',
-    'Recommended sentences (1)', '猫が魚を食べた。',
   ]);
-  assert.equal(await videoPopup.locator('#sentences button').count(), 0);
   await videoPopup.close();
 
   const empty = await context.newPage();

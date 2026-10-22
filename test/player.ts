@@ -74,17 +74,18 @@ try {
   const menuScore = async () => {
     const menu = await context.newPage();
     await menu.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${playerTab}`);
-    await menu.waitForFunction(() => document.querySelector('#sentences-title')?.textContent || document.querySelector('#score-empty')?.textContent !== 'Reading this tab…');
-    const shown = await menu.$$eval('#score-percent, #score-basis, #sentences li', nodes => nodes.map(node => node.textContent));
+    await menu.waitForFunction(() => document.querySelector<HTMLElement>('#score')?.hidden === false
+      || document.querySelector('#score-empty')?.textContent !== 'Reading this tab…');
+    const shown = await menu.$$eval('#score-percent, #score-basis', nodes => nodes.map(node => node.textContent));
     await menu.close();
     return shown;
   };
   await setStorage({ 'w:今日': 'known', 'w:雨': 'known' });
-  assert.deepEqual(await menuScore(), ['66%', '6 words in all 2 subtitle lines of the video. Known and ignored words are understood.',
-    '猫が魚を食べた', '今日は雨が降っている'], 'before the lines play, the score covers every line of the track');
+  assert.deepEqual(await menuScore(), ['66%', '6 words in all 2 subtitle lines of the video. Known and ignored words are understood.'],
+    'before the lines play, the score covers every line of the track');
   await worker.evaluate(() => chrome.storage.local.remove(['w:今日', 'w:雨']));
-  assert.deepEqual(await menuScore(), ['33%', '6 words in all 2 subtitle lines of the video. Known and ignored words are understood.',
-    '猫が魚を食べた'], 'the score of the track follows the statuses');
+  assert.deepEqual(await menuScore(), ['33%', '6 words in all 2 subtitle lines of the video. Known and ignored words are understood.'],
+    'the score of the track follows the statuses');
   console.log('toolbar menu on the player tab: the score of every line of the subtitle track');
   const line = player.locator('.minerr-subs-line');
   const popup = player.locator('minerr-popup .popup');

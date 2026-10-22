@@ -4,11 +4,10 @@
 // of a page (the YouTube masthead) need their own rule; src/video/youtube/youtube-overlay.ts has the YouTube rules.
 // The cards are page text (VIDEO in src/page-text/site.ts), so page.ts underlines their words and the popup works on them.
 import type { SubtitleSegment } from '../captions.ts';
-import { statusOf } from '../../page-text/iplusone.ts';
 import { choices, FILTER_NAMES, LINE_FILTERS, type LineFilter, type LineWord, shownLines, targetWord } from './sidebar-filter.ts';
 import { createSelection, type Outcome, SELECT_CSS } from './sidebar-select.ts';
 import { addWordCard, closePopups } from '../../popup/popup.ts';
-import { STATUSES } from '../../status/status.ts';
+import { STATUSES, statusOf } from '../../status/status.ts';
 import { applyTheme } from '../../shared/theme.ts';
 import { themed } from '../../shared/design-tokens.ts';
 import { wordOf } from '../../text/word-spans.ts';

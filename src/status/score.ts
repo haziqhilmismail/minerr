@@ -1,4 +1,3 @@
-import { iPlusOneSentences, type Piece, type Point } from '../text/sentence.ts';
 import type { Status } from './status.ts';
 
 // Migaku's labels for the comprehension score, with the lowest score of each (from the Migaku 1.31 extension).
@@ -40,16 +39,4 @@ export function comprehension(words: Word[]): Comprehension | null {
   const unique: Record<Status, number> = { unknown: 0, learning: 0, known: 0, ignored: 0 };
   for (const status of new Map(words.map(word => [word.key, word.status])).values()) unique[status]++;
   return { percent, rating: ratingOf(percent), words: words.length, unique };
-}
-
-export function iPlusOneTexts(pieces: Piece[]): string[] {
-  const starts: number[] = [];
-  let length = 0;
-  for (const piece of pieces) {
-    starts.push(length);
-    length += piece.text.length;
-  }
-  const text = pieces.map(piece => piece.text).join('');
-  const offsetOf = ({ piece, offset }: Point) => (starts[piece] ?? length) + offset;
-  return iPlusOneSentences(pieces).map(({ start, end }) => text.slice(offsetOf(start), offsetOf(end)));
 }

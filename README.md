@@ -37,7 +37,7 @@ The first screenshot shows the Japanese Wikipedia article [ネコ](https://ja.wi
 - On Netflix, it shows the Japanese subtitles of the title in its overlay, with their times. The keys, the play modes, and the subtitle sidebar work as on YouTube. A card from Netflix gets no line audio and no screenshot, because the video has DRM.
 - A card from a subtitle line gets the audio of the line.
 - It can make Japanese subtitles for a YouTube video with WhisperX, in a small server on your computer.
-- It shows a comprehension score for each page or video, and the recommended i+1 sentences.
+- It shows a comprehension score for each page or video.
 - It has a word browser to find, sort, and change word statuses, and to add a list of known words.
 - It has a reader for `.epub`, `.txt`, `.srt`, and `.vtt` files, with vertical text, and a page for pasted text.
 
@@ -297,7 +297,6 @@ The **Comprehension** section shows these items:
 - The score: the percent of the words with the status known or ignored. A learning word does not count as understood.
 - A label for the score, as in Migaku. The table below gives the labels.
 - The number of different words with each status.
-- The recommended sentences: the i+1 sentences of the tab, each one time. Click a sentence to scroll the tab to it. The sentence gets a yellow flash.
 
 | Score | Label |
 | --- | --- |
@@ -312,8 +311,6 @@ The **Comprehension** section shows these items:
 On a video with timed subtitles, the score uses all the subtitle lines of the video. Timed subtitles are WhisperX subtitles, the YouTube subtitles with times, or a subtitle file in the player. The score is available when the subtitles load, before you play the video. The menu then shows "N words in all M subtitle lines of the video."
 
 If a YouTube video has only the YouTube captions in the overlay, the score uses only the lines that the overlay showed in the tab. The score changes while you watch. When you open a different video, the count starts again. The menu then shows "N words in the M subtitle lines that the overlay showed."
-
-You cannot click a subtitle sentence, because the line is not on the page now.
 
 Migaku also uses the number of i+1 sentences in its score. Minerr uses only the percent of the words.
 
@@ -1166,8 +1163,8 @@ The path of a word from a page to a card:
 | `LICENSE`, `PRIVACY.md` | The MIT License, and the privacy policy that the Chrome Web Store listing links to. |
 | `.github/workflows/release.yml`, `docs/release-notes.md` | For a pushed tag such as `v0.2.0`, the workflow builds and packs the extension. It makes a draft GitHub release with the WhisperX add-on, the zip for Load unpacked, and the text of `docs/release-notes.md`, and it keeps the store zip on the page of the run. |
 | `src/video/server-status.ts` | Pure functions: the status of the WhisperX server as the toolbar popup shows it, from the last health check and the last click on **Start the server**, and the text and the buttons of each status. `serverHint` gives the help to start the server where the popup is not, for example in the error of **Generate with WhisperX**. The texts and the buttons depend on the platform and on the install. Load unpacked has the Minerr folder, which holds the add-on. Other installs, such as the Chrome Web Store, get the add-on from GitHub. |
-| `src/status/stats.ts` | The comprehension score and the recommended sentences of a tab, for the toolbar popup. |
-| `src/status/score.ts` | Pure functions for the score, its label, and the text of the i+1 sentences. |
+| `src/status/stats.ts` | The comprehension score of a tab, for the toolbar popup. |
+| `src/status/score.ts` | Pure functions for the score and its label. |
 | `pages/words.html`, `pages/words.ts` | The word browser page. |
 | `src/status/wordlist.ts` | Pure functions for the search, the filter, and the sort of the word browser, and for the pasted words. |
 | `pages/reader.html`, `pages/reader.ts` | The reader page for files and pasted text. It loads `src/page-text/page.ts`, `src/popup/popup.ts`, `src/page-text/iplusone.ts`, and `src/status/stats.ts` itself. |

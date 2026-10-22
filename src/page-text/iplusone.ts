@@ -1,7 +1,7 @@
 // Highlights the i+1 sentences (one unknown word) with the CSS Custom Highlight API, so the page DOM stays as it is.
 import { blockOf } from '../shared/dom.ts';
 import { iPlusOneSentences, type Piece } from '../text/sentence.ts';
-import { type Status, STATUS_NAMES, STATUSES } from '../status/status.ts';
+import { statusOf } from '../status/status.ts';
 import { iPlusOne } from '../shared/settings.ts';
 import { watchActive } from './site.ts';
 import { I_PLUS_ONE } from '../shared/design-tokens.ts';
@@ -18,8 +18,6 @@ const DELAY_MS = 150;
 const highlight = new Highlight();
 let shown = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
-
-export const statusOf = (span: Element): Status | null => STATUS_NAMES.find(status => span.classList.contains(STATUSES[status].className)) ?? null;
 
 function ranges(block: Element, cache: Map<Element, Element>): Range[] {
   const pieces: Piece[] = [];
@@ -69,12 +67,6 @@ function wordBlocks(cache: Map<Element, Element>): Set<Element> {
   const blocks = new Set<Element>();
   for (const span of document.querySelectorAll('.ml-word')) blocks.add(blockOf(span.parentElement ?? span, cache));
   return blocks;
-}
-
-// Every i+1 sentence of the document.
-export function iPlusOneRanges(): Range[] {
-  const cache = new Map<Element, Element>();
-  return [...wordBlocks(cache)].flatMap(block => ranges(block, cache));
 }
 
 function refreshChanged(): void {

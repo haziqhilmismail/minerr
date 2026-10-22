@@ -131,36 +131,23 @@ const scoreEmpty = byId('score-empty', HTMLElement);
 const scoreLabel = byId('score-label', HTMLElement);
 const scoreBasis = byId('score-basis', HTMLElement);
 
-// tabId is null for sentences that the tab cannot show.
-function sentenceItem(text: string, index: number, tabId: number | null): HTMLLIElement {
-  const item = document.createElement('li');
-  if (tabId === null) {
-    item.textContent = text;
-    return item;
-  }
-  const button = Object.assign(document.createElement('button'), { textContent: text, title: 'Show this sentence in the tab' });
-  button.addEventListener('click', () => call({ type: 'pageStatsShow', index }, tabId).catch(error => { scoreBasis.textContent = messageOf(error); }));
-  item.append(button);
-  return item;
-}
-
 // The switch for the site of the tab. Only web pages get one: Minerr does not run on browser pages.
 const siteHost = /^https?:/.test(tab?.url ?? '') ? new URL(tab?.url ?? '').hostname : '';
 let pageTextOn = siteHost === '' || siteIsOn(await enabledSites.get(), siteHost);
 
 function sourceText(stats: PageStats) {
   switch (stats.source) {
-    case 'track': return { empty: 'The subtitles of this video have no Japanese words.', where: `in all ${stats.lines} subtitle lines of the video`, showable: false };
-    case 'shown': return { empty: 'Play the video with Japanese subtitles. The score uses the subtitle lines that the overlay showed.', where: `in the ${stats.lines} subtitle lines that the overlay showed`, showable: false };
+    case 'track': return { empty: 'The subtitles of this video have no Japanese words.', where: `in all ${stats.lines} subtitle lines of the video` };
+    case 'shown': return { empty: 'Play the video with Japanese subtitles. The score uses the subtitle lines that the overlay showed.', where: `in the ${stats.lines} subtitle lines that the overlay showed` };
     case 'page': return {
-      empty: pageTextOn ? 'This page has no Japanese words.' : 'The page text is off. Turn it on to see the score of this page.', where: 'on this page', showable: true,
+      empty: pageTextOn ? 'This page has no Japanese words.' : 'The page text is off. Turn it on to see the score of this page.', where: 'on this page',
     };
   }
 }
 
-function showStats(stats: PageStats, tabId: number): void {
-  const { score, sentences } = stats;
-  const { empty, where, showable } = sourceText(stats);
+function showStats(stats: PageStats): void {
+  const { score } = stats;
+  const { empty, where } = sourceText(stats);
   if (!score) {
     scoreEmpty.textContent = empty;
     return;
@@ -178,16 +165,12 @@ function showStats(stats: PageStats, tabId: number): void {
     return item;
   }));
   scoreBasis.textContent = `${score.words} words ${where}. Known and ignored words are understood.`;
-  byId('sentences-title', HTMLElement).textContent = sentences.length
-    ? `Recommended sentences (${sentences.length})`
-    : 'No recommended sentences. No sentence has exactly one unknown word.';
-  byId('sentences', HTMLElement).replaceChildren(...sentences.map((text, index) => sentenceItem(text, index, showable ? tabId : null)));
 }
 
 async function showTabStats(): Promise<void> {
   const tabId = tab?.id;
   const stats = tabId === undefined ? null : await call({ type: 'pageStats' }, tabId).catch(() => null);
-  if (stats && tabId !== undefined) showStats(stats, tabId);
+  if (stats) showStats(stats);
   else scoreEmpty.textContent = 'Minerr cannot read this tab. Pages of Chrome and of extensions have no score. If the tab was open before Minerr started, reload it.';
 }
 
