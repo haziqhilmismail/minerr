@@ -7,6 +7,8 @@ from pathlib import Path, PureWindowsPath
 
 HOST = 'com.minerr.whisperx'
 REGISTRY_KEY = rf'HKCU\Software\Google\Chrome\NativeMessagingHosts\{HOST}'
+# The item ID of Minerr in the Chrome Web Store. Fill it in after the first upload (docs/chrome-web-store.md), then release the add-on.
+STORE_EXTENSION_ID = ''
 # Python of Windows runs this file for the native launcher, Python of WSL for the WSL launcher.
 NATIVE = sys.platform == 'win32'
 
@@ -35,22 +37,28 @@ def windows_path(path):
     return subprocess.run(['wslpath', '-w', str(path)], check=True, capture_output=True, text=True).stdout.strip()
 
 
-def host_manifest(extension, host_path):
+def host_manifest(extensions, host_path):
     return {'name': HOST, 'description': 'Starts the Minerr WhisperX server.', 'path': host_path, 'type': 'stdio',
-            'allowed_origins': [f'chrome-extension://{extension}/']}
+            'allowed_origins': [f'chrome-extension://{extension}/' for extension in extensions]}
 
 
 def register(extension_folder, local_app_data):
+    """Lets Minerr from the Chrome Web Store start the host, and the unpacked extension in this folder if it has one: the folder of
+    the add-on zip has no manifest.json. With no id to allow, it registers nothing and returns no manifest path."""
+    folder = windows_path(extension_folder)
+    extensions = [STORE_EXTENSION_ID] if STORE_EXTENSION_ID else []
+    if (Path(extension_folder) / 'manifest.json').is_file():
+        extensions.append(extension_id(folder))
+    if not extensions:
+        return extensions, None
     manifest = Path(local_app_data) / 'Minerr' / f'{HOST}.json'
     manifest.parent.mkdir(parents=True, exist_ok=True)
     _, host_file = launcher()
-    folder = windows_path(extension_folder)
-    extension = extension_id(folder)
     host = str(PureWindowsPath(folder, 'server', host_file))
-    manifest.write_text(json.dumps(host_manifest(extension, host), indent=2) + '\n')
+    manifest.write_text(json.dumps(host_manifest(extensions, host), indent=2) + '\n')
     manifest_path = windows_path(manifest)
     subprocess.run(['reg.exe', 'add', REGISTRY_KEY, '/ve', '/d', manifest_path, '/f'], check=True, capture_output=True)
-    return extension, manifest_path
+    return extensions, manifest_path
 
 
 def main():
@@ -61,11 +69,16 @@ def main():
         print(f'Minerr could not set up the Start button of the popup, because WSL did not get LOCALAPPDATA from Windows. {double_click}', flush=True)
         return
     try:
-        extension, manifest_path = register(Path(__file__).resolve().parent.parent, local_app_data)
+        extensions, manifest_path = register(Path(__file__).resolve().parent.parent, local_app_data)
     except (OSError, subprocess.CalledProcessError) as error:
         print(f'Minerr could not set up the Start button of the popup. {double_click} The error: {error}', flush=True)
         return
-    print(f'The Start button of the Minerr popup is ready for the extension {extension}: {REGISTRY_KEY} -> {manifest_path}', flush=True)
+    if not extensions:
+        print('Minerr could not set up the Start button of the popup, because this folder has no extension and STORE_EXTENSION_ID in '
+              f'chrome_start.py is empty. {double_click}', flush=True)
+        return
+    ready = ' and '.join(f'the extension {extension}' for extension in extensions)
+    print(f'The Start button of the Minerr popup is ready for {ready}: {REGISTRY_KEY} -> {manifest_path}', flush=True)
 
 
 if __name__ == '__main__':
