@@ -26,6 +26,11 @@ const STYLE = `
     text-shadow: 0 1px 2px rgb(0 0 0 / 50%); box-shadow: var(--edge), var(--shadow-2);
   }
   .minerr-subs-line { padding: 0.12em 0.6em 0.18em; }
+  /* YouTube adds its automatic captions word by word in a box of fixed width, with the text at one side. The same box here
+     keeps the words in place; a centered box moves the line at each word. */
+  .minerr-subs-line[data-align] { width: 24em; }
+  .minerr-subs-line[data-align="left"] { text-align: left; }
+  .minerr-subs-line[data-align="right"] { text-align: right; }
   .minerr-subs-second { padding: 0.12em 0.7em 0.16em; font: 400 0.72em/1.45 var(--font-ui); }
   .minerr-subs[data-second="hover"]:not([data-paused]) .minerr-subs-stack:not(:hover) .minerr-subs-second { visibility: hidden; }
   .minerr-subs-line[hidden], .minerr-subs-second[hidden], .minerr-subs-toast[hidden] { display: none; }
@@ -45,10 +50,13 @@ const STYLE = `
 
 const TOAST_MS = 2500;
 
+// The side of the text in the caption window of the site, or null for the center.
+export type Align = 'left' | 'right' | null;
+
 export interface Overlay {
   layer: HTMLDivElement;
   line: HTMLDivElement;
-  show: (text: string, second: string) => void;
+  show: (text: string, second: string, align?: Align) => void;
   toast: (text: string) => void;
 }
 
@@ -91,7 +99,9 @@ export function createOverlay(): Overlay {
     element.textContent = text;
     element.hidden = !text;
   };
-  const show = (text: string, second: string) => {
+  const show = (text: string, second: string, align: Align = null) => {
+    if (align) line.dataset.align = align;
+    else delete line.dataset.align;
     set(line, text);
     set(secondLine, second);
   };

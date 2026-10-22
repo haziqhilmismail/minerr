@@ -644,6 +644,23 @@ try {
     bottom.textContent = 'test of the rows';
   });
   await lineText('so this is a\ntest of the rows');
+  assert.equal(await line.evaluate(element => getComputedStyle(element).textAlign), 'center', 'a caption window without a side keeps the line in the center');
+  const boxOf = () => line.evaluate(element => { const box = element.getBoundingClientRect(); return { left: Math.round(box.left), width: Math.round(box.width), align: getComputedStyle(element).textAlign }; });
+  await tab.evaluate(() => {
+    const window = document.querySelector<HTMLElement>('.caption-window');
+    const bottom = document.querySelectorAll('.ytp-caption-segment')[1];
+    if (!window || !bottom) throw new Error('The page has no caption window');
+    window.style.textAlign = 'left';
+    bottom.textContent = 'test';
+  });
+  await lineText('so this is a\ntest');
+  const before = await boxOf();
+  await tab.evaluate(() => { const bottom = document.querySelectorAll('.ytp-caption-segment')[1]; if (bottom) bottom.textContent = 'test of the rows'; });
+  await lineText('so this is a\ntest of the rows');
+  assert.equal(before.align, 'left', 'the line takes the side of the YouTube caption window');
+  assert.deepEqual(await boxOf(), before, 'a new word of a left caption window does not move the line');
+  await shot(tab, 'overlay-english-left.png');
+  await tab.evaluate(() => { const window = document.querySelector<HTMLElement>('.caption-window'); if (window) window.style.textAlign = ''; });
   console.log('English video: no Japanese lines from a translation; the overlay copies the YouTube captions, English rows on their own lines');
 
   await context.route('https://example.com/**', route => route.fulfill({ contentType: 'text/html', body: '<p>Not YouTube</p>' }));

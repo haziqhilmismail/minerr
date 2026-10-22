@@ -1,7 +1,7 @@
 import { captionText, type SubtitleSegment } from '../captions.ts';
 import { SIDE_OPEN } from '../sidebar/sidebar.ts';
 import { call, type Message, messageOf, serve } from '../../shared/rpc.ts';
-import { attach, layer, setLines, sidebar } from '../video.ts';
+import { attach, layer, type Lines, setLines, sidebar } from '../video.ts';
 import { secondDisplay } from '../videosettings.ts';
 import { type JobStatus, waitForJob } from '../whisper.ts';
 import { findTabPlayer, tabCaptions, type TabPlayer } from './youtube-captions.ts';
@@ -83,7 +83,15 @@ function render(): void {
   const segments = state.source === 'whisperx' ? tracks.whisperx : tracks.youtube;
   setLines(segments
     ? { kind: 'timed', id: `youtube:${state.videoId}`, segments, second: tracks.english, audio: { url: watchUrl(state.videoId) } }
-    : { kind: 'mirror', text: captionText([...(player?.querySelectorAll('.caption-visual-line') ?? [])].map(l => l.textContent ?? '')) });
+    : mirror([...(player?.querySelectorAll<HTMLElement>('.caption-visual-line') ?? [])]));
+}
+
+// The caption window of YouTube sets the side of its text (left for the automatic captions), and its lines inherit it.
+// Only an explicit left or right counts: start is the default of a window that sets no side.
+function mirror(rows: HTMLElement[]): Lines {
+  const side = rows[0] ? getComputedStyle(rows[0]).textAlign : '';
+  const align = side === 'left' || side === 'right' ? side : null;
+  return { kind: 'mirror', text: captionText(rows.map(row => row.textContent ?? '')), align };
 }
 
 const captions = new MutationObserver(() => {
