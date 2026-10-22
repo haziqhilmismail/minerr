@@ -654,22 +654,25 @@ try {
   });
   await lineText('so this is a\ntest of the rows');
   assert.equal(await line.evaluate(element => getComputedStyle(element).textAlign), 'center', 'a caption window without a side keeps the line in the center');
-  const boxOf = () => line.evaluate(element => { const box = element.getBoundingClientRect(); return { left: Math.round(box.left), width: Math.round(box.width), align: getComputedStyle(element).textAlign }; });
-  await tab.evaluate(() => {
+  const boxOf = () => line.evaluate(element => { const box = element.getBoundingClientRect(); return { left: Math.round(box.left), align: getComputedStyle(element).textAlign }; });
+  // The automatic captions of YouTube: a caption window at the left of the video, with the text at the left.
+  const windowLeft = await tab.evaluate(() => {
     const window = document.querySelector<HTMLElement>('.caption-window');
     const bottom = document.querySelectorAll('.ytp-caption-segment')[1];
     if (!window || !bottom) throw new Error('The page has no caption window');
-    window.style.textAlign = 'left';
+    Object.assign(window.style, { textAlign: 'left', left: '10%', transform: 'none' });
     bottom.textContent = 'test';
+    return Math.round(window.getBoundingClientRect().left);
   });
   await lineText('so this is a\ntest');
   const before = await boxOf();
   await tab.evaluate(() => { const bottom = document.querySelectorAll('.ytp-caption-segment')[1]; if (bottom) bottom.textContent = 'test of the rows'; });
   await lineText('so this is a\ntest of the rows');
   assert.equal(before.align, 'left', 'the line takes the side of the YouTube caption window');
+  assert.ok(Math.abs(before.left - windowLeft) <= 1, `the line starts where the YouTube caption window starts: ${before.left} and ${windowLeft}`);
   assert.deepEqual(await boxOf(), before, 'a new word of a left caption window does not move the line');
   await shot(tab, 'overlay-english-left.png');
-  await tab.evaluate(() => { const window = document.querySelector<HTMLElement>('.caption-window'); if (window) window.style.textAlign = ''; });
+  await tab.evaluate(() => { const window = document.querySelector<HTMLElement>('.caption-window'); if (window) Object.assign(window.style, { textAlign: '', left: '', transform: '' }); });
   await options.evaluate(() => chrome.storage.local.set({ enabled: false }));
   await tab.waitForFunction(() => document.documentElement.hasAttribute('data-minerr-off'));
   await tab.waitForTimeout(500);

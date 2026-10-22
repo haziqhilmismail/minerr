@@ -26,11 +26,13 @@ const STYLE = `
     text-shadow: 0 1px 2px rgb(0 0 0 / 50%); box-shadow: var(--edge), var(--shadow-2);
   }
   .minerr-subs-line { padding: 0.12em 0.6em 0.18em; }
-  /* YouTube adds its automatic captions word by word in a box of fixed width, with the text at one side. The same box here
-     keeps the words in place; a centered box moves the line at each word. */
-  .minerr-subs-line[data-align] { width: 24em; }
-  .minerr-subs-line[data-align="left"] { text-align: left; }
-  .minerr-subs-line[data-align="right"] { text-align: right; }
+  /* A caption window of the site with its text at one side: the lines start where that window starts, so a new word does
+     not move them. --minerr-inset is the distance of the window from that side of the video. */
+  .minerr-subs-stack[data-align] { transform: none; max-width: calc(98cqw - var(--minerr-inset)); }
+  .minerr-subs-stack[data-align="left"] { left: var(--minerr-inset); align-items: flex-start; }
+  .minerr-subs-stack[data-align="right"] { left: auto; right: var(--minerr-inset); align-items: flex-end; }
+  .minerr-subs-stack[data-align="left"] > * { text-align: left; }
+  .minerr-subs-stack[data-align="right"] > * { text-align: right; }
   .minerr-subs-second { padding: 0.12em 0.7em 0.16em; font: 400 0.72em/1.45 var(--font-ui); }
   .minerr-subs[data-second="hover"]:not([data-paused]) .minerr-subs-stack:not(:hover) .minerr-subs-second { visibility: hidden; }
   .minerr-subs-line[hidden], .minerr-subs-second[hidden], .minerr-subs-toast[hidden] { display: none; }
@@ -50,13 +52,14 @@ const STYLE = `
 
 const TOAST_MS = 2500;
 
-// The side of the text in the caption window of the site, or null for the center.
-export type Align = 'left' | 'right' | null;
+// The caption window of the site: the side of its text, and its distance from that side of the video, as a fraction of
+// the width of the video. null is a centered window.
+export type CaptionAnchor = { side: 'left' | 'right'; inset: number } | null;
 
 export interface Overlay {
   layer: HTMLDivElement;
   line: HTMLDivElement;
-  show: (text: string, second: string, align?: Align) => void;
+  show: (text: string, second: string, anchor?: CaptionAnchor) => void;
   toast: (text: string) => void;
 }
 
@@ -99,9 +102,14 @@ export function createOverlay(): Overlay {
     element.textContent = text;
     element.hidden = !text;
   };
-  const show = (text: string, second: string, align: Align = null) => {
-    if (align) line.dataset.align = align;
-    else delete line.dataset.align;
+  const show = (text: string, second: string, anchor: CaptionAnchor = null) => {
+    if (anchor) {
+      stack.dataset.align = anchor.side;
+      stack.style.setProperty('--minerr-inset', `${(anchor.inset * 100).toFixed(2)}cqw`);
+    } else {
+      delete stack.dataset.align;
+      stack.style.removeProperty('--minerr-inset');
+    }
     set(line, text);
     set(secondLine, second);
   };

@@ -2,6 +2,7 @@ import { captionText, type SubtitleSegment } from '../captions.ts';
 import { SIDE_OPEN } from '../sidebar/sidebar.ts';
 import { call, type Message, messageOf, serve } from '../../shared/rpc.ts';
 import { attach, layer, type Lines, setLines, sidebar } from '../video.ts';
+import type { CaptionAnchor } from '../overlay.ts';
 import { secondDisplay } from '../videosettings.ts';
 import { type JobStatus, waitForJob } from '../whisper.ts';
 import { findTabPlayer, tabCaptions, type TabPlayer } from './youtube-captions.ts';
@@ -86,12 +87,19 @@ function render(): void {
     : mirror([...(player?.querySelectorAll<HTMLElement>('.caption-visual-line') ?? [])]));
 }
 
+const mirror = (rows: HTMLElement[]): Lines =>
+  ({ kind: 'mirror', text: captionText(rows.map(row => row.textContent ?? '')), anchor: anchorOf(rows[0]) });
+
 // The caption window of YouTube sets the side of its text (left for the automatic captions), and its lines inherit it.
-// Only an explicit left or right counts: start is the default of a window that sets no side.
-function mirror(rows: HTMLElement[]): Lines {
-  const side = rows[0] ? getComputedStyle(rows[0]).textAlign : '';
-  const align = side === 'left' || side === 'right' ? side : null;
-  return { kind: 'mirror', text: captionText(rows.map(row => row.textContent ?? '')), align };
+// Only an explicit left or right counts: start is the default of a window that sets no side. The overlay line starts
+// where the window starts, at the left of the video for the automatic captions.
+function anchorOf(row: HTMLElement | undefined): CaptionAnchor {
+  const side = row ? getComputedStyle(row).textAlign : '';
+  const box = row?.closest('.caption-window')?.getBoundingClientRect();
+  const area = layer.getBoundingClientRect();
+  if ((side !== 'left' && side !== 'right') || !box || !area.width) return null;
+  const inset = side === 'left' ? box.left - area.left : area.right - box.right;
+  return { side, inset: Math.max(0, inset) / area.width };
 }
 
 const captions = new MutationObserver(() => {

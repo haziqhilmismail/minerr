@@ -4,7 +4,7 @@ import { modePause, played, setHold } from './autopause.ts';
 import type { CardLine } from '../anki/lineaudio.ts';
 import { play } from '../shared/dom.ts';
 import { createLineList, TIMES_SOURCE } from './sidebar/sidebar.ts';
-import { type Align, createOverlay, wordStatuses } from './overlay.ts';
+import { type CaptionAnchor, createOverlay, wordStatuses } from './overlay.ts';
 import { isPopupOpen } from '../popup/popup.ts';
 import { isEditable } from '../popup/chord.ts';
 import {
@@ -21,13 +21,13 @@ import {
 import type { AudioSource } from './whisper.ts';
 
 // What the overlay shows. 'timed' lines have times (WhisperX, a subtitle file, the subtitles of the site from the server).
-// 'mirror' is the text of the site's own caption window, which has no times. align is the side of that window's text,
-// or null for the center.
+// 'mirror' is the text of the site's own caption window, which has no times. anchor is where that window sits, or null
+// for the center.
 // id names the video, so a new video starts with no offset. audio is the audio that the server can have of the video.
 // second is the secondary track (for example English), which shows under the line with the same offset.
 export type Lines =
   | { kind: 'none' }
-  | { kind: 'mirror'; text: string; align: Align }
+  | { kind: 'mirror'; text: string; anchor: CaptionAnchor }
   | { kind: 'timed'; id: string; segments: SubtitleSegment[]; second: SubtitleSegment[] | null; audio: AudioSource | null };
 
 export interface Target {
@@ -111,7 +111,7 @@ function render(): void {
   const held = heldIndex >= 0 && video()?.paused;
   shownIndex = found && !target.blocked?.() ? (held ? heldIndex : currentIndex()) : -1;
   if (combined !== null && shownIndex !== combined && shownIndex !== combined + 1) combined = null;
-  if (lines.kind === 'mirror') return show(lines.text, '', lines.align);
+  if (lines.kind === 'mirror') return show(lines.text, '', lines.anchor);
   const time = lineTime();
   const second = found && !target.blocked?.() && secondShown !== 'off' ? found.second?.find(s => s.start <= time && time < s.end)?.text : '';
   show(shownLines().map(segment => segment.text).join('\n'), second ?? '');
