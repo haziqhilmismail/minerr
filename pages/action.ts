@@ -82,8 +82,7 @@ function show({ className, text, buttons }: ServerView): void {
   serverStart.hidden = !buttons.includes('start');
   setup.hidden = !buttons.includes('folder');
   getAddOn.hidden = !buttons.includes('addOn');
-  // Start the server and Show the Minerr folder always come first. Get the add-on comes first only when it is alone.
-  addOn.classList.toggle('primary', buttons[0] === 'addOn');
+  addOn.classList.toggle('primary', buttons.length === 1);
 }
 
 const showServer = (): void => show(serverView(serverStatus({ check, click }, Date.now()), place));

@@ -106,8 +106,7 @@ class Register(unittest.TestCase):
 
 
 class RegisterNative(unittest.TestCase):
-    """Python of Windows runs chrome_start.py for the native launcher. The paths are Windows paths already. The folder has no
-    manifest.json on Linux, so only the store id is allowed."""
+    """Python of Windows runs chrome_start.py for the native launcher. The paths are Windows paths already."""
 
     def setUp(self):
         local = tempfile.TemporaryDirectory()
@@ -125,10 +124,12 @@ class RegisterNative(unittest.TestCase):
         mock.patch.object(chrome_start.subprocess, 'run', run).start()
         mock.patch.object(chrome_start, 'NATIVE', True).start()
         mock.patch.object(chrome_start, 'STORE_EXTENSION_ID', STORE).start()
+        mock.patch.object(chrome_start.Path, 'is_file', lambda path: path.name == 'manifest.json').start()
         self.addCleanup(mock.patch.stopall)
 
     def test_registers_the_host_of_the_native_launcher_with_the_paths_as_they_are(self):
-        self.assertEqual(register(r'C:\Users\haziq\minerr', self.local), (['abcdefghijklmnopabcdefghijklmnop'], self.manifest))
+        self.assertEqual(register(r'C:\Users\haziq\minerr', self.local),
+                         (['abcdefghijklmnopabcdefghijklmnop', 'lfmbihboldmlhbolbfdfdpdcnajbmkbo'], self.manifest))
         self.assertEqual(json.loads(Path(self.manifest).read_text())['path'], r'C:\Users\haziq\minerr\server\start-from-chrome-windows.cmd')
         self.assertEqual(self.commands, [self.reg_add], 'no wslpath')
 

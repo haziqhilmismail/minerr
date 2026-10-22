@@ -54,7 +54,7 @@ export function serverHint({ windows, install }: Place): string {
   if (windows) {
     return `Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in ${folder}. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.`;
   }
-  return install === 'unpacked' ? 'Start the WhisperX server: uv run server/whisper_server.py' : `Start the WhisperX server: in ${folder}, run "uv run server/whisper_server.py".`;
+  return install === 'unpacked' ? 'Start the WhisperX server: uv run server/whisper_server.py' : 'Start the WhisperX server: in the folder of the WhisperX add-on, run "uv run server/whisper_server.py".';
 }
 
 const SETUP: Record<Install, string> = {
@@ -64,7 +64,7 @@ const SETUP: Record<Install, string> = {
 
 export type ServerButton = 'start' | 'folder' | 'addOn';
 
-// The line of the server in the toolbar popup, and the buttons under it. The first button is the main action.
+// The line of the server in the toolbar popup, and the buttons under it.
 export interface ServerView {
   className: '' | 'ok' | 'error';
   text: string;
@@ -74,21 +74,20 @@ export interface ServerView {
 type StatusOf<S extends ServerStatus['state']> = Extract<ServerStatus, { state: S }>;
 type View<S extends ServerStatus['state']> = Pick<ServerView, 'className' | 'buttons'> & { text: (status: StatusOf<S>, place: Place) => string };
 
-// The buttons that each state offers. SHOWN keeps the ones that the place has.
-const VIEW: { [S in ServerStatus['state']]: View<S> } = {
-  checking: { className: '', buttons: [], text: () => 'Checking the WhisperX server…' },
-  running: { className: 'ok', buttons: [], text: ({ health }) => `WhisperX server is running: ${health.model} on the ${health.device.toUpperCase()}.` },
-  off: { className: 'error', buttons: ['start', 'addOn'], text: (_, place) => (place.windows ? 'The WhisperX server is not running.' : serverHint(place)) },
-  error: { className: 'error', buttons: [], text: ({ error }) => error },
-  starting: { className: '', buttons: [], text: () => 'Starting the WhisperX server…' },
-  setup: { className: 'error', buttons: ['folder', 'addOn'], text: (_, { install }) => SETUP[install] },
-  failed: { className: 'error', buttons: ['start'], text: () => `The WhisperX server did not answer in ${START_LIMIT_MS / 1000} seconds. Look at the WhisperX window.` },
-};
-
 const SHOWN: Record<ServerButton, (place: Place) => boolean> = {
   start: ({ windows }) => windows,
   folder: ({ install }) => install === 'unpacked',
   addOn: ({ install }) => install === 'store',
+};
+
+const VIEW: { [S in ServerStatus['state']]: View<S> } = {
+  checking: { className: '', buttons: [], text: () => 'Checking the WhisperX server…' },
+  running: { className: 'ok', buttons: [], text: ({ health }) => `WhisperX server is running: ${health.model} on the ${health.device.toUpperCase()}.` },
+  off: { className: 'error', buttons: ['start', 'addOn'], text: (_, place) => (SHOWN.start(place) ? 'The WhisperX server is not running.' : serverHint(place)) },
+  error: { className: 'error', buttons: [], text: ({ error }) => error },
+  starting: { className: '', buttons: [], text: () => 'Starting the WhisperX server…' },
+  setup: { className: 'error', buttons: ['folder', 'addOn'], text: (_, { install }) => SETUP[install] },
+  failed: { className: 'error', buttons: ['start'], text: () => `The WhisperX server did not answer in ${START_LIMIT_MS / 1000} seconds. Look at the WhisperX window.` },
 };
 
 export function serverView<S extends ServerStatus['state']>(status: StatusOf<S>, place: Place): ServerView {
