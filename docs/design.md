@@ -14,15 +14,15 @@ Each color value is `light-dark(light, dark)`. The `color-scheme` of the element
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `--bg` | `#f2f6f7` | `#0f1d24` | The page background, and the background of the grouped lists. |
+| `--bg` | `#e6edf0` | `#0f1d24` | The page background, and the background of the grouped lists. The light value is dark enough that a white card stands out on it (1.18:1). |
 | `--card` | `#ffffff` | `#152730` | Groups, cards, the popup, and the selected part of a segmented control. |
 | `--field` | `#ffffff` | `#0f1d24` | The background of an input. |
 | `--text` | `#0f1d24` | `#e7f2f1` | The one text color. |
-| `--muted` | `--text` at 64% | same | Secondary text (5.0:1 on `--bg`, 6.3:1 on the dark card). |
+| `--muted` | `--text` at 64% | same | Secondary text (4.9:1 on `--bg`, 6.3:1 on the dark card). |
 | `--raised` | `--text` at 7% | same | Segmented tracks, secondary buttons, hover. |
 | `--line` | `--text` at 16% | same | Borders of fields, and the off track of a switch. |
 | `--separator` | `--text` at 11% | same | The lines between the rows of a group and between the parts of the popup. |
-| `--accent` | `#0f766e` | `#2dd4bf` | Teal for text, links, borders, and focus rings (5.5:1 and 8.3:1). |
+| `--accent` | `#0f766e` | `#2dd4bf` | Teal for text, links, borders, and focus rings (4.6:1 on the light `--bg`, 5.5:1 on the light card, 8.3:1 in the dark). |
 | `--accent-fill` | `#14b8a6` | `#2dd4bf` | Teal for large fills: switches, the site card, progress bars, Create N cards. |
 | `--on-accent` | `#042f2e` | `#042f2e` | Text on `--accent-fill` (5.8:1). |
 | `--accent-soft` | `--accent-fill` at 16% | same | Icon wells, hover fills, the field focus halo. |

@@ -296,7 +296,7 @@ try {
   const background = (page: Page, selector: string) => page.$eval(selector, node => getComputedStyle(node).backgroundColor);
   // The popup is glass over the page, so its background is not one color: its color scheme tells its theme.
   const popupScheme = () => tab.$eval('minerr-popup >> .popup', node => getComputedStyle(node).colorScheme);
-  const [LIGHT_PAGE, DARK_PAGE] = ['rgb(242, 246, 247)', 'rgb(15, 29, 36)'];
+  const [LIGHT_PAGE, DARK_PAGE] = ['rgb(230, 237, 240)', 'rgb(15, 29, 36)'];
   const action = await context.newPage();
   for (const page of [options, action, tab]) await page.emulateMedia({ colorScheme: 'light' });
   await action.goto(`chrome-extension://${extensionId}/pages/action.html`);

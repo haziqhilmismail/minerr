@@ -7,7 +7,7 @@
 export const I_PLUS_ONE = 'rgba(250, 204, 21, 0.3)';
 
 export const TOKENS = `
-  --bg: light-dark(#f2f6f7, #0f1d24); --card: light-dark(#ffffff, #152730); --field: light-dark(#ffffff, #0f1d24);
+  --bg: light-dark(#e6edf0, #0f1d24); --card: light-dark(#ffffff, #152730); --field: light-dark(#ffffff, #0f1d24);
   --text: light-dark(#0f1d24, #e7f2f1);
   --muted: color-mix(in srgb, var(--text) 64%, transparent);
   --raised: color-mix(in srgb, var(--text) 7%, transparent);
