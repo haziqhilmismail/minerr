@@ -82,6 +82,8 @@ let secondShown: SecondDisplay = 'show';
 let listed: SubtitleSegment[] | null = null;
 // The ports of the open subtitle side panels of this tab (pages/sidepanel.ts): one, or none.
 const panels = new Set<chrome.runtime.Port>();
+// True from a G that opens the panel until the port of the panel connects: a second G in that time closes the panel.
+let panelAsked = false;
 // The line of the open word popup in the side panel, or null. The video pauses for it (pauseOnSidebar), and a card from it gets its audio.
 let panelLine: number | null = null;
 // The index that the panels have as the current line.
@@ -139,6 +141,7 @@ function setPanelCurrent(index: number): void {
 chrome.runtime.onConnect.addListener(port => {
   if (port.name !== PORT_NAME) return;
   panels.add(port);
+  panelAsked = false;
   // The sender is the side panel (pages/sidepanel.ts), which sends PanelEvent values.
   port.onMessage.addListener((event: PanelEvent) => {
     panelLine = event.index;
@@ -259,8 +262,12 @@ async function stillAt(index: number): Promise<void> {
 
 // The service worker opens the side panel next to this tab, or closes it. Chrome shows no side panel in full screen.
 function toggleList(): void {
-  const open = !panels.size;
-  call({ type: 'sidePanel', open }).catch(error => toast(messageOf(error)));
+  const open = !panels.size && !panelAsked;
+  panelAsked = open;
+  call({ type: 'sidePanel', open }).catch(error => {
+    panelAsked = false;
+    toast(messageOf(error));
+  });
   if (open && document.fullscreenElement) toast('The subtitle sidebar shows when you leave full screen.');
 }
 
