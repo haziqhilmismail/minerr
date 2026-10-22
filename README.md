@@ -384,7 +384,7 @@ Each start of `Start WhisperX server.cmd` sets up the button again. It writes tw
 - The file `%LOCALAPPDATA%\Minerr\com.minerr.whisperx.json`. It names the host, `server\start-from-chrome.cmd` in the Minerr folder, and the extension that can use it.
 - The registry value `HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.minerr.whisperx`, which points at that file.
 
-When you click **Start the server**, Chrome runs the host, and the host opens `Start WhisperX server.cmd` in a window of its own. If the server does not answer in 90 seconds, the popup says so. Look at the window for the error. If you move the Minerr folder, double-click `Start WhisperX server.cmd` in the new folder one time.
+When you click **Start the server**, Chrome runs the host, and the host opens `Start WhisperX server.cmd` in a window of its own. If the server does not answer in 90 seconds, the popup says so. Look at the window for the error. If you move the Minerr folder, double-click `Start WhisperX server.cmd` in the new folder one time. If the button still asks for the double-click after one double-click, start the server with the double-click.
 
 To remove the two things that the launcher writes, run these commands in a Command Prompt:
 
