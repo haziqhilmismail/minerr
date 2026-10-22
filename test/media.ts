@@ -146,7 +146,8 @@ try {
   await action.setViewportSize({ width: 340, height: 200 });
   await action.goto(`chrome-extension://${extensionId}/pages/action.html`);
   const toggle = action.locator('#iplusone');
-  assert.equal(await toggle.isChecked(), true);
+  // The popup sets the switch after it reads the settings.
+  await action.waitForFunction(() => document.querySelector<HTMLInputElement>('#iplusone')?.checked === true);
   await shot(action, 'action-light.png', { fullPage: true });
   await action.emulateMedia({ colorScheme: 'dark' });
   await shot(action, 'action-dark.png', { fullPage: true });
