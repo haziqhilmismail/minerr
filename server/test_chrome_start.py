@@ -25,8 +25,6 @@ class ExtensionId(unittest.TestCase):
 
 
 class Register(unittest.TestCase):
-    """The fake wslpath maps the temp folder to the LOCALAPPDATA of the user, so the expected values are literal Windows paths."""
-
     def setUp(self):
         local = tempfile.TemporaryDirectory()
         self.addCleanup(local.cleanup)

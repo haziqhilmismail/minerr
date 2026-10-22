@@ -1,11 +1,3 @@
-"""Registers the Chrome native messaging host that starts the WhisperX server from the Minerr popup on Windows.
-
-Start WhisperX server.cmd runs this script in WSL before the server. The script writes the host manifest to
-%LOCALAPPDATA%\\Minerr\\com.minerr.whisperx.json and points the registry value
-HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.minerr.whisperx at it. The host is server/start-from-chrome.cmd.
-The manifest allows one extension: the id that Chrome gives the unpacked extension in this folder.
-"""
-
 import hashlib
 import json
 import os
@@ -36,8 +28,6 @@ def host_manifest(extension, host_path):
 
 
 def register(extension_folder, local_app_data):
-    """Writes the manifest for the extension in extension_folder and the registry value.
-    Returns the id of the extension and the Windows path of the manifest."""
     manifest = Path(local_app_data) / 'Minerr' / f'{HOST}.json'
     manifest.parent.mkdir(parents=True, exist_ok=True)
     extension = extension_id(windows_path(extension_folder))
