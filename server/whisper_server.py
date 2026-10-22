@@ -5,6 +5,8 @@
 #   "torch==2.8.0",
 #   "torchaudio==2.8.0",
 #   "torchvision==0.23.0",
+#   "yt-dlp[default]",
+#   "imageio-ffmpeg==0.6.0",
 # ]
 #
 # [[tool.uv.index]]
@@ -108,8 +110,7 @@ class Transcriber:
         if self.model is None:
             self.model = whisperx.load_model(self.model_name, 'cpu', compute_type='int8', language='ja', threads=self.threads,
                                              vad_options={'chunk_size': CHUNK_SECONDS})
-        # load_audio runs ffmpeg, so audio_path can also be a video file: ffmpeg takes out its audio.
-        audio = whisperx.load_audio(str(audio_path))
+        audio = media.load_audio(audio_path)
         result = self.model.transcribe(audio, batch_size=self.batch_size, language='ja', chunk_size=CHUNK_SECONDS,
                                        progress_callback=lambda percent: on_progress(round(percent)))
         return subtitle_segments(result['segments'])
@@ -130,7 +131,8 @@ def failure(error):
     """The text of an error for the extension. A yt-dlp error ends with its own message."""
     if isinstance(error, subprocess.CalledProcessError):
         stderr = error.stderr.decode('utf-8', 'replace') if isinstance(error.stderr, bytes) else error.stderr or ''
-        return f'{Path(str(error.cmd[0])).name} failed: {stderr.strip()[-300:]}'
+        program = {media.FFMPEG: 'ffmpeg', media.YT_DLP: 'yt-dlp'}.get(error.cmd[0], error.cmd[0])
+        return f'{program} failed: {stderr.strip()[-300:]}'
     return f'{type(error).__name__}: {error}'
 
 

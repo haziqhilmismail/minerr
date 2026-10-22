@@ -1,10 +1,15 @@
 """Run: python3 -I -B -m unittest discover -s server -v."""
 
+import os
 import re
 import subprocess
+import sys
+import sysconfig
 import tempfile
+import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import media
 
@@ -31,6 +36,42 @@ class Clip(unittest.TestCase):
                     clip.write_bytes(media.clip(source, 1, 4))
                     found = loudness(clip)
                     self.assertLessEqual(abs(found + 16), 2, f'{found} LUFS, not -16 LUFS')
+
+
+class Decode(unittest.TestCase):
+    def test_gives_16_khz_mono_16_bit_samples_of_any_audio(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder, 'stereo.wav')
+            subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=1:sample_rate=44100',
+                            '-ac', '2', str(source)], check=True)
+            self.assertEqual(len(media.decode(source)), 16000 * 2)
+
+
+class Programs(unittest.TestCase):
+    """uv run puts the scripts folder of the server's environment first on the PATH, and the yt-dlp package puts yt-dlp there."""
+
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.scripts, self.user = Path(folder.name, 'env', 'bin'), Path(folder.name, 'user', 'bin')
+        for program in (self.scripts / 'yt-dlp', self.user / 'yt-dlp', self.user / 'ffmpeg'):
+            program.parent.mkdir(parents=True, exist_ok=True)
+            program.write_text('#!/bin/sh\n')
+            program.chmod(0o755)
+        imageio_ffmpeg = types.SimpleNamespace(get_ffmpeg_exe=lambda: '/imageio/binaries/ffmpeg-linux-x86_64-v7.0.2')
+        mock.patch.dict(sys.modules, {'imageio_ffmpeg': imageio_ffmpeg}).start()
+        mock.patch.object(sysconfig, 'get_path', lambda name: str(self.scripts) if name == 'scripts' else None).start()
+        self.addCleanup(mock.patch.stopall)
+
+    def programs(self, *path):
+        with mock.patch.dict(os.environ, {'PATH': os.pathsep.join(map(str, path))}):
+            return media.which('yt-dlp'), media.find_ffmpeg()
+
+    def test_the_programs_of_the_user_come_before_those_of_the_server_environment(self):
+        self.assertEqual(self.programs(self.scripts, self.user), (str(self.user / 'yt-dlp'), str(self.user / 'ffmpeg')))
+
+    def test_without_programs_of_the_user_the_server_runs_its_yt_dlp_package_and_the_ffmpeg_of_imageio_ffmpeg(self):
+        self.assertEqual(self.programs(self.scripts), (str(self.scripts / 'yt-dlp'), '/imageio/binaries/ffmpeg-linux-x86_64-v7.0.2'))
 
 
 if __name__ == '__main__':

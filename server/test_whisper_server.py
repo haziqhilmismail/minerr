@@ -158,21 +158,18 @@ class TranscriberChunks(unittest.TestCase):
 
         class Model:
             def transcribe(self, audio, **options):
-                calls['transcribe'] = options
+                calls['audio'], calls['transcribe'] = audio, options
                 return {'segments': [{'start': 0.0, 'end': 2.0, 'text': '猫'}]}
 
         fake = types.ModuleType('whisperx')
         fake.load_model = lambda name, device, **options: calls.setdefault('load', (name, options)) and Model()
-        fake.load_audio = lambda path: path
-        sys.modules['whisperx'] = fake
-        try:
+        with mock.patch.dict(sys.modules, {'whisperx': fake}), mock.patch.object(media, 'load_audio', lambda path: f'samples of {path}'):
             transcriber = whisper_server.Transcriber('large-v3-turbo', 2, 4)
             self.assertEqual(transcriber(Path('a.mka'), lambda percent: None), [{'start': 0.0, 'end': 2.0, 'text': '猫'}])
-        finally:
-            del sys.modules['whisperx']
         name, options = calls['load']
         self.assertEqual((name, options['vad_options']), ('large-v3-turbo', {'chunk_size': 8}))
         self.assertEqual(calls['transcribe']['chunk_size'], 8)
+        self.assertEqual(calls['audio'], 'samples of a.mka', 'the server decodes the audio with its own ffmpeg, not with whisperx')
         self.assertEqual(transcriber.name, 'large-v3-turbo.8s')
 
 
@@ -398,6 +395,18 @@ class Files(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'ended before Content-Length'):
             receive(io.BytesIO(b'short'), 10, 'clip.mkv')
         self.assertEqual(list(whisper_server.UPLOADS.iterdir()), [path], 'a short upload leaves no file')
+
+
+class Failure(unittest.TestCase):
+    def test_a_failed_program_has_its_name_also_when_its_file_has_another_name(self):
+        programs = {'YT_DLP': r'C:\env\Scripts\yt-dlp.exe', 'FFMPEG': r'C:\env\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe'}
+        with mock.patch.multiple(media, **programs):
+            yt_dlp = subprocess.CalledProcessError(1, [programs['YT_DLP'], '--quiet', '-J', '--', 'https://youtu.be/KfQPZZ5JmXw'],
+                                                   stderr='ERROR: [youtube] KfQPZZ5JmXw: Video unavailable\n')
+            ffmpeg = subprocess.CalledProcessError(1, [programs['FFMPEG'], '-i', 'a.mka'], stderr=b'a.mka: Invalid data found when processing input\n')
+            self.assertEqual([whisper_server.failure(yt_dlp), whisper_server.failure(ffmpeg)],
+                             ['yt-dlp failed: ERROR: [youtube] KfQPZZ5JmXw: Video unavailable',
+                              'ffmpeg failed: a.mka: Invalid data found when processing input'])
 
 
 class Start(unittest.TestCase):
