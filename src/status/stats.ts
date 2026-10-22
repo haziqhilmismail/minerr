@@ -6,6 +6,7 @@ import { call, serve } from '../shared/rpc.ts';
 import { comprehension, type Comprehension, type Word } from './score.ts';
 import { getStatuses, statusOf, type WordId } from './status.ts';
 import { segmentWord, wordOf } from '../text/word-spans.ts';
+import { LINE_WORDS } from '../video/overlay.ts';
 
 // lines is the number of subtitle lines in the score: every line of the track ('track'), or the lines that the overlay showed ('shown').
 export type PageStats = { score: Comprehension | null } & ({ source: 'page' } | { source: 'track' | 'shown'; lines: number });
@@ -30,7 +31,7 @@ function recordLine(): void {
   // page.ts replaces the text of the line with word spans after the parse; record the line once it has them.
   const text = line?.textContent ?? '';
   if (!line || !text || shownLines.has(text) || !line.querySelector('.ml-word')) return;
-  shownLines.set(text, [...line.querySelectorAll<HTMLElement>('.minerr-subs-rows > .ml-word')].map(wordOf));
+  shownLines.set(text, [...line.querySelectorAll<HTMLElement>(LINE_WORDS)].map(wordOf));
 }
 
 // The timed lines of the video, and the parse of the last track, by the text of its lines.

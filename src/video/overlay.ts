@@ -37,9 +37,9 @@ const STYLE = `
   /* The window of the YouTube captions at one side has two rows and the width of that window: a new row comes in at the
      bottom, and the top row slides up past the straight top edge. The rows that went stay in data-gone (no text of the
      line) until the slide ends. */
-  .minerr-subs-stack[data-align] .minerr-subs-line { min-width: calc(var(--minerr-window, 0) * 1em + 1.2em); }
+  .minerr-subs-stack[data-align] .minerr-subs-line {
+    min-width: min(calc(98cqw - var(--minerr-inset)), calc(var(--minerr-window, 0) * 1em + 1.2em)); }
   .minerr-subs-stack[data-align] .minerr-subs-window { display: flex; flex-direction: column; justify-content: flex-end; height: 2lh; overflow: clip; }
-  .minerr-subs-stack[data-align] .minerr-subs-rows { white-space: pre; }
   .minerr-subs-rows[data-gone]::before { content: attr(data-gone) "\\A"; }
   .minerr-subs[data-second="hover"]:not([data-paused]) .minerr-subs-stack:not(:hover) .minerr-subs-second { visibility: hidden; }
   .minerr-subs-line[hidden], .minerr-subs-second[hidden], .minerr-subs-toast[hidden] { display: none; }
@@ -57,6 +57,10 @@ const STYLE = `
   @starting-style { .minerr-subs-toast { opacity: 0; translate: 0 -8px; } }
 `;
 
+// The word spans of the overlay line (page.ts puts them in the rows).
+export const LINE_WORDS = '.minerr-subs-rows > .ml-word';
+// The rows that the window of a caption window at one side shows, as on YouTube.
+const WINDOW_ROWS = 2;
 const TOAST_MS = 2500;
 const ROLL_MS = 300;
 
@@ -132,11 +136,14 @@ export function createOverlay(): Overlay {
   };
   const still = matchMedia('(prefers-reduced-motion: reduce)');
   let rolling: Animation | null = null;
-  const roll = (gone: string[], shift: number) => {
-    if (!shift || still.matches) return;
+  // rolled is null for text that is no roll up: the slide stops. A new word (shift 0) lets a slide go on.
+  const roll = (rolled: { gone: string[]; shift: number } | null) => {
+    if (rolled?.shift === 0) return;
     rolling?.cancel();
-    if (gone.length) rows.dataset.gone = gone.join('\n');
-    const animation = rows.animate({ translate: [`0 ${shift}lh`, '0 0'] }, { duration: ROLL_MS, easing: 'ease-out' });
+    delete rows.dataset.gone;
+    if (!rolled || still.matches) return;
+    if (rolled.gone.length) rows.dataset.gone = rolled.gone.join('\n');
+    const animation = rows.animate({ translate: [`0 ${rolled.shift}lh`, '0 0'] }, { duration: ROLL_MS, easing: 'ease-out' });
     rolling = animation;
     animation.onfinish = animation.oncancel = () => {
       if (rolling !== animation) return;
@@ -155,9 +162,9 @@ export function createOverlay(): Overlay {
       stack.style.removeProperty('--minerr-window');
     }
     const before = shown.get(line) ?? '';
-    set(line, text, rows);
-    const rolled = anchor && before && text ? rollOf(before, text) : null;
-    if (rolled) roll(rolled.gone, rolled.shift);
+    const shownText = anchor ? text.split('\n').slice(-WINDOW_ROWS).join('\n') : text;
+    set(line, shownText, rows);
+    if (shownText !== before) roll(anchor && before && shownText ? rollOf(before, shownText) : null);
     set(secondLine, second);
   };
   let timer: ReturnType<typeof setTimeout> | undefined;

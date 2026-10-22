@@ -638,6 +638,19 @@ try {
     return frame ? frame.getBoundingClientRect().height / parseFloat(getComputedStyle(frame).lineHeight) : 0;
   });
   assert.ok(Math.abs(rowsShown - 2) < 0.05, `the window of a left caption window shows two rows: ${rowsShown}`);
+  await tab.evaluate(() => {
+    const text = document.querySelector('.captions-text');
+    const row = Object.assign(document.createElement('span'), { className: 'caption-visual-line' });
+    row.append(Object.assign(document.createElement('span'), { className: 'ytp-caption-segment', textContent: 'third row' }));
+    text?.append(document.createElement('br'), row);
+  });
+  await lineText('and a\nthird row');
+  console.log('a third row of the YouTube captions: the overlay keeps the last two rows');
+  await tab.evaluate(() => {
+    const rows = document.querySelectorAll('.caption-visual-line');
+    rows[2]?.previousElementSibling?.remove();
+    rows[2]?.remove();
+  });
   console.log('a roll up of the YouTube captions slides the old row up and out of the line');
   await shot(tab, 'overlay-english-left.png');
   await tab.evaluate(() => { const window = document.querySelector<HTMLElement>('.caption-window'); if (window) Object.assign(window.style, { textAlign: '', left: '', transform: '' }); });
