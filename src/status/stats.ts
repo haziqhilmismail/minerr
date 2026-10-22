@@ -30,7 +30,7 @@ function recordLine(): void {
   // page.ts replaces the text of the line with word spans after the parse; record the line once it has them.
   const text = line?.textContent ?? '';
   if (!line || !text || shownLines.has(text) || !line.querySelector('.ml-word')) return;
-  shownLines.set(text, [...line.querySelectorAll<HTMLElement>(':scope > .ml-word')].map(wordOf));
+  shownLines.set(text, [...line.querySelectorAll<HTMLElement>(':scope > .minerr-subs-rows > .ml-word')].map(wordOf));
 }
 
 // The timed lines of the video, and the parse of the last track, by the text of its lines.

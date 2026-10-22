@@ -12,7 +12,7 @@ const work = mkdtempSync(join(tmpdir(), 'ml-pages-'));
 
 const PAGES: Record<string, string> = {
   '/article': '<p id="a">猫が魚を食べた。</p><p>雨と風。</p><p>猫が魚を食べた。</p><div style="height: 3000px"></div><p id="far">本を読む。</p>',
-  '/watch': '<div class="minerr-subs"><div class="minerr-subs-line">猫が魚を食べた。</div></div><p>本を読む。</p>',
+  '/watch': '<div class="minerr-subs"><div class="minerr-subs-line"><div class="minerr-subs-rows">猫が魚を食べた。</div></div></div><p>本を読む。</p>',
   '/empty': '<p>No Japanese here.</p>',
 };
 const site = createServer((req, res) => {
@@ -65,7 +65,7 @@ try {
   await video.waitForSelector('.minerr-subs-line .ml-word[data-ml-lemma="食べる"]', { timeout: 20000 });
   await video.evaluate(() => document.dispatchEvent(new Event('timeupdate')));
   await video.evaluate(() => {
-    const line = document.querySelector('.minerr-subs-line');
+    const line = document.querySelector('.minerr-subs-rows');
     if (line) line.textContent = '雨と風。';
   });
   await video.waitForSelector('.minerr-subs-line .ml-word[data-ml-lemma="風"]');
