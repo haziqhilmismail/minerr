@@ -5,6 +5,8 @@
 #   "torch==2.8.0",
 #   "torchaudio==2.8.0",
 #   "torchvision==0.23.0",
+#   "yt-dlp[default]",
+#   "imageio-ffmpeg==0.6.0",
 # ]
 #
 # [[tool.uv.index]]
@@ -91,6 +93,8 @@ def receive(stream, length, filename):
                 out.write(chunk)
                 length -= len(chunk)
         except BaseException:
+            # Windows deletes no file that is open.
+            out.close()
             path.unlink(missing_ok=True)
             raise
     return path, digest.hexdigest()
@@ -108,29 +112,35 @@ class Transcriber:
         if self.model is None:
             self.model = whisperx.load_model(self.model_name, 'cpu', compute_type='int8', language='ja', threads=self.threads,
                                              vad_options={'chunk_size': CHUNK_SECONDS})
-        # load_audio runs ffmpeg, so audio_path can also be a video file: ffmpeg takes out its audio.
-        audio = whisperx.load_audio(str(audio_path))
+        audio = media.load_audio(audio_path)
         result = self.model.transcribe(audio, batch_size=self.batch_size, language='ja', chunk_size=CHUNK_SECONDS,
                                        progress_callback=lambda percent: on_progress(round(percent)))
         return subtitle_segments(result['segments'])
 
 
+# On Windows, os.replace fails while another thread reads the file, so the reads and the writes of the cache take turns.
+cache_lock = threading.Lock()
+
+
 def write_json(path, value):
     """Writes value to path in one step, so a reader never sees half a file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.with_suffix('.tmp').write_text(json.dumps(value, ensure_ascii=False), encoding='utf-8')
-    os.replace(path.with_suffix('.tmp'), path)
+    with cache_lock:
+        path.with_suffix('.tmp').write_text(json.dumps(value, ensure_ascii=False), encoding='utf-8')
+        os.replace(path.with_suffix('.tmp'), path)
 
 
 def read_json(path):
-    return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else None
+    with cache_lock:
+        return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else None
 
 
 def failure(error):
     """The text of an error for the extension. A yt-dlp error ends with its own message."""
     if isinstance(error, subprocess.CalledProcessError):
         stderr = error.stderr.decode('utf-8', 'replace') if isinstance(error.stderr, bytes) else error.stderr or ''
-        return f'{Path(str(error.cmd[0])).name} failed: {stderr.strip()[-300:]}'
+        program = {media.FFMPEG: 'ffmpeg', media.YT_DLP: 'yt-dlp'}.get(error.cmd[0], error.cmd[0])
+        return f'{program} failed: {stderr.strip()[-300:]}'
     return f'{type(error).__name__}: {error}'
 
 
@@ -332,6 +342,11 @@ def handler(jobs, health, port=PORT):
     return Handler
 
 
+class Server(ThreadingHTTPServer):
+    # On Windows, SO_REUSEADDR lets a second server bind a port in use, so a second start would not fail.
+    allow_reuse_address = sys.platform != 'win32'
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--model', default='large-v3-turbo', help='faster-whisper model name (default: %(default)s)')
@@ -341,7 +356,7 @@ def main(argv=None):
     jobs = Jobs(Transcriber(args.model, args.threads, args.batch_size))
     health = {'ok': True, 'model': args.model, 'device': 'cpu', 'compute_type': 'int8'}
     try:
-        server = ThreadingHTTPServer(('127.0.0.1', PORT), handler(jobs, health))
+        server = Server(('127.0.0.1', PORT), handler(jobs, health))
     except OSError as error:
         if error.errno != errno.EADDRINUSE:
             raise

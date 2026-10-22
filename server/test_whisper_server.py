@@ -13,142 +13,13 @@ import time
 import unittest
 import urllib.error
 import urllib.request
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest import mock
 
 import media
 import whisper_server
-from media import media_key, pick_track, video_id
 from whisper_server import Jobs, handler, receive, split_segment, subtitle_segments
-
-
-class VideoId(unittest.TestCase):
-    def test_youtube_urls(self):
-        for url in ('https://www.youtube.com/watch?v=KfQPZZ5JmXw&list=PL1&t=30s',
-                    'http://m.youtube.com/watch?feature=share&v=KfQPZZ5JmXw',
-                    'https://youtu.be/KfQPZZ5JmXw?si=abc',
-                    'https://www.youtube.com/shorts/KfQPZZ5JmXw'):
-            self.assertEqual(video_id(url), 'KfQPZZ5JmXw', url)
-
-    def test_rejects(self):
-        for url, message in (('file:///etc/passwd', 'http or https'),
-                             ('--exec=rm -rf ~', 'http or https'),
-                             ('https://example.com/watch?v=KfQPZZ5JmXw', 'YouTube video URL'),
-                             ('https://www.youtube.com/watch?v=short', 'no YouTube video id'),
-                             ('https://www.youtube.com/watch?v=../../etc', 'no YouTube video id'),
-                             ('https://www.youtube.com/feed/subscriptions', 'no YouTube video id')):
-            with self.assertRaisesRegex(ValueError, message, msg=url):
-                video_id(url)
-
-
-class MediaKey(unittest.TestCase):
-    def test_youtube_id_or_sha256_of_the_url(self):
-        self.assertEqual(media_key('https://youtu.be/KfQPZZ5JmXw?si=abc'), 'KfQPZZ5JmXw')
-        self.assertEqual(media_key('https://example.com/ep/1?x=2#t=30'), hashlib.sha256(b'https://example.com/ep/1?x=2').hexdigest())
-        for url in ('file:///etc/passwd', '--exec=rm', 'https://www.youtube.com/feed/subscriptions'):
-            with self.assertRaises(ValueError, msg=url):
-                media_key(url)
-
-
-class PickTrack(unittest.TestCase):
-    def test_own_track_first_then_original_automatic_then_translation(self):
-        own = {'ja-JP': [{'ext': 'srv3', 'url': 'srv3'}, {'ext': 'vtt', 'url': 'own-vtt'}], 'en': [{'ext': 'json3', 'url': 'en'}]}
-        auto = {'ja': [{'ext': 'vtt', 'url': 'auto-vtt'}, {'ext': 'json3', 'url': 'auto-json3'}], 'ja-orig': [{'ext': 'json3', 'url': 'orig'}]}
-        self.assertEqual(pick_track({'subtitles': own, 'automatic_captions': auto}, 'ja'), ('own-vtt', 'vtt'))
-        self.assertEqual(pick_track({'subtitles': {}, 'automatic_captions': auto}, 'ja'), ('orig', 'json3'))
-        self.assertEqual(pick_track({'language': 'ja', 'automatic_captions': {'ja': auto['ja']}}, 'ja'), ('auto-json3', 'json3'))
-        self.assertIsNone(pick_track({'subtitles': {'ja': [{'ext': 'ass', 'url': 'x'}]}}, 'ja'))
-
-    def test_japanese_is_never_a_translation_but_the_second_track_can_be(self):
-        english_video = {'language': 'en', 'automatic_captions': {'en-orig': [{'ext': 'json3', 'url': 'en-asr'}],
-                                                                  'ja': [{'ext': 'json3', 'url': 'ja-translated'}],
-                                                                  'en': [{'ext': 'json3', 'url': 'en-asr-2'}]}}
-        self.assertIsNone(pick_track(english_video, 'ja'), 'an English video has no Japanese subtitles, only a translation')
-        japanese_video = {'language': 'ja', 'automatic_captions': {'ja-orig': [{'ext': 'json3', 'url': 'ja-asr'}],
-                                                                   'en': [{'ext': 'json3', 'url': 'en-translated'}]}}
-        self.assertEqual(pick_track(japanese_video, 'en'), ('en-translated', 'json3'), 'the English second track can be a translation')
-
-
-class Track(BaseHTTPRequestHandler):
-    def do_GET(self):
-        body = 'WEBVTT\n\n00:01.000 --> 00:02.000\n猫'.encode()
-        self.send_response(200)
-        self.send_header('Content-Length', str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, format, *args):
-        pass
-
-
-class FetchCaptions(unittest.TestCase):
-    def setUp(self):
-        server = ThreadingHTTPServer(('127.0.0.1', 0), Track)
-        threading.Thread(target=server.serve_forever, daemon=True).start()
-        self.addCleanup(server.server_close)
-        self.addCleanup(server.shutdown)
-        self.track_url = f'http://127.0.0.1:{server.server_address[1]}/ja.vtt'
-
-    def test_reads_the_info_of_yt_dlp_then_downloads_the_track(self):
-        calls = []
-        def fake_yt_dlp(*args, timeout):
-            calls.append(args)
-            return json.dumps({'subtitles': {'ja': [{'ext': 'vtt', 'url': self.track_url}]}})
-        saved, media.yt_dlp = media.yt_dlp, fake_yt_dlp
-        media.infos.clear()
-        try:
-            found = media.fetch_captions('https://youtu.be/KfQPZZ5JmXw', 'KfQPZZ5JmXw', 'ja')
-            none = media.fetch_captions('https://youtu.be/KfQPZZ5JmXw', 'KfQPZZ5JmXw', 'en')
-        finally:
-            media.yt_dlp = saved
-        self.assertEqual(found, {'ext': 'vtt', 'text': 'WEBVTT\n\n00:01.000 --> 00:02.000\n猫'})
-        self.assertIsNone(none)
-        self.assertEqual(calls, [('-J', '--', 'https://www.youtube.com/watch?v=KfQPZZ5JmXw')], 'the second language uses the info of the first')
-
-    def fake_info(self, info):
-        saved, media.yt_dlp = media.yt_dlp, lambda *args, timeout: json.dumps(info)
-        self.addCleanup(setattr, media, 'yt_dlp', saved)
-        media.infos.clear()
-
-    def test_a_track_that_is_not_http_is_not_read(self):
-        self.fake_info({'subtitles': {'ja': [{'ext': 'vtt', 'url': 'file:///etc/hostname'}]}})
-        with self.assertRaisesRegex(ValueError, 'The subtitle track is not an http or https URL.'):
-            media.fetch_captions('https://videos.example/ep/1', 'k', 'ja')
-
-    def test_the_info_cache_keeps_at_most_32_videos(self):
-        self.fake_info({})
-        for n in range(40):
-            media.video_info('https://videos.example/ep/1', f'k{n}')
-        self.assertEqual(list(media.infos), [f'k{n}' for n in range(8, 40)])
-
-
-class AudioCache(unittest.TestCase):
-    def setUp(self):
-        self.folder = tempfile.TemporaryDirectory()
-        self.saved = media.AUDIO, media.yt_dlp
-        media.AUDIO = Path(self.folder.name)
-
-    def tearDown(self):
-        media.AUDIO, media.yt_dlp = self.saved
-        self.folder.cleanup()
-
-    def test_partial_and_temp_files_of_yt_dlp_are_not_audio(self):
-        for name in ('k.webm.part', 'k.webm.part-Frag3', 'k.temp.m4a', 'k.webm.ytdl', 'kk.webm'):
-            (media.AUDIO / name).write_bytes(b'x')
-        self.assertIsNone(media.cached_audio('k'))
-        (media.AUDIO / 'k.webm').write_bytes(b'x')
-        self.assertEqual(media.cached_audio('k'), media.AUDIO / 'k.webm')
-
-    def test_download_keeps_partial_files_in_a_temp_folder_and_takes_one_audio_format(self):
-        calls = []
-        def fake_yt_dlp(*args, timeout):
-            calls.append(args)
-            (media.AUDIO / 'k.m4a').write_bytes(b'x')
-        media.yt_dlp = fake_yt_dlp
-        self.assertEqual(media.download_audio('https://videos.example/ep/1', 'k'), media.AUDIO / 'k.m4a')
-        self.assertEqual(calls, [('-f', 'bestaudio/best[height<=480]/worst', '--playlist-items', '1', '-P', str(media.AUDIO),
-                                  '-P', f'temp:{media.AUDIO / ".tmp"}', '-o', 'k.%(ext)s', '--', 'https://videos.example/ep/1')])
 
 
 class TranscriberChunks(unittest.TestCase):
@@ -158,21 +29,18 @@ class TranscriberChunks(unittest.TestCase):
 
         class Model:
             def transcribe(self, audio, **options):
-                calls['transcribe'] = options
+                calls['audio'], calls['transcribe'] = audio, options
                 return {'segments': [{'start': 0.0, 'end': 2.0, 'text': '猫'}]}
 
         fake = types.ModuleType('whisperx')
         fake.load_model = lambda name, device, **options: calls.setdefault('load', (name, options)) and Model()
-        fake.load_audio = lambda path: path
-        sys.modules['whisperx'] = fake
-        try:
+        with mock.patch.dict(sys.modules, {'whisperx': fake}), mock.patch.object(media, 'load_audio', lambda path: f'samples of {path}'):
             transcriber = whisper_server.Transcriber('large-v3-turbo', 2, 4)
             self.assertEqual(transcriber(Path('a.mka'), lambda percent: None), [{'start': 0.0, 'end': 2.0, 'text': '猫'}])
-        finally:
-            del sys.modules['whisperx']
         name, options = calls['load']
         self.assertEqual((name, options['vad_options']), ('large-v3-turbo', {'chunk_size': 8}))
         self.assertEqual(calls['transcribe']['chunk_size'], 8)
+        self.assertEqual(calls['audio'], 'samples of a.mka', 'the server decodes the audio with its own ffmpeg, not with whisperx')
         self.assertEqual(transcriber.name, 'large-v3-turbo.8s')
 
 
@@ -400,6 +268,18 @@ class Files(unittest.TestCase):
         self.assertEqual(list(whisper_server.UPLOADS.iterdir()), [path], 'a short upload leaves no file')
 
 
+class Failure(unittest.TestCase):
+    def test_a_failed_program_has_its_name_also_when_its_file_has_another_name(self):
+        programs = {'YT_DLP': r'C:\env\Scripts\yt-dlp.exe', 'FFMPEG': r'C:\env\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe'}
+        with mock.patch.multiple(media, **programs):
+            yt_dlp = subprocess.CalledProcessError(1, [programs['YT_DLP'], '--quiet', '-J', '--', 'https://youtu.be/KfQPZZ5JmXw'],
+                                                   stderr='ERROR: [youtube] KfQPZZ5JmXw: Video unavailable\n')
+            ffmpeg = subprocess.CalledProcessError(1, [programs['FFMPEG'], '-i', 'a.mka'], stderr=b'a.mka: Invalid data found when processing input\n')
+            self.assertEqual([whisper_server.failure(yt_dlp), whisper_server.failure(ffmpeg)],
+                             ['yt-dlp failed: ERROR: [youtube] KfQPZZ5JmXw: Video unavailable',
+                              'ffmpeg failed: a.mka: Invalid data found when processing input'])
+
+
 class Start(unittest.TestCase):
     def test_main_exits_with_a_clear_message_when_the_port_is_in_use(self):
         with socket.socket() as taken:
@@ -412,7 +292,10 @@ class Start(unittest.TestCase):
 
     def test_every_line_of_the_windows_batch_files_ends_with_crlf_for_cmd_exe(self):
         root = Path(__file__).parents[1]
-        for batch in (root / 'Start WhisperX server.cmd', root / 'server' / 'start-from-chrome.cmd'):
+        batches = [*root.glob('*.cmd'), *root.glob('server/*.cmd')]
+        self.assertEqual(sorted(batch.name for batch in batches), ['Start WhisperX server (WSL).cmd', 'Start WhisperX server (Windows).cmd',
+                                                                   'start-from-chrome-windows.cmd', 'start-from-chrome.cmd'])
+        for batch in batches:
             self.assertEqual({line[-2:] for line in batch.read_bytes().splitlines(keepends=True)}, {b'\r\n'}, batch.name)
 
 

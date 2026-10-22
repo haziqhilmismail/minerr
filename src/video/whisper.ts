@@ -37,7 +37,7 @@ export async function waitForJob(
 export type JobStatus = Exclude<Job, { state: 'done' }> | { state: 'done' };
 
 export const serverHint = (navigatorPlatform: string): string => (navigatorPlatform.startsWith('Win')
-  ? 'Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server.cmd" in the Minerr folder.'
+  ? 'Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in the Minerr folder. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.'
   : 'Start the WhisperX server: uv run server/whisper_server.py');
 
 async function send(path: string, init?: RequestInit): Promise<Response> {

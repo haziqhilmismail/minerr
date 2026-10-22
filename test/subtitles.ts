@@ -650,7 +650,7 @@ try {
   assert.equal(await win.textContent('#server'), 'The WhisperX server is not running.');
   await win.click('#start');
   await win.locator('#setup:not([hidden])').waitFor({ timeout: 5000 });
-  assert.equal(await win.textContent('#server'), 'To set up the Start button, double-click "Start WhisperX server.cmd" in the Minerr folder one time.');
+  assert.equal(await win.textContent('#server'), 'To set up the Start button, double-click "Start WhisperX server (Windows).cmd" in the Minerr folder one time. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.');
   assert.ok(await win.locator('#server-start').isHidden(), 'no Start button until the double-click');
   await shot(win, 'action-server-setup-light.png', { fullPage: true });
   const [extensions] = await Promise.all([context.waitForEvent('page'), win.click('#folder')]);

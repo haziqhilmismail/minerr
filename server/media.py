@@ -1,10 +1,12 @@
-"""The video side of the Minerr server: cache keys of video pages, yt-dlp, the audio cache, and line clips."""
+"""The video side of the Minerr server: cache keys of video pages, yt-dlp, ffmpeg, the audio cache, and line clips."""
 
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
+import sysconfig
 import threading
 import time
 import urllib.request
@@ -57,9 +59,29 @@ def page_url(key, url):
     return f'https://www.youtube.com/watch?v={key}' if VIDEO_ID.fullmatch(key) else url
 
 
+def which(name):
+    """The path of the program name on the PATH, or None. uv run puts the scripts folder of the server's environment first on
+    the PATH. Here it comes last, so a yt-dlp of the user comes before the yt-dlp package of the server."""
+    scripts = sysconfig.get_path('scripts')
+    folders = [folder for folder in os.get_exec_path() if os.path.normcase(folder) != os.path.normcase(scripts)]
+    return shutil.which(name, path=os.pathsep.join([*folders, scripts]))
+
+
+def find_ffmpeg():
+    """ffmpeg on the PATH, else the ffmpeg of the imageio-ffmpeg package. Windows has no ffmpeg."""
+    found = which('ffmpeg')
+    if found:
+        return found
+    import imageio_ffmpeg
+    return imageio_ffmpeg.get_ffmpeg_exe()
+
+
+FFMPEG = find_ffmpeg()
+YT_DLP = which('yt-dlp')
+
+
 def yt_dlp(*args, timeout):
-    command = shutil.which('yt-dlp') or str(Path.home() / '.local' / 'bin' / 'yt-dlp')
-    return subprocess.run([command, '--quiet', '--no-warnings', '--no-playlist', '--js-runtimes', 'node', *args],
+    return subprocess.run([YT_DLP, '--quiet', '--no-warnings', '--no-playlist', '--js-runtimes', 'node', '--ffmpeg-location', FFMPEG, *args],
                           check=True, capture_output=True, text=True, timeout=timeout).stdout
 
 
@@ -108,15 +130,27 @@ def start_download(url, key):
 def keep_audio(path, key):
     """Copies the audio stream of an uploaded file to AUDIO, so the file can go."""
     AUDIO.mkdir(parents=True, exist_ok=True)
-    subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-y', '-i', str(path), '-vn', '-c:a', 'copy', str(AUDIO / f'{key}.mka')],
+    subprocess.run([FFMPEG, '-nostdin', '-loglevel', 'error', '-y', '-i', str(path), '-vn', '-c:a', 'copy', str(AUDIO / f'{key}.mka')],
                    check=True, capture_output=True, timeout=600)
+
+
+def decode(path):
+    """The audio of path as 16 kHz mono 16-bit samples, the input of WhisperX. ffmpeg also takes the audio out of a video file."""
+    return subprocess.run([FFMPEG, '-nostdin', '-threads', '0', '-i', str(path), '-f', 's16le', '-ac', '1', '-acodec', 'pcm_s16le', '-ar', '16000', '-'],
+                          check=True, capture_output=True).stdout
+
+
+def load_audio(path):
+    """The samples of path as whisperx.load_audio gives them. whisperx runs the ffmpeg of the PATH, and Windows has no ffmpeg."""
+    import numpy
+    return numpy.frombuffer(decode(path), numpy.int16).astype(numpy.float32) / 32768.0
 
 
 def clip(source, start, end):
     """MP3 bytes of the audio of source from start to end, in seconds, at one loudness (EBU R128, -16 LUFS) for each card."""
     # One pass of loudnorm is within 2 LU of the target on clips of 2 to 8 s; two passes measured no closer, because the
     # true-peak limit makes loudnorm dynamic again. loudnorm gives 192 kHz, so -ar sets 44.1 kHz.
-    result = subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-ss', f'{start:.3f}', '-t', f'{end - start:.3f}', '-i', str(source),
+    result = subprocess.run([FFMPEG, '-nostdin', '-loglevel', 'error', '-ss', f'{start:.3f}', '-t', f'{end - start:.3f}', '-i', str(source),
                              '-vn', '-ac', '1', '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-ar', '44100',
                              '-c:a', 'libmp3lame', '-q:a', '4', '-f', 'mp3', 'pipe:1'],
                             check=True, capture_output=True, timeout=120)
