@@ -24,6 +24,8 @@ type YoutubePageMessage =
   }
 
   let token: { videoId: string; pot: string } | null = null;
+  // setOption writes this key at once (YouTube, October 2026).
+  const STICKY_LANGUAGE = 'yt-player-caption-sticky-language';
 
   // The player asks for captions with XMLHttpRequest, not fetch (YouTube, October 2026).
   const open = XMLHttpRequest.prototype.open;
@@ -54,10 +56,15 @@ type YoutubePageMessage =
     } else if (minerr === 'show' && typeof languageCode === 'string' && typeof vssId === 'string') {
       // The player then asks YouTube for the track, with a token. Its first request can be without a token, before the token is ready,
       // and the player does not ask again for a track that it has: the reload of the captions module makes it ask again.
+      // The player also keeps the language of the shown track for later videos, and then translates an English video
+      // into Japanese. Minerr shows the track only for its token, so the language of the user comes back.
+      const sticky = localStorage.getItem(STICKY_LANGUAGE);
       const found = player();
       found?.unloadModule?.('captions');
       found?.loadModule?.('captions');
       found?.setOption?.('captions', 'track', { languageCode, vss_id: vssId });
+      if (sticky === null) localStorage.removeItem(STICKY_LANGUAGE);
+      else localStorage.setItem(STICKY_LANGUAGE, sticky);
     }
   });
 }

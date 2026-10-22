@@ -150,6 +150,8 @@ const WATCH = `<!doctype html><html dark><meta charset="utf-8"><title>Fake YouTu
     const track = tracks().find(t => t.vssId === value.vss_id);
     if (!track || shown === track.vssId) return;
     shown = track.vssId;
+    // As YouTube: the shown track becomes the caption language of later videos.
+    localStorage.setItem('yt-player-caption-sticky-language', JSON.stringify({ data: track.languageCode }));
     const request = new XMLHttpRequest();
     request.open('GET', track.baseUrl + '&fmt=json3' + (requests++ ? '&pot=token-' + videoId() : ''));
     request.send();
@@ -595,12 +597,18 @@ try {
     history.pushState({}, '', `/watch?v=${id}`);
     document.dispatchEvent(new Event('yt-navigate-finish'));
   }, videoId);
-  await tab.evaluate(() => { const video = document.querySelector('video'); if (video) video.currentTime = 0.5; });
+  await tab.evaluate(() => {
+    const video = document.querySelector('video');
+    if (video) video.currentTime = 0.5;
+    localStorage.setItem('yt-player-caption-sticky-language', JSON.stringify({ data: 'en' }));
+  });
   await openVideo('tabvideo');
   await lineText('猫を見た');
   await tab.locator('.minerr-subs-second', { hasText: 'I saw a cat.' }).waitFor();
   assert.deepEqual(timedtext, ['tabvideo ja own', 'tabvideo ja own pot=token-tabvideo', 'tabvideo ja own pot=token-tabvideo', 'tabvideo ja own en pot=token-tabvideo'],
     'the player asks for the uploader track again after its first request without a token; the tab reads the track and its English translation with the token');
+  assert.equal(await tab.evaluate(() => localStorage.getItem('yt-player-caption-sticky-language')), JSON.stringify({ data: 'en' }),
+    'the caption language of the user stays English after Minerr made the player show the Japanese track');
   console.log('server stopped: the overlay shows the YouTube captions with times that the tab read through the player, and the English translation');
   await tab.keyboard.press('ArrowRight');
   await lineText('魚を食べた');

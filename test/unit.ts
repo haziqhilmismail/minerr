@@ -255,6 +255,8 @@ test('captionText joins the caption lines into one text and drops empty lines', 
   const { captionText } = await import('../src/video/captions.ts');
   assert.equal(captionText([' だけ登山口 ', '', 'こっちだ。']), 'だけ登山口こっちだ。');
   assert.equal(captionText([]), '');
+  assert.equal(captionText(['so this is a', 'test of the rows']), 'so this is a test of the rows', 'English rows keep a space');
+  assert.equal(captionText(['IKNっていうのが', 'Nusantara']), 'IKNっていうのがNusantara');
 });
 
 test('segmentAt finds the segment that covers a time, with the end exclusive', async () => {
