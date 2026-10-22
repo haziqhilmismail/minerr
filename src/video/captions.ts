@@ -55,18 +55,103 @@ function srtStamp(time: number): string {
 export const toSrt = (segments: SubtitleSegment[]): string =>
   segments.map(({ start, end, text }, i) => `${i + 1}\n${srtStamp(start)} --> ${srtStamp(end)}\n${text}\n`).join('\n');
 
-// YouTube's json3 format: events with a start and a duration in ms, and the text in segs.
-// Automatic captions roll, so an event stays on the screen after the next one starts; a line ends where the next one starts.
-function parseJson3(file: string): SubtitleSegment[] {
+// YouTube's json3 format: events with a start and a duration in ms, and the text in segs. A row is one event with segs.
+// In automatic captions a seg is one word with its own time (tOffsetMs); the segs of an uploader track have no times.
+// Times are in seconds. A seg is on the screen from its start until its row leaves the screen, and a seg without a time
+// starts with its row. timed is true when a seg of the row has its own time.
+interface Row { start: number; end: number; timed: boolean; segs: SubtitleSegment[] }
+
+const num = (value: unknown): number | undefined => (typeof value === 'number' ? value : undefined);
+
+// The rows in start order.
+function captionRows(file: string): Row[] {
   const events = at(JSON.parse(file), 'events');
-  const lines = (isList(events) ? events : []).flatMap(event => {
-    const start = at(event, 'tStartMs');
-    const duration = at(event, 'dDurationMs');
+  return (isList(events) ? events : []).flatMap((event): Row[] => {
+    const startMs = num(at(event, 'tStartMs'));
     const segs = at(event, 'segs');
-    if (typeof start !== 'number' || !isList(segs)) return [];
-    const text = segs.map(seg => at(seg, 'utf8')).filter(isString).join('').trim();
-    return text ? [{ start: start / 1000, end: (start + (typeof duration === 'number' ? duration : 0)) / 1000, text }] : [];
+    if (startMs === undefined || !isList(segs)) return [];
+    const end = (startMs + (num(at(event, 'dDurationMs')) ?? 0)) / 1000;
+    const offsets = segs.map(seg => num(at(seg, 'tOffsetMs')));
+    return [{ start: startMs / 1000, end, timed: offsets.some(offset => offset !== undefined), segs: segs.map((seg, i) => {
+      const text = at(seg, 'utf8');
+      return { start: (startMs + (offsets[i] ?? 0)) / 1000, end, text: isString(text) ? text : '' };
+    }) }];
   }).sort((a, b) => a.start - b.start);
+}
+
+// Each row is a line. Rows roll: a row stays on the screen after the next one starts, so a line ends where the next one starts.
+const rowLines = (rows: Row[]): SubtitleSegment[] => rows.flatMap(({ start, end, segs }) => {
+  const text = segs.map(seg => seg.text).join('').trim();
+  return text ? [{ start, end, text }] : [];
+});
+
+// Splits after each sentence or clause mark. A point or comma before a digit is part of a number, as 1.2 or 1,000.
+const AFTER_MARK = /(?<=[。！？!?、])|(?<=[.,])(?!\d)/;
+
+// The words of one seg, which ends at until. A seg with several sentences splits after each mark, and each part
+// starts in proportion to the characters before it.
+function segWords(seg: SubtitleSegment, until: number): SubtitleSegment[] {
+  const span = Math.max(0, until - seg.start);
+  const words: SubtitleSegment[] = [];
+  let before = 0;
+  for (const text of seg.text.split(AFTER_MARK)) {
+    if (text.trim()) words.push({ ...seg, start: seg.start + span * before / seg.text.length, text });
+    before += text.length;
+  }
+  return words;
+}
+
+// The words of the rows. A seg ends where the next seg starts, at most where its row ends: the next row may start later.
+function captionWords(rows: Row[]): SubtitleSegment[] {
+  const segs = rows.flatMap(row => row.segs.filter(seg => seg.text.trim()));
+  return segs.flatMap((seg, i) => segWords(seg, Math.min(segs[i + 1]?.start ?? seg.end, seg.end)));
+}
+
+const SENTENCE_END = /[。！？!?.]$/;
+const CLAUSE_END = /[、,]$/;
+// A sound tag such as [音楽], which is a line of its own.
+const TAG = /^\[[^\]]*\]$/;
+// A clause mark (、) ends a line of this many characters: a shorter line waits for the sentence mark.
+const CLAUSE_CHARS = 25;
+// A pause this long before the next word ends a line: the speaker stopped, also where the captions have no mark.
+const PAUSE_SECONDS = 1.5;
+// A line of this many characters ends: a speech without marks must still fit the overlay and a card.
+const MAX_CHARS = 80;
+
+// True when line (trimmed) ends after word.
+function lineEnds(line: string, word: SubtitleSegment, next: SubtitleSegment | undefined): boolean {
+  if (next === undefined) return true;
+  const last = word.text.trim();
+  return TAG.test(last) || TAG.test(next.text.trim())
+    || SENTENCE_END.test(last)
+    || (CLAUSE_END.test(last) && line.length >= CLAUSE_CHARS)
+    || next.start - word.start >= PAUSE_SECONDS
+    || line.length >= MAX_CHARS;
+}
+
+// Joins the words into sentence lines. A line stays on the screen with the row of its last word.
+function sentenceLines(words: SubtitleSegment[]): SubtitleSegment[] {
+  const lines: SubtitleSegment[] = [];
+  let start = 0;
+  let text = '';
+  words.forEach((word, i) => {
+    if (!text) start = word.start;
+    text += word.text;
+    const line = text.trim();
+    if (lineEnds(line, word, words[i + 1])) {
+      lines.push({ start, end: word.end, text: line });
+      text = '';
+    }
+  });
+  return lines;
+}
+
+// YouTube cuts the rows of its automatic captions in mid-sentence, so their words join into sentence lines. An uploader
+// track has no word times, and its rows stay lines: the uploader cut them. The marks include . , ? ! for an English track.
+function parseJson3(file: string): SubtitleSegment[] {
+  const rows = captionRows(file);
+  const timed = rows.some(row => row.timed);
+  const lines = timed ? sentenceLines(captionWords(rows)) : rowLines(rows);
   return lines.map((line, i) => ({ ...line, end: Math.min(line.end, lines[i + 1]?.start ?? Infinity) })).filter(line => line.end > line.start);
 }
 

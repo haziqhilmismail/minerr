@@ -358,7 +358,7 @@ To get the subtitles from the server:
 
 If you start the server after you open the video, the tab finds the server in some seconds. You do not need to reload the page.
 
-Both ways use the subtitles of the uploader first. If the video has none, they use the automatic subtitles of YouTube. The overlay then shows the subtitles at the times of the video, also when the YouTube captions are off. If the video has no Japanese subtitles, the overlay copies the YouTube captions as before.
+Both ways use the subtitles of the uploader first. If the video has none, they use the automatic subtitles of YouTube. YouTube cuts the automatic subtitles into short rows, also in the middle of a sentence. Minerr joins the rows into sentences from the time of each word. The overlay then shows the subtitles at the times of the video, also when the YouTube captions are off. If the video has no Japanese subtitles, the overlay copies the YouTube captions as before.
 
 The Japanese subtitles are never a machine translation. YouTube translates its automatic captions into every language, so an English video has "Japanese" captions too. Minerr does not use them: the overlay shows no Japanese subtitles on such a video. YouTube can also dub a video into Japanese with a machine voice. The automatic Japanese captions of that voice are a machine translation too, so Minerr does not use them. The second subtitles, for example English, can be a translation.
 

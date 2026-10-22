@@ -57,6 +57,49 @@ test('parseCaptions reads YouTube json3: rolling lines end where the next starts
   assert.deepEqual(parseCaptions('srt', '1\n00:00:01,000 --> 00:00:02,000\n猫\n'), [{ start: 1, end: 2, text: '猫' }]);
 });
 
+test('parseCaptions joins the rows of YouTube automatic captions into sentences, from the time of each word', async () => {
+  const { parseCaptions } = await import('../src/video/captions.ts');
+  // The events from 63070 to 75080 ms of the automatic captions of lvCYj8GpXQA, with the keys that Minerr reads.
+  const json3 = JSON.stringify({ events: [
+    { tStartMs: 63079, dDurationMs: 7921, segs: [{ utf8: 'それ' }, { utf8: 'で', tOffsetMs: 201 }, { utf8: 'ね', tOffsetMs: 361 }, { utf8: 'ぬサンタラ', tOffsetMs: 1241 }, { utf8: 'へ', tOffsetMs: 1841 }, { utf8: 'の', tOffsetMs: 2001 }, { utf8: '行き', tOffsetMs: 2160 }, { utf8: '方', tOffsetMs: 2360 }, { utf8: 'な', tOffsetMs: 2601 }, { utf8: 'ん', tOffsetMs: 2720 }, { utf8: 'です', tOffsetMs: 2841 }] },
+    { tStartMs: 66109, dDurationMs: 4891, aAppend: 1, segs: [{ utf8: '\n' }] },
+    { tStartMs: 66119, dDurationMs: 8961, segs: [{ utf8: 'けど' }, { utf8: 'バス', tOffsetMs: 921 }, { utf8: 'が', tOffsetMs: 1161 }, { utf8: 'ね', tOffsetMs: 1320 }, { utf8: '出', tOffsetMs: 1881 }, { utf8: 'て', tOffsetMs: 2000 }, { utf8: 'い', tOffsetMs: 2121 }, { utf8: 'ます', tOffsetMs: 2241 }, { utf8: '。', tOffsetMs: 2401 }, { utf8: 'ま', tOffsetMs: 3081 }, { utf8: 'と', tOffsetMs: 3281 }, { utf8: '言っ', tOffsetMs: 3441 }, { utf8: 'て', tOffsetMs: 3561 }, { utf8: 'も', tOffsetMs: 3680 }, { utf8: '1', tOffsetMs: 4640 }] },
+    { tStartMs: 70990, dDurationMs: 4090, aAppend: 1, segs: [{ utf8: '\n' }] },
+    { tStartMs: 71000, dDurationMs: 9320, segs: [{ utf8: '日' }, { utf8: 'に', tOffsetMs: 240 }, { utf8: '6', tOffsetMs: 1479 }, { utf8: '本', tOffsetMs: 1640 }, { utf8: 'ぐらい', tOffsetMs: 1960 }, { utf8: 'です', tOffsetMs: 2159 }, { utf8: 'けど', tOffsetMs: 2360 }, { utf8: 'ね', tOffsetMs: 2560 }, { utf8: '。', tOffsetMs: 2680 }, { utf8: 'だ', tOffsetMs: 3320 }, { utf8: 'から', tOffsetMs: 3479 }, { utf8: '全然', tOffsetMs: 3720 }] },
+    { tStartMs: 75070, dDurationMs: 5250, aAppend: 1, segs: [{ utf8: '\n' }] },
+    { tStartMs: 75080, dDurationMs: 7999, segs: [{ utf8: 'まだ' }, { utf8: '発展', tOffsetMs: 920 }, { utf8: '途上', tOffsetMs: 1320 }, { utf8: 'の', tOffsetMs: 1719 }, { utf8: '町', tOffsetMs: 2560 }, { utf8: 'な', tOffsetMs: 2800 }, { utf8: 'わけ', tOffsetMs: 2960 }, { utf8: 'です', tOffsetMs: 3160 }, { utf8: '。', tOffsetMs: 3359 }] },
+  ] });
+  assert.deepEqual(parseCaptions('json3', json3), [
+    { start: 63.079, end: 69.2, text: 'それでねぬサンタラへの行き方なんですけどバスがね出ています。' },
+    { start: 69.2, end: 74.32, text: 'まと言っても1日に6本ぐらいですけどね。' },
+    { start: 74.32, end: 83.079, text: 'だから全然まだ発展途上の町なわけです。' },
+  ]);
+});
+
+test('parseCaptions ends a sentence line at a tag, a sentence mark, a comma after 25 characters, a pause of 1.5 s, or 80 characters', async () => {
+  const { parseCaptions } = await import('../src/video/captions.ts');
+  // 'あ、' + 22 い + '、' is 25 characters; 'お' + 79 か is 80. The row at 2 s has no word times and two sentences.
+  const json3 = JSON.stringify({ events: [
+    { tStartMs: 0, dDurationMs: 2000, segs: [{ utf8: 'はい' }, { utf8: '[音楽]', tOffsetMs: 500 }] },
+    { tStartMs: 2000, dDurationMs: 2000, segs: [{ utf8: 'ああ。いい。' }] },
+    { tStartMs: 4000, dDurationMs: 3000, segs: [{ utf8: 'あ、' }, { utf8: 'い'.repeat(22) + '、', tOffsetMs: 500 }, { utf8: 'う', tOffsetMs: 1000 }, { utf8: 'え', tOffsetMs: 1500 }, { utf8: 'お', tOffsetMs: 3000 }] },
+    { tStartMs: 7000, dDurationMs: 2000, segs: [{ utf8: 'か'.repeat(79) }, { utf8: 'き', tOffsetMs: 1000 }] },
+  ] });
+  assert.deepEqual(parseCaptions('json3', json3), [
+    { start: 0, end: 0.5, text: 'はい' },
+    { start: 0.5, end: 2, text: '[音楽]' },
+    { start: 2, end: 3, text: 'ああ。' },
+    { start: 3, end: 4, text: 'いい。' },
+    { start: 4, end: 5, text: 'あ、' + 'い'.repeat(22) + '、' },
+    { start: 5, end: 7, text: 'うえ' },
+    { start: 7, end: 8, text: 'お' + 'か'.repeat(79) },
+    { start: 8, end: 9, text: 'き' },
+  ]);
+  const decimal = JSON.stringify({ events: [{ tStartMs: 0, dDurationMs: 2000, segs: [{ utf8: '深さは' }, { utf8: '1.2', tOffsetMs: 500 },
+    { utf8: 'メートル', tOffsetMs: 900 }, { utf8: '。', tOffsetMs: 1400 }] }] });
+  assert.deepEqual(parseCaptions('json3', decimal), [{ start: 0, end: 2, text: '深さは1.2メートル。' }], 'the point of a number is not a sentence mark');
+});
+
 test('trackUrl takes the uploader track, then the automatic one, and never a machine translation into Japanese', async () => {
   const { trackUrl } = await import('../src/video/youtube/youtube-captions.ts');
   const base = 'https://www.youtube.com/api/timedtext?v=v1';
