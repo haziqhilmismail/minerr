@@ -21,7 +21,7 @@ export interface ServerFacts {
 export const CLICK_KEY = 'serverClick';
 
 // A start from the button usually follows the setup double-click, which installed the packages, so it takes seconds. The
-// rest is a margin for a cold WSL. A start that installs packages shows as failed until the server answers.
+// rest is a margin for a slow first import of the packages. A start that installs packages shows as failed until the server answers.
 // ponytail: a server that answered and stopped while no popup was open shows as failed on the next open, because only a
 // popup forgets the click.
 export const START_LIMIT_MS = 90_000;
@@ -52,14 +52,14 @@ export interface Place {
 export function serverHint({ windows, install }: Place): string {
   const folder = install === 'unpacked' ? 'the Minerr folder' : 'the folder of the WhisperX add-on';
   if (windows) {
-    return `Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in ${folder}. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.`;
+    return `Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in ${folder}.`;
   }
   return install === 'unpacked' ? 'Start the WhisperX server: uv run server/whisper_server.py' : 'Start the WhisperX server: in the folder of the WhisperX add-on, run "uv run server/whisper_server.py".';
 }
 
 const SETUP: Record<Install, string> = {
-  unpacked: 'To set up the Start button, double-click "Start WhisperX server (Windows).cmd" in the Minerr folder one time. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.',
-  store: 'To set up the Start button, get the free WhisperX add-on from GitHub and unzip it. Then double-click "Start WhisperX server (Windows).cmd" in its folder one time. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.',
+  unpacked: 'To set up the Start button, double-click "Start WhisperX server (Windows).cmd" in the Minerr folder one time.',
+  store: 'To set up the Start button, get the free WhisperX add-on from GitHub and unzip it. Then double-click "Start WhisperX server (Windows).cmd" in its folder one time.',
 };
 
 export type ServerButton = 'start' | 'folder' | 'addOn';

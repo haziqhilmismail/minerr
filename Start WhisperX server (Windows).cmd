@@ -1,5 +1,5 @@
 @echo off
-rem Starts the WhisperX server on Windows itself, without WSL. It needs no admin rights and changes no setting of Windows.
+rem Starts the WhisperX server on Windows. It needs no admin rights and changes no setting of Windows.
 title Minerr WhisperX server
 setlocal
 set "MINERR=%LOCALAPPDATA%\Minerr"
@@ -37,7 +37,7 @@ exit /b
 
 :not_x64
 echo This file needs Windows on an x64 processor. WhisperX cannot run on Windows on ARM itself, because ctranslate2 has no package for it.
-echo Double-click "Start WhisperX server (WSL).cmd" instead.
+echo On Windows on ARM, run the server in WSL with the Linux steps of the README.
 pause
 exit /b 1
 

@@ -7,7 +7,7 @@ This guide is for the owner of Minerr. It gives the state of the changes for the
 | Change | State |
 | --- | --- |
 | PNG icons (16, 32, 48, and 128 pixels) and the `icons` field in `manifest.json`. The store needs a 128 x 128 PNG icon in the ZIP file. | Done. `scripts/logo.py` draws the icons. |
-| A store ZIP with `manifest.json` at the root, without `server/` and the two launchers. The store does not accept a ZIP with the manifest in a folder. A store install has no folder where a launcher can start. | Done. `node scripts/package.ts` writes `release/minerr-store-v<version>.zip`. |
+| A store ZIP with `manifest.json` at the root, without `server/` and the launcher. The store does not accept a ZIP with the manifest in a folder. A store install has no folder where a launcher can start. | Done. `node scripts/package.ts` writes `release/minerr-store-v<version>.zip`. |
 | A `LICENSE` file. Without a license, other people have no right to use or change the code. | Done. The MIT License. |
 | A privacy policy. The Privacy practices tab asks for its URL. | Done. `PRIVACY.md`. See [Privacy practices](#4-fill-in-the-privacy-practices-tab). |
 | Texts for a store install. A store install has no Minerr folder, so the popup must not tell the user to open it. | Done. The popup tells a store install to get the WhisperX add-on from GitHub (`src/video/server-status.ts`). |

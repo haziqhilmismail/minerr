@@ -698,7 +698,7 @@ try {
   assert.equal(await win.textContent('#server'), 'The WhisperX server is not running.');
   await win.click('#start');
   await win.locator('#setup:not([hidden])').waitFor({ timeout: 5000 });
-  assert.equal(await win.textContent('#server'), 'To set up the Start button, double-click "Start WhisperX server (Windows).cmd" in the Minerr folder one time. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.');
+  assert.equal(await win.textContent('#server'), 'To set up the Start button, double-click "Start WhisperX server (Windows).cmd" in the Minerr folder one time.');
   assert.ok(await win.locator('#server-start').isHidden(), 'no Start button until the double-click');
   await shot(win, 'action-server-setup-light.png', { fullPage: true });
   const [extensions] = await Promise.all([context.waitForEvent('page'), win.click('#folder')]);
@@ -720,7 +720,7 @@ try {
   await shot(store, 'action-store-off-light.png', { fullPage: true });
   await store.click('#start');
   await store.locator('#addon.primary').waitFor({ timeout: 5000 });
-  assert.equal(await store.textContent('#server'), 'To set up the Start button, get the free WhisperX add-on from GitHub and unzip it. Then double-click "Start WhisperX server (Windows).cmd" in its folder one time. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.');
+  assert.equal(await store.textContent('#server'), 'To set up the Start button, get the free WhisperX add-on from GitHub and unzip it. Then double-click "Start WhisperX server (Windows).cmd" in its folder one time.');
   assert.ok(await store.locator('#setup').isHidden(), 'a store install has no Minerr folder');
   assert.ok(await store.locator('#server-start').isHidden(), 'no Start button until the double-click');
   await shot(store, 'action-store-setup-light.png', { fullPage: true });

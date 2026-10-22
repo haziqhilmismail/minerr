@@ -23,17 +23,9 @@ These steps are for Windows on an x64 processor. You do not need WSL.
 2. If the window asks to download uv, press Y. uv is a free program that installs Python and the packages of the server. The download is 15 MB.
 3. Wait until the window shows `Minerr WhisperX server on http://127.0.0.1:8766`. The first start downloads about 3.7 GB.
 
-### Windows with WSL
-
-Use these steps on Windows on ARM, or if you want the server in WSL.
-
-1. In WSL, install [uv](https://docs.astral.sh/uv/getting-started/installation/).
-2. In the `minerr-whisperx` folder, double-click `Start WhisperX server (WSL).cmd`. A window opens.
-3. Wait until the window shows `Minerr WhisperX server on http://127.0.0.1:8766`. The first start downloads about 2.6 GB.
-
 ### Linux
 
-These steps are for Linux on x64 or ARM64.
+These steps are for Linux on x64 or ARM64, and for WSL. On Windows on ARM, use WSL. Chrome on Windows connects to the server in WSL at `http://127.0.0.1:8766`.
 
 1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/).
 2. Open a terminal in the `minerr-whisperx` folder.
@@ -56,8 +48,10 @@ The first job downloads the speech model, about 1.6 GB. On Windows, the first jo
 
 The server runs only while its window or terminal is open. To stop the server, close the window or the terminal.
 
-- On Windows, click the Minerr button in the toolbar, then click **Start the server**. The button works after the first double-click of a launcher. You can also double-click the launcher again.
-- On Linux and macOS, run `uv run server/whisper_server.py` in the `minerr-whisperx` folder again.
+- On Windows, click the Minerr button in the toolbar, then click **Start the server**. The button works after the first double-click of the launcher. You can also double-click the launcher again.
+- On Linux, macOS, and WSL, run `uv run server/whisper_server.py` in the `minerr-whisperx` folder again.
+
+Earlier versions had a launcher for WSL. This version does not have it. If you used it, the **Start the server** button does not work until you double-click `Start WhisperX server (Windows).cmd` one time. You can also start the server in WSL with the Linux steps.
 
 If you move the `minerr-whisperx` folder on Windows, double-click the launcher in the new place one time. To update the add-on, download and unzip the new zip. Then start the server in the new folder one time, as the steps above show.
 

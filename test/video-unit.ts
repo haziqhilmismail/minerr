@@ -256,14 +256,14 @@ const STORE_LINUX: Place = { windows: false, install: 'store' };
 
 test('serverHint tells a Windows user to use the Start button of the popup or the launcher, and other users to run uv', () => {
   assert.deepEqual([UNPACKED_WINDOWS, UNPACKED_LINUX].map(serverHint), [
-    'Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in the Minerr folder. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.',
+    'Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in the Minerr folder.',
     'Start the WhisperX server: uv run server/whisper_server.py',
   ]);
 });
 
 test('serverHint sends a store install, which has no Minerr folder, to the folder of the WhisperX add-on', () => {
   assert.deepEqual([STORE_WINDOWS, STORE_LINUX].map(serverHint), [
-    'Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in the folder of the WhisperX add-on. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.',
+    'Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in the folder of the WhisperX add-on.',
     'Start the WhisperX server: in the folder of the WhisperX add-on, run "uv run server/whisper_server.py".',
   ]);
 });
@@ -273,7 +273,7 @@ test('serverView: the Start button only on Windows, and Show the Minerr folder w
   assert.deepEqual(serverView({ state: 'off' }, UNPACKED_LINUX), { className: 'error', text: 'Start the WhisperX server: uv run server/whisper_server.py', buttons: [] });
   assert.deepEqual(serverView({ state: 'setup' }, UNPACKED_WINDOWS), {
     className: 'error',
-    text: 'To set up the Start button, double-click "Start WhisperX server (Windows).cmd" in the Minerr folder one time. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.',
+    text: 'To set up the Start button, double-click "Start WhisperX server (Windows).cmd" in the Minerr folder one time.',
     buttons: ['folder'],
   });
   assert.deepEqual(serverView({ state: 'failed' }, UNPACKED_WINDOWS),
@@ -288,7 +288,7 @@ test('serverView: a store install gets the WhisperX add-on from GitHub, in place
     { className: 'error', text: 'Start the WhisperX server: in the folder of the WhisperX add-on, run "uv run server/whisper_server.py".', buttons: ['addOn'] });
   assert.deepEqual(serverView({ state: 'setup' }, STORE_WINDOWS), {
     className: 'error',
-    text: 'To set up the Start button, get the free WhisperX add-on from GitHub and unzip it. Then double-click "Start WhisperX server (Windows).cmd" in its folder one time. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.',
+    text: 'To set up the Start button, get the free WhisperX add-on from GitHub and unzip it. Then double-click "Start WhisperX server (Windows).cmd" in its folder one time.',
     buttons: ['addOn'],
   });
   assert.deepEqual(serverView({ state: 'failed' }, STORE_WINDOWS),
