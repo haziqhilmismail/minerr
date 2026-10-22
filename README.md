@@ -1118,7 +1118,7 @@ The path of a word from a page to a card:
 | `src/anki/lapis.ts` | The pure parts of the Lapis fields: the furigana, the frequency rank, and the pitch accent. |
 | `src/anki/wordaudio.ts` | The word audio from JapanesePod101, and the check for its placeholder clip. |
 | `src/popup/cardform.ts` | The card form of the popup (`E`). |
-| `src/video/whisper.ts` | The client for the WhisperX server. |
+| `src/video/whisper.ts` | The client for the WhisperX server, and `currentPlace`: Windows or not, and the install of Minerr from `chrome.management.getSelf`. |
 | `src/anki/lineaudio.ts`, `src/video/record.ts` | The sentence audio of a card: the server cuts it, or the tab records the line. |
 | `src/dictionary/db.ts` | The dictionary storage in IndexedDB. |
 | `src/text/entry.ts` | The dictionary entry and the status key of each word, and the join of word overrides and compound nouns. |
@@ -1148,7 +1148,7 @@ The path of a word from a page to a card:
 | `scripts/package.ts` | Packs `dist` into three zips in `release`, each with a `.sha256` file: `minerr-whisperx-v<version>.zip` (the WhisperX add-on, the server and its launchers), `minerr-v<version>.zip` (the whole extension in the top folder `minerr`, for Load unpacked), and `minerr-store-v<version>.zip` (the extension without the add-on, with `manifest.json` at the root, for the Chrome Web Store). |
 | `LICENSE`, `PRIVACY.md` | The MIT License, and the privacy policy that the Chrome Web Store listing links to. |
 | `.github/workflows/release.yml`, `docs/release-notes.md` | For a pushed tag such as `v0.2.0`, the workflow builds and packs the extension. It makes a draft GitHub release with the WhisperX add-on, the zip for Load unpacked, and the text of `docs/release-notes.md`, and it keeps the store zip on the page of the run. |
-| `src/video/server-status.ts` | Pure functions: the status of the WhisperX server as the toolbar popup shows it, from the last health check and the last click on **Start the server**, and the text and the buttons of each status. `serverHint` gives the help to start the server where the popup is not, for example in the error of **Generate with WhisperX**. |
+| `src/video/server-status.ts` | Pure functions: the status of the WhisperX server as the toolbar popup shows it, from the last health check and the last click on **Start the server**, and the text and the buttons of each status. `serverHint` gives the help to start the server where the popup is not, for example in the error of **Generate with WhisperX**. The texts and the buttons depend on the platform and on the install. Load unpacked has the Minerr folder, which holds the add-on. Other installs, such as the Chrome Web Store, get the add-on from GitHub. |
 | `src/status/stats.ts` | The comprehension score and the recommended sentences of a tab, for the toolbar popup. |
 | `src/status/score.ts` | Pure functions for the score, its label, and the text of the i+1 sentences. |
 | `pages/words.html`, `pages/words.ts` | The word browser page. |

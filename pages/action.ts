@@ -6,7 +6,7 @@ import type { Snapshot, Source } from '../src/video/youtube/youtube-overlay.ts';
 import { applyTheme } from '../src/shared/theme.ts';
 import { iPlusOne, minerrEnabled } from '../src/shared/settings.ts';
 import { enabledSites, siteIsOn, siteOf, toggleSiteOf } from '../src/page-text/site.ts';
-import type { JobStatus } from '../src/video/whisper.ts';
+import { currentPlace, type JobStatus } from '../src/video/whisper.ts';
 import { CLICK_KEY, type HealthCheck, isNoHostError, type ServerFacts, serverStatus, type ServerView, serverView } from '../src/video/server-status.ts';
 import { at } from '../src/shared/guards.ts';
 
@@ -14,6 +14,7 @@ applyTheme();
 
 const POLL_MS = 2000;
 const HOST = 'com.minerr.whisperx';
+const ADD_ON_RELEASE = 'https://github.com/haziqhilmismail/minerr/releases/latest';
 const HINT: Record<Source, string> = {
   youtube: 'Minerr shows the Japanese captions of YouTube. If the overlay stays empty, turn on CC in the YouTube player.',
   whisperx: 'The subtitles come from the WhisperX server on this computer.',
@@ -65,9 +66,11 @@ function showState(snapshot: Snapshot): void {
   else showMessage(`${JOB_TEXT[status.state]}${status.state === 'transcribing' ? ` ${status.progress}%` : ''}`, status.state === 'done' ? 'ok' : '');
 }
 
-const place = { windows: navigator.platform.startsWith('Win') };
+const place = await currentPlace();
 const serverStart = byId('server-start', HTMLElement);
 const setup = byId('setup', HTMLElement);
+const getAddOn = byId('get-addon', HTMLElement);
+const addOn = byId('addon', HTMLButtonElement);
 
 let check: HealthCheck | undefined;
 const savedClick = at(await chrome.storage.session.get(CLICK_KEY), CLICK_KEY);
@@ -78,6 +81,9 @@ function show({ className, text, buttons }: ServerView): void {
   server.className = className;
   serverStart.hidden = !buttons.includes('start');
   setup.hidden = !buttons.includes('folder');
+  getAddOn.hidden = !buttons.includes('addOn');
+  // Start the server and Show the Minerr folder always come first. Get the add-on comes first only when it is alone.
+  addOn.classList.toggle('primary', buttons[0] === 'addOn');
 }
 
 const showServer = (): void => show(serverView(serverStatus({ check, click }, Date.now()), place));
@@ -105,6 +111,7 @@ byId('start', HTMLButtonElement).addEventListener('click', () => {
   });
 });
 byId('folder', HTMLButtonElement).addEventListener('click', () => chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` }));
+addOn.addEventListener('click', () => chrome.tabs.create({ url: ADD_ON_RELEASE }));
 
 async function refresh(): Promise<void> {
   checkServer();
