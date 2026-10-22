@@ -301,6 +301,9 @@ test('renderField fills each marker in one pass and escapes the plain text value
   assert.equal(renderField('', values), '');
   assert.equal(markerValues({ ...card, word: 'ねこ', reading: 'ねこ' }, { url: '', title: '' }, media).furigana, 'ねこ');
   assert.equal(markerValues({ ...card, reading: '' }, { url: '', title: '' }, media).furigana, '食べる');
+  const kawaii = { expression: '可愛い', reading: 'かわいい', termTags: [], senses: [], frequencies: [], pitches: [] };
+  assert.equal(renderField('{word} {kanji}', markerValues({ ...card, word: 'かわいい', entry: kawaii }, { url: '', title: '' }, media)), 'かわいい 可愛い');
+  assert.equal(renderField('{word} {kanji}', values), '食べる ', 'a word with kanji has no kanji spelling');
 });
 
 test('unknownMarkers lists each marker that is not known, one time, as written', async () => {
@@ -312,10 +315,10 @@ test('unknownMarkers lists each marker that is not known, one time, as written',
 test('suggestFields maps known field names to one marker and leaves the others empty', async () => {
   const { suggestFields } = await import('../src/anki/anki.ts');
   assert.deepEqual(suggestFields(['Expression', 'ExpressionFurigana', 'ExpressionReading', 'Sentence', 'SentenceFurigana',
-    'MainDefinition', 'Picture', 'Word Meaning', 'Glossary', 'Front', 'Back', 'Notes', 'Source URL', 'Title']), {
+    'MainDefinition', 'Picture', 'Word Meaning', 'Glossary', 'Front', 'Back', 'Notes', 'Source URL', 'Title', 'ExpressionKanji']), {
     Expression: '{word}', ExpressionFurigana: '{furigana}', ExpressionReading: '{reading}', Sentence: '{sentence}', SentenceFurigana: '',
     MainDefinition: '{definition}', Picture: '{image}', 'Word Meaning': '{definition}', Glossary: '{definition}', Front: '{word}',
-    Back: '{definition}', Notes: '', 'Source URL': '', Title: '{title}',
+    Back: '{definition}', Notes: '', 'Source URL': '', Title: '{title}', ExpressionKanji: '{kanji}',
   });
 });
 

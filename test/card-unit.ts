@@ -89,10 +89,34 @@ test('lapisFields fills every field of the Lapis note type in order', async () =
     Frequency: '<ul style="text-align: left;"><li>JPDB: 1200</li><li>Novels: 3000㋕</li><li>Occurrences: 500</li></ul>',
     FreqSort: '1714',
     MiscInfo: 'Cats &amp; fish<br><a href="https://example.com/?a=1&amp;b=2">https://example.com/?a=1&amp;b=2</a>',
+    ExpressionKanji: '',
   }));
   const bare = lapisFields({ ...CARD, word: 'ネコ', reading: 'ネコ', definition: '', entry: null }, { url: '', title: '' }, { image: '', audio: '', wordaudio: '' });
   assert.deepEqual([bare.Expression, bare.ExpressionFurigana, bare.ExpressionReading, bare.MainDefinition, bare.PitchPosition, bare.Frequency, bare.FreqSort],
     ['ネコ', 'ネコ', 'ねこ', '', '', '', '9999999']);
+});
+
+test('a word in kana gets the kanji spelling of its entry in ExpressionKanji, and Expression stays as written', async () => {
+  const { lapisFields } = await import('../src/anki/anki.ts');
+  const page = { url: '', title: '' };
+  const media = { image: '', audio: '', wordaudio: '' };
+  const kawaii: Entry = { ...TABERU, expression: '可愛い', reading: 'かわいい' };
+  const kana = lapisFields({ ...CARD, word: 'かわいい', reading: 'かわいい', entry: kawaii }, page, media);
+  assert.deepEqual([kana.Expression, kana.ExpressionKanji], ['かわいい', '可愛い']);
+  assert.equal(lapisFields({ ...CARD, word: 'ネコ', reading: 'ねこ', entry: { ...TABERU, expression: '猫', reading: 'ねこ' } }, page, media).ExpressionKanji, '猫');
+  assert.equal(lapisFields(CARD, page, media).ExpressionKanji, '', 'a word with kanji');
+  assert.equal(lapisFields({ ...CARD, word: 'これ', reading: 'これ', entry: { ...TABERU, expression: 'これ', reading: 'これ' } }, page, media).ExpressionKanji, '', 'an entry with no kanji');
+  assert.equal(lapisFields({ ...CARD, word: 'かわいい', entry: null }, page, media).ExpressionKanji, '', 'no entry');
+});
+
+test('withKanjiLine puts the ExpressionKanji line under the word line of the back one time, and not without the word line', async () => {
+  const { withKanjiLine } = await import('../src/anki/lapis.ts');
+  const back = '<div class="dh-vocab">\n    <div class="vocab">{{Expression}}</div>\n    <div class="info"></div>\n</div>';
+  const changed = withKanjiLine(back);
+  assert.equal(changed, '<div class="dh-vocab">\n    <div class="vocab">{{Expression}}</div>\n'
+    + '    {{#ExpressionKanji}}<div class="info">{{ExpressionKanji}}</div>{{/ExpressionKanji}}\n    <div class="info"></div>\n</div>');
+  assert.equal(withKanjiLine(changed ?? ''), null, 'a second run changes nothing');
+  assert.equal(withKanjiLine('<div class="vocab">{{furigana:ExpressionFurigana}}</div>'), null);
 });
 
 test('parseNoteType: no stored choice is Lapis; a stored choice stays', async () => {
@@ -138,6 +162,32 @@ test('installLapis keeps a "Lapis" deck that has notes of the user, and does not
     requests.length = 0;
     assert.equal(await installLapis(), 'Lapis is already in Anki.');
     assert.deepEqual(requests, ['modelNames']);
+  } finally {
+    globalThis.fetch = saved;
+  }
+});
+
+test('addDraft does not change a Lapis that has the ExpressionKanji field and line, and checks Lapis one time', async () => {
+  const { addDraft } = await import('../src/anki/anki.ts');
+  const requests: string[] = [];
+  const back = '<div class="vocab">{{Expression}}</div>\n{{#ExpressionKanji}}<div class="info">{{ExpressionKanji}}</div>{{/ExpressionKanji}}';
+  const replies: Record<string, () => unknown> = {
+    createDeck: () => 1, modelNames: () => ['Lapis'], modelFieldNames: () => ['Expression', 'ExpressionKanji'],
+    modelTemplates: () => ({ Mining: { Front: '{{Sentence}}', Back: back } }), addNote: () => 7,
+  };
+  const saved = globalThis.fetch;
+  globalThis.fetch = async (_url, init) => {
+    const { action } = JSON.parse(String(init?.body));
+    requests.push(action);
+    return new Response(JSON.stringify({ result: replies[action]?.(), error: null }));
+  };
+  try {
+    const draft = { modelName: 'Lapis', fields: { Expression: 'かわいい', ExpressionKanji: '可愛い' }, media: [] };
+    assert.equal(await addDraft('Minerr', draft), 7);
+    assert.deepEqual(requests, ['createDeck', 'modelNames', 'modelFieldNames', 'modelTemplates', 'addNote']);
+    requests.length = 0;
+    assert.equal(await addDraft('Minerr', draft), 7);
+    assert.deepEqual(requests, ['createDeck', 'addNote']);
   } finally {
     globalThis.fetch = saved;
   }

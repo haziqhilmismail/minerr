@@ -73,6 +73,9 @@ const WATCH = `<!doctype html><meta charset="utf-8"><title>Fake YouTube</title>
 const anki = await mockAnki();
 // Lapis, the default note type: it has the word audio field, for the check of one audio per card.
 anki.replies.modelNames = () => ['Basic', 'Lapis'];
+// A Lapis that has the ExpressionKanji field already, so the first add does not change the note type.
+anki.replies.modelFieldNames = () => ['Expression', 'ExpressionKanji'];
+anki.replies.modelTemplates = () => ({});
 const { context, worker, extensionId } = await launch(join(work, 'profile'), null);
 await context.route('https://www.youtube.com/**', route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: WATCH }));
 const jpod: string[] = [];

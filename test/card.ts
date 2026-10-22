@@ -14,6 +14,7 @@ const fixture = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
   ['食べる', 'たべる', 'v1', 'v1', 100, ['to eat (fixture)'], 1, ''],
   ['猫', 'ねこ', 'n', '', 100, ['cat (fixture)'], 2, ''],
   ['魚', 'さかな', 'n', '', 100, ['fish (fixture)'], 3, ''],
+  ['可愛い', 'かわいい', 'adj-i', 'adj-i', 100, ['cute (fixture)'], 4, ''],
 ], [['v1', 'partOfSpeech', -3, 'Ichidan verb', 0], ['n', 'partOfSpeech', -3, 'noun', 0]], [
   ['食べる', 'freq', { reading: 'たべる', frequency: 1200 }],
   ['食べる', 'pitch', { reading: 'たべる', pitches: [{ position: 2 }] }],
@@ -25,7 +26,7 @@ const params = (from: number, action: string) => anki.requests.slice(from).filte
 
 const site = createServer((_req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.end('<!doctype html><meta charset="utf-8"><title>猫 &amp; 魚</title><body><p id="line">猫が魚を食べなかった。</p></body>');
+  res.end('<!doctype html><meta charset="utf-8"><title>猫 &amp; 魚</title><body><p id="line">猫が魚を食べなかった。</p><p id="kana">かわいい。</p></body>');
 });
 const pageUrl = `http://127.0.0.1:${await listen(site, 0)}/cats`;
 
@@ -78,6 +79,17 @@ try {
   anki.replies.findNotes = () => [5];
   anki.replies.notesInfo = () => [{ noteId: 5, modelName: 'Lapis', fields: { Expression: { value: '十中八九', order: 0 } } }];
   anki.replies.deleteDecks = () => null;
+  // The Lapis of the user: no ExpressionKanji field, and the word line of the hand-edited back template.
+  const lapisFieldNames = ['Expression', 'MiscInfo'];
+  const lapisBack = '<div class="dh-vocab">\n    <div class="vocab">{{Expression}}</div>\n</div>';
+  let lapisTemplates = { Mining: { Front: '{{Sentence}}', Back: lapisBack } };
+  anki.replies.modelFieldNames = () => lapisFieldNames;
+  anki.replies.modelFieldAdd = fieldParams => { lapisFieldNames.push(String(at(fieldParams, 'fieldName'))); return null; };
+  anki.replies.modelTemplates = () => lapisTemplates;
+  anki.replies.updateModelTemplates = update => {
+    lapisTemplates = { Mining: { Front: '{{Sentence}}', Back: String(at(update, 'model', 'templates', 'Mining', 'Back')) } };
+    return null;
+  };
   await options.bringToFront();
   from = anki.requests.length;
   await options.click('#lapis-install-button');
@@ -97,7 +109,15 @@ try {
   from = anki.requests.length;
   await tab.keyboard.press('a');
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
-  assert.deepEqual(actions(from), ['createDeck', 'modelNames', 'storeMediaFile', 'storeMediaFile', 'addNote']);
+  // Minerr reads the fields and the templates of Lapis at the same time, so they can arrive in either order.
+  const firstAdd = actions(from);
+  assert.deepEqual([...firstAdd.slice(0, 2), ...firstAdd.slice(2, 4).sort(), ...firstAdd.slice(4)], [
+    'createDeck', 'modelNames', 'modelFieldNames', 'modelTemplates', 'modelFieldAdd', 'updateModelTemplates', 'storeMediaFile', 'storeMediaFile', 'addNote',
+  ]);
+  assert.deepEqual(params(from, 'modelFieldAdd'), [{ modelName: 'Lapis', fieldName: 'ExpressionKanji', index: 2 }]);
+  assert.deepEqual(params(from, 'updateModelTemplates'), [{ model: { name: 'Lapis', templates: { Mining: { Back:
+    '<div class="dh-vocab">\n    <div class="vocab">{{Expression}}</div>\n'
+    + '    {{#ExpressionKanji}}<div class="info">{{ExpressionKanji}}</div>{{/ExpressionKanji}}\n</div>' } } } }]);
   const [picture, audio] = params(from, 'storeMediaFile');
   assert.match(String(at(picture, 'filename')), /^minerr-\d+\.jpg$/);
   assert.deepEqual(audio, { filename: wordFile, data: WORD_AUDIO.toString('base64') });
@@ -114,16 +134,28 @@ try {
     Picture: `<img src="${String(at(picture, 'filename'))}">`, Glossary: '', Hint: '', IsWordAndSentenceCard: '', IsClickCard: '',
     IsSentenceCard: 'x', IsAudioCard: '', PitchPosition: '[2]', PitchCategories: 'kifuku',
     Frequency: '<ul style="text-align: left;"><li>Fixture: 1200</li></ul>', FreqSort: '1200',
-    MiscInfo: `猫 &amp; 魚<br><a href="${pageUrl}">${pageUrl}</a>`,
+    MiscInfo: `猫 &amp; 魚<br><a href="${pageUrl}">${pageUrl}</a>`, ExpressionKanji: '',
   });
-  console.log('Lapis card: addNote with the Lapis fields, the word audio, and no note type change');
+  console.log('Lapis card: addNote with the Lapis fields and the word audio; the first add gives Lapis the ExpressionKanji field and its line');
+
+  await tab.mouse.move(0, 0);
+  await tab.hover('#kana .ml-word[data-ml-lemma="かわいい"]');
+  await popup.locator('.lemma', { hasText: '可愛い' }).waitFor();
+  from = anki.requests.length;
+  await tab.keyboard.press('a');
+  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
+  assert.deepEqual(actions(from), ['createDeck', 'storeMediaFile', 'storeMediaFile', 'addNote'], 'the second add does not change Lapis again');
+  assert.deepEqual(lapisFieldNames, ['Expression', 'MiscInfo', 'ExpressionKanji']);
+  const kana = at(params(from, 'addNote')[0], 'note', 'fields');
+  assert.deepEqual([at(kana, 'Expression'), at(kana, 'ExpressionKanji'), at(kana, 'ExpressionReading')], ['かわいい', '可愛い', 'かわいい']);
+  console.log('a word in kana: Expression かわいい, ExpressionKanji 可愛い');
 
   jpodHasAudio = false;
   await open('魚');
   from = anki.requests.length;
   await tab.keyboard.press('a');
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
-  assert.deepEqual(actions(from), ['createDeck', 'modelNames', 'storeMediaFile', 'addNote']);
+  assert.deepEqual(actions(from), ['createDeck', 'storeMediaFile', 'addNote']);
   assert.equal(at(params(from, 'addNote')[0], 'note', 'fields', 'ExpressionAudio'), '');
   console.log('no word audio from JapanesePod101: ExpressionAudio is empty, and the card is added');
   jpodHasAudio = true;
@@ -139,7 +171,7 @@ try {
   await tab.keyboard.press('a');
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
   assert.deepEqual(jpod, [], 'no request to JapanesePod101 with the word audio off');
-  assert.deepEqual(actions(from), ['createDeck', 'modelNames', 'storeMediaFile', 'addNote']);
+  assert.deepEqual(actions(from), ['createDeck', 'storeMediaFile', 'addNote']);
   assert.equal(at(params(from, 'addNote')[0], 'note', 'fields', 'ExpressionAudio'), '');
   await options.bringToFront();
   await options.check('#word-audio');
@@ -182,7 +214,7 @@ try {
   from = anki.requests.length;
   await form.getByRole('button', { name: 'Send' }).click();
   await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor();
-  assert.deepEqual(actions(from), ['createDeck', 'modelNames', 'storeMediaFile', 'storeMediaFile', 'addNote']);
+  assert.deepEqual(actions(from), ['createDeck', 'storeMediaFile', 'storeMediaFile', 'addNote']);
   const edited = at(params(from, 'addNote')[0], 'note', 'fields');
   assert.deepEqual([at(edited, 'Sentence'), at(edited, 'Hint'), at(edited, 'Expression'), at(edited, 'ExpressionAudio')],
     ['<b>猫</b>だ。', 'a pet', '猫', `[sound:${wordFile}]`]);

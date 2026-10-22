@@ -1,7 +1,7 @@
-import { toHiragana } from '../text/group.ts';
+import { hasKanji, toHiragana } from '../text/group.ts';
 import {
-  furiganaPlain, harmonicRank, LAPIS_MODEL, LAPIS_PACKAGE_URL, LAPIS_SAMPLE_EXPRESSION, type LapisField, pitchCategories,
-  pitchPositions,
+  furiganaPlain, harmonicRank, KANJI_FIELD, LAPIS_MODEL, LAPIS_PACKAGE_URL, LAPIS_SAMPLE_EXPRESSION, type LapisField, pitchCategories,
+  pitchPositions, withKanjiLine,
 } from './lapis.ts';
 import type { Entry } from '../dictionary/meta.ts';
 import { at, isList, isRecordOf, isString, isStringList } from '../shared/guards.ts';
@@ -43,7 +43,7 @@ export interface PageInfo {
   title: string;
 }
 
-// The note type of new notes. lapis is the Lapis note type of the user, with a fixed field map; Minerr never changes it.
+// The note type of new notes. lapis is the Lapis note type of the user, with a fixed field map; Minerr only adds the ExpressionKanji field to it.
 // builtin is the classic Minerr note type, which Minerr makes and keeps up to date.
 // custom is a note type of the user: fields maps each of its fields to a template with markers. Minerr never changes it.
 export type NoteType = { kind: 'lapis' } | { kind: 'builtin' } | { kind: 'custom'; model: string; fields: Record<string, string> };
@@ -63,7 +63,7 @@ export function parseNoteType(value: unknown): NoteType {
 export const getNoteType = async (): Promise<NoteType> => parseNoteType((await chrome.storage.local.get('noteType')).noteType);
 export const setNoteType = (noteType: NoteType): Promise<void> => chrome.storage.local.set({ noteType });
 
-export const MARKERS = ['word', 'reading', 'furigana', 'sentence', 'definition', 'image', 'audio', 'wordaudio', 'url', 'title'] as const;
+export const MARKERS = ['word', 'reading', 'kanji', 'furigana', 'sentence', 'definition', 'image', 'audio', 'wordaudio', 'url', 'title'] as const;
 export type Marker = (typeof MARKERS)[number];
 // The HTML that replaces each marker.
 export type MarkerValues = Record<Marker, string>;
@@ -82,12 +82,17 @@ export const renderField = (template: string, values: MarkerValues): string =>
 // The HTML of the media of a note: the <img> of the screenshot, and the [sound:...] tags of the line audio and the word audio. '' for none.
 export type MediaHtml = Record<'image' | 'audio' | 'wordaudio', string>;
 
+// The kanji spelling of a word in kana: the headword of its dictionary entry when that has kanji (かわいい, 可愛い). '' for a word with kanji.
+export const kanjiSpelling = (word: string, entry: Group | null): string =>
+  (!hasKanji(word) && entry && hasKanji(entry.expression) ? entry.expression : '');
+
 export function markerValues(card: CardFields, page: PageInfo, media: MediaHtml): MarkerValues {
   const word = escapeHtml(card.word);
   const reading = escapeHtml(card.reading);
   return {
     word,
     reading,
+    kanji: escapeHtml(kanjiSpelling(card.word, card.entry)),
     furigana: reading && reading !== word ? `${word}[${reading}]` : word,
     sentence: card.sentence,
     definition: card.definition,
@@ -149,6 +154,7 @@ export function lapisFields(card: CardFields, page: PageInfo, media: MediaHtml):
     Frequency: frequencyList(entry),
     FreqSort: String(harmonicRank(entry?.frequencies ?? []) ?? 9999999),
     MiscInfo: `${values.title}<br><a href="${values.url}">${values.url}</a>`,
+    ExpressionKanji: values.kanji,
   };
 }
 
@@ -156,6 +162,7 @@ export function lapisFields(card: CardFields, page: PageInfo, media: MediaHtml):
 const FIELD_NAMES: Record<Marker, string[]> = {
   word: ['word', 'expression', 'vocab', 'vocabulary', 'term', 'kanji', 'front'],
   reading: ['reading', 'kana', 'wordreading', 'expressionreading', 'vocabreading'],
+  kanji: ['expressionkanji', 'wordkanji', 'vocabkanji', 'kanjispelling'],
   furigana: ['furigana', 'wordfurigana', 'expressionfurigana', 'vocabfurigana'],
   sentence: ['sentence', 'example', 'context'],
   definition: ['meaning', 'definition', 'definitions', 'glossary', 'wordmeaning', 'maindefinition', 'vocabmeaning', 'back'],
@@ -304,8 +311,31 @@ async function ensureModel(): Promise<void> {
   if (at(styling, 'css') !== CSS) await invoke('updateModelStyling', { model: { name: MODEL, css: CSS } });
 }
 
-// Once per service worker lifetime; a failed attempt (Anki closed) clears it so the next add tries again.
-let modelReady: Promise<void> | null = null;
+const LAPIS_MISSING = 'Anki has no Lapis note type. Install Lapis in Options, or select another note type.';
+
+const hasBack = (template: unknown): template is { Back: string } => isString(at(template, 'Back'));
+
+// Adds the kanji spelling field to Lapis, and its line to each back template that has the word line. Each write happens once:
+// a second run finds the field and the line, and writes nothing.
+async function ensureLapis(): Promise<void> {
+  if (!(await modelNames()).includes(LAPIS_MODEL)) throw new Error(LAPIS_MISSING);
+  const [fields, templates] = await Promise.all([modelFieldNames(LAPIS_MODEL), invoke('modelTemplates', { modelName: LAPIS_MODEL })]);
+  if (!fields.includes(KANJI_FIELD)) await invoke('modelFieldAdd', { modelName: LAPIS_MODEL, fieldName: KANJI_FIELD, index: fields.length });
+  if (!isRecordOf(templates, hasBack)) unexpected('modelTemplates');
+  const changed = Object.entries(templates).flatMap(([name, { Back }]) => {
+    const next = withKanjiLine(Back);
+    return next === null ? [] : [[name, { Back: next }] as const];
+  });
+  if (changed.length) await invoke('updateModelTemplates', { model: { name: LAPIS_MODEL, templates: Object.fromEntries(changed) } });
+}
+
+// Runs ensure once per service worker lifetime; a failed attempt (Anki closed) is forgotten, so the next add tries again.
+function once(ensure: () => Promise<void>): () => Promise<void> {
+  let pending: Promise<void> | null = null;
+  return () => (pending ??= ensure().catch(error => { pending = null; throw error; }));
+}
+const modelReady = once(ensureModel);
+const lapisReady = once(ensureLapis);
 
 // A media file for AnkiConnect: data is base64. The screenshot is a JPEG; the line audio is an MP3 or a WebM.
 export interface MediaFile {
@@ -352,17 +382,11 @@ export function noteDraft(noteType: NoteType, card: CardFields, page: PageInfo):
 export const usesWordAudio = (noteType: NoteType): boolean =>
   noteType.kind === 'lapis' || (noteType.kind === 'custom' && Object.values(noteType.fields).some(template => template.includes('{wordaudio}')));
 
-const LAPIS_MISSING = 'Anki has no Lapis note type. Install Lapis in Options, or select another note type.';
-
 // Adds the note and returns its ID. Only the files that a field still names go to the media folder of Anki.
 export async function addDraft(deck: string, { modelName, fields, media }: NoteDraft): Promise<number> {
   await invoke('createDeck', { deck });
-  if (modelName === MODEL) {
-    modelReady ??= ensureModel().catch(error => { modelReady = null; throw error; });
-    await modelReady;
-  } else if (modelName === LAPIS_MODEL && !(await modelNames()).includes(LAPIS_MODEL)) {
-    throw new Error(LAPIS_MISSING);
-  }
+  if (modelName === MODEL) await modelReady();
+  else if (modelName === LAPIS_MODEL) await lapisReady();
   let stored = fields;
   for (const file of media.filter(file => Object.values(fields).some(value => value.includes(file.filename)))) {
     const name = await store(file);

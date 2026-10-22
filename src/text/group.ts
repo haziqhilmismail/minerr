@@ -6,6 +6,7 @@ const CONJUNCTIVE = new Set(['て', 'で', 'ば']);
 const TE = /^[てで]$/;
 export const JAPANESE = /[぀-ヿ一-鿿]/;
 const KANJI = /[一-鿿々]/;
+export const hasKanji = (text: string): boolean => KANJI.test(text);
 
 // A piece of the parsed text. A content word also has its dictionary form, and a word with kanji has its reading in hiragana.
 // entry is the dictionary entry of the word (src/text/entry.ts), when one entry fits.

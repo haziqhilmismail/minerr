@@ -1,5 +1,6 @@
-// The Lapis note type (https://github.com/donkuri/lapis, GPL-3.0). Minerr fills the Lapis note type of the user and never
-// changes it; the Install Lapis button downloads the package from the Lapis project. These are the pure parts of its fields.
+// The Lapis note type (https://github.com/donkuri/lapis, GPL-3.0). Minerr fills the Lapis note type of the user and changes only
+// one thing: it adds the ExpressionKanji field and one line of the back template that shows it (withKanjiLine).
+// The Install Lapis button downloads the package from the Lapis project. These are the pure parts of its fields.
 import { toHiragana } from '../text/group.ts';
 import { type Entry, type Frequency, morae, type Pitch, pitchPattern } from '../dictionary/meta.ts';
 
@@ -11,9 +12,21 @@ export const LAPIS_SAMPLE_EXPRESSION = '十中八九';
 export const LAPIS_FIELDS = [
   'Expression', 'ExpressionFurigana', 'ExpressionReading', 'ExpressionAudio', 'SelectionText', 'MainDefinition', 'DefinitionPicture',
   'Sentence', 'SentenceFurigana', 'SentenceAudio', 'Picture', 'Glossary', 'Hint', 'IsWordAndSentenceCard', 'IsClickCard',
-  'IsSentenceCard', 'IsAudioCard', 'PitchPosition', 'PitchCategories', 'Frequency', 'FreqSort', 'MiscInfo',
+  'IsSentenceCard', 'IsAudioCard', 'PitchPosition', 'PitchCategories', 'Frequency', 'FreqSort', 'MiscInfo', 'ExpressionKanji',
 ] as const;
 export type LapisField = (typeof LAPIS_FIELDS)[number];
+
+// The field that Minerr adds to Lapis: the kanji spelling of a word in kana (可愛い for かわいい), else empty.
+export const KANJI_FIELD = 'ExpressionKanji';
+const VOCAB_LINE = /([ \t]*)<div class="vocab">\{\{Expression\}\}<\/div>/;
+const KANJI_LINE = `{{#${KANJI_FIELD}}}<div class="info">{{${KANJI_FIELD}}}</div>{{/${KANJI_FIELD}}}`;
+
+// The back template with the kanji spelling on the line under the word, in the size of the Lapis info line. null if the template
+// shows the field already, or has no word line (a template that the user changed): then Minerr only adds the field.
+export function withKanjiLine(back: string): string | null {
+  if (back.includes(`{{${KANJI_FIELD}}}`) || !VOCAB_LINE.test(back)) return null;
+  return back.replace(VOCAB_LINE, `$&\n$1${KANJI_LINE}`);
+}
 
 const KANJI_RUN = /[一-鿿々〆ヶ]+|[^一-鿿々〆ヶ]+/g;
 const KANJI = /^[一-鿿々〆ヶ]/;

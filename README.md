@@ -761,7 +761,7 @@ If the clipboard has the same text as the last paste, the page adds nothing. Min
 
 ## Lapis note type
 
-Lapis is the default note type. It is the note type of the [mining guide of learnjapanese.moe](https://learnjapanese.moe/mining/). [Lapis](https://github.com/donkuri/lapis) is a separate project with the GPL-3.0 license. Minerr does not contain the Lapis templates. Minerr fills the fields of the Lapis note type in your Anki, and does not change the note type.
+Lapis is the default note type. It is the note type of the [mining guide of learnjapanese.moe](https://learnjapanese.moe/mining/). [Lapis](https://github.com/donkuri/lapis) is a separate project with the GPL-3.0 license. Minerr does not contain the Lapis templates. Minerr fills the fields of the Lapis note type in your Anki. It changes the note type only to add the `ExpressionKanji` field. See [The kanji spelling](#the-kanji-spelling).
 
 If you selected a different note type before this version, Minerr keeps your selection.
 
@@ -800,8 +800,23 @@ Minerr fills the fields as the Yomitan setup of the [Lapis README](https://githu
 | `Frequency` | The frequency of the word in each frequency dictionary, as a list. |
 | `FreqSort` | The harmonic mean of the frequency ranks, as Yomitan `{frequency-harmonic-rank}`. It is `9999999` if no dictionary gives a rank. Sort new cards by this field. |
 | `MiscInfo` | The title and the address of the page. |
+| `ExpressionKanji` | The kanji spelling of a word in kana, for example 可愛い for かわいい. Empty for a word with kanji. Minerr adds this field. See [The kanji spelling](#the-kanji-spelling). |
 
 The **Word field** in **Known words** is `Expression` for Lapis.
+
+### The kanji spelling
+
+A word in kana, for example かわいい, often has a kanji spelling in the dictionary, for example 可愛い. The card keeps the word as it is on the page in `Expression`, because the known words come from that field. The kanji spelling goes to the `ExpressionKanji` field.
+
+Lapis has no such field. When you add the first card to Lapis, Minerr adds the `ExpressionKanji` field at the end of the fields of Lapis. If the back template has the line `<div class="vocab">{{Expression}}</div>`, Minerr also adds this line under it:
+
+```
+{{#ExpressionKanji}}<div class="info">{{ExpressionKanji}}</div>{{/ExpressionKanji}}
+```
+
+The back of the card then shows the kanji spelling under the word, only when the field is not empty. Minerr does each change one time. If the field or the line is already there, Minerr does not add it again. If the back template has no such line, Minerr only adds the field. Minerr changes nothing else in Lapis.
+
+If an Anki Browse, Add, or Edit window is open at that time, Anki does not let Minerr change the note type, and the card is not added. Close the window, then add the card again.
 
 ## Word audio
 
@@ -863,6 +878,7 @@ Minerr replaces each marker when it adds a card:
 | --- | --- |
 | `{word}` | The dictionary form of the word, for example 食べる. |
 | `{reading}` | The reading from the dictionary, for example たべる. |
+| `{kanji}` | The kanji spelling of a word in kana, from its dictionary entry, for example 可愛い for かわいい. It is empty for a word with kanji, and for a word whose entry has no kanji. |
 | `{furigana}` | The word with its reading in the furigana syntax of Anki, for example `食べる[たべる]`. Use it with `{{furigana:Field}}` in the card template. |
 | `{sentence}` | The sentence from the page. The word is in `<b>`. |
 | `{definition}` | The tags and the definitions, as in the `Definition` field of the classic note type. |
