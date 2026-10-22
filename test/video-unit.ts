@@ -36,8 +36,10 @@ test('keyName names keys as the key table writes them, with Alt from the code', 
   ], ['d', 'shift+d', 'ArrowLeft', 'alt+o', 'alt+=', 'alt+-', '.', '>', 'shift+w']);
   assert.equal(videoKey({ key: 'ArrowRight', code: 'ArrowRight', altKey: false, shiftKey: false })?.action, 'next');
   const action = (key: string, code: string, shiftKey = false) => videoKey({ key, code, altKey: false, shiftKey })?.action;
-  assert.deepEqual([action('a', 'KeyA'), action('s', 'KeyS'), action('d', 'KeyD'), action('ArrowUp', 'ArrowUp'), action('ArrowUp', 'ArrowUp', true)],
-    ['previous', 'replay', 'next', 'obscure', 'second'], 'the Migaku keys: A, S, D, and the up arrow');
+  assert.deepEqual([action('a', 'KeyA'), action('s', 'KeyS'), action('d', 'KeyD'), action('w', 'KeyW'), action('W', 'KeyW', true)],
+    ['previous', 'replay', 'next', 'obscure', 'second'], 'the Migaku keys: A, S, D, W');
+  assert.deepEqual([action('ArrowUp', 'ArrowUp'), action('ArrowDown', 'ArrowDown'), action('ArrowUp', 'ArrowUp', true)], [undefined, undefined, undefined],
+    'the up and down arrows go to the player, for the volume');
   assert.equal(videoKey({ key: 'a', code: 'KeyA', altKey: true, shiftKey: false })?.action, 'back5');
 });
 

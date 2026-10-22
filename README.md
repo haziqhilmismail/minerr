@@ -590,7 +590,7 @@ A play mode pauses the video on its own. Open the options page, go to **Video**,
 | **Pause after each line** | At the end of each line. The line stays on the screen. |
 | **Pause after i+1 lines** | At the end of each line with exactly one unknown word. |
 
-The play modes need subtitles with times. Press `↓` or `S` to hear the line again. Press `→` or `D` to go to the next line.
+The play modes need subtitles with times. Press `S` to hear the line again. Press `→` or `D` to go to the next line.
 
 More settings in **Video**:
 
@@ -679,7 +679,7 @@ These keys work on a video with the Minerr subtitle overlay: on YouTube, in the 
 | --- | --- | --- |
 | `→` or `D` | Go to the next line. | Needs subtitles with times. |
 | `←` or `A` | Go to the previous line. If a word popup is open, `A` adds the card of the word. | Needs subtitles with times. |
-| `↓` or `S` | Play the current line again. | Needs subtitles with times. |
+| `S` | Play the current line again. | Needs subtitles with times. |
 | `Alt+A` | Go back 5 seconds. | |
 | `Alt+D` | Go forward 5 seconds. | |
 | `C` | Copy the current line. | |
@@ -692,8 +692,8 @@ These keys work on a video with the Minerr subtitle overlay: on YouTube, in the 
 | `Alt+I` | Show the subtitles 0.1 seconds earlier. | Needs subtitles with times. |
 | `Alt+=` | Make the subtitles larger. | |
 | `Alt+-` | Make the subtitles smaller. | |
-| `Shift+W` or `Shift+↑` | Show or hide the second subtitle track. | Needs subtitles with times. |
-| `W` or `↑` | Blur or hide the subtitles until you move the mouse onto them or pause, or show them again. | |
+| `Shift+W` | Show or hide the second subtitle track. | Needs subtitles with times. |
+| `W` | Blur or hide the subtitles until you move the mouse onto them or pause, or show them again. | |
 
 Subtitles with times come from WhisperX, from a subtitle file, or from the YouTube subtitles that the Minerr server downloads. The YouTube captions that Minerr copies from the player have no times. With these captions, a key that needs times shows a hint, and YouTube gets the key.
 

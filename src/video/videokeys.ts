@@ -1,10 +1,11 @@
 // The keys of the subtitle overlay, from Migaku's defaults. A is also the add key of the popup: with a popup open, the popup gets it.
+// The up and down arrows stay with the video player, which changes the volume with them (user choice, 2026-10-22).
 // timed: the key needs lines with times, so it does nothing on mirrored captions.
 
 export const VIDEO_KEYS = [
   { action: 'next', keys: ['ArrowRight', 'd'], label: 'Go to the next line', timed: true },
   { action: 'previous', keys: ['ArrowLeft', 'a'], label: 'Go to the previous line', timed: true },
-  { action: 'replay', keys: ['ArrowDown', 's'], label: 'Play the current line again', timed: true },
+  { action: 'replay', keys: ['s'], label: 'Play the current line again', timed: true },
   { action: 'back5', keys: ['alt+a'], label: 'Go back 5 seconds', timed: false },
   { action: 'forward5', keys: ['alt+d'], label: 'Go forward 5 seconds', timed: false },
   { action: 'copy', keys: ['c'], label: 'Copy the current line', timed: false },
@@ -17,8 +18,8 @@ export const VIDEO_KEYS = [
   { action: 'offsetDown', keys: ['alt+i'], label: 'Show the subtitles 0.1 seconds earlier', timed: true },
   { action: 'bigger', keys: ['alt+='], label: 'Make the subtitles larger', timed: false },
   { action: 'smaller', keys: ['alt+-'], label: 'Make the subtitles smaller', timed: false },
-  { action: 'second', keys: ['shift+w', 'shift+ArrowUp'], label: 'Show or hide the second subtitle track', timed: true },
-  { action: 'obscure', keys: ['w', 'ArrowUp'], label: 'Blur or hide the subtitles until you hover them or pause, or show them again', timed: false },
+  { action: 'second', keys: ['shift+w'], label: 'Show or hide the second subtitle track', timed: true },
+  { action: 'obscure', keys: ['w'], label: 'Blur or hide the subtitles until you hover them or pause, or show them again', timed: false },
 ] as const;
 
 export type VideoKey = (typeof VIDEO_KEYS)[number];
