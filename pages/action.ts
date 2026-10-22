@@ -217,29 +217,37 @@ for (const button of sourceButtons) {
 // The browser shortcut of a command, as the user set it on the Chrome shortcuts page.
 const shortcuts = new Map((await chrome.commands.getAll()).map(({ name, shortcut }) => [name, shortcut]));
 const shortcutOf = (command: string) => `Shortcut: ${shortcuts.get(command) || 'not set'}.`;
-byId('enabled-hint', HTMLElement).textContent = `In all tabs. ${shortcutOf('toggle-minerr')}`;
+const enabledHint = `In all tabs. ${shortcutOf('toggle-minerr')}`;
+byId('enabled-hint', HTMLElement).textContent = enabledHint;
+byId('power', HTMLLabelElement).title = enabledHint;
 const enabled = byId('enabled', HTMLInputElement);
+const siteCard = byId('site-toggle', HTMLElement);
 enabled.addEventListener('change', () => minerrEnabled.set(enabled.checked));
-minerrEnabled.watch(on => { enabled.checked = on; });
+minerrEnabled.watch(on => {
+  enabled.checked = on;
+  byId('enabled-state', HTMLElement).textContent = on ? 'On' : 'Off';
+  byId('video-state', HTMLElement).textContent = on ? 'On' : 'Off';
+  byId('minerr-off', HTMLElement).hidden = on;
+  siteCard.classList.toggle('off', !on);
+});
 
 const plusOne = byId('iplusone', HTMLInputElement);
 plusOne.checked = await iPlusOne.get();
 plusOne.addEventListener('change', () => iPlusOne.set(plusOne.checked));
 if (siteHost) {
   const siteSwitch = byId('site', HTMLInputElement);
-  const show = () => {
-    siteSwitch.checked = pageTextOn;
-    byId('site-state', HTMLElement).textContent = pageTextOn ? 'On' : 'Off';
-  };
-  byId('site-name', HTMLElement).textContent = `${siteOf(siteHost)}. ${shortcutOf('toggle-site')} Video subtitles work without it.`;
-  show();
+  byId('site-name', HTMLElement).textContent = siteOf(siteHost);
+  // content.ts shows the subtitle overlay by itself on these sites; other pages need the Subtitles button.
+  byId('video-hint', HTMLElement).textContent = siteIsOn(['youtube.com', 'netflix.com'], siteHost) ? 'Always on.' : 'Use Subtitles below.';
+  byId('site-hint', HTMLElement).textContent = `Titles, comments, and other text. ${shortcutOf('toggle-site')}`;
+  siteSwitch.checked = pageTextOn;
   siteSwitch.addEventListener('change', async () => {
     pageTextOn = await toggleSiteOf(siteHost);
-    show();
+    siteSwitch.checked = pageTextOn;
     // The tab parses its text after the switch, so the score comes a moment later.
     setTimeout(showTabStats, 1500);
   });
-  byId('site-toggle', HTMLElement).hidden = false;
+  siteCard.hidden = false;
 }
 const PAGES = { player: 'pages/player.html', reader: 'pages/reader.html', paste: 'pages/reader.html?paste', words: 'pages/words.html' };
 for (const [id, page] of Object.entries(PAGES)) {

@@ -7,6 +7,7 @@ import { at } from '../src/shared/guards.ts';
 import { launch, listen, makeDictionary, runCommand, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-reading-'));
+const out = process.env.OUT_DIR ?? work;
 useCjkFonts(work);
 
 const terms = makeDictionary(join(work, 'terms.zip'), 'Fixture', [
@@ -158,14 +159,32 @@ try {
   await action.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${tabId}`);
   // The menu shows the site switch only after it read the tab and the settings.
   await action.locator('#site-toggle').waitFor();
-  assert.equal(await action.innerText('#site-toggle'), 'Page text on this site\n127.0.0.1. Shortcut: Alt+Shift+D. Video subtitles work without it.\nOFF');
+  assert.equal(await action.innerText('#site-toggle'),
+    'On 127.0.0.1\nVideo subtitles\nUse Subtitles below.\nON\nあ\nWords on the page\nTitles, comments, and other text. Shortcut: Alt+Shift+D.');
   assert.equal(await action.isChecked('#site'), false);
+  assert.equal(await action.innerText('header'), 'Minerr\nOn\nOptions');
   assert.equal(await action.innerText('#enabled-hint'), 'In all tabs. Shortcut: Alt+Shift+M.', 'the toolbar menu shows the key that Chrome has now');
-  await action.click('#site-toggle');
+  assert.equal(await action.getAttribute('#power', 'title'), 'In all tabs. Shortcut: Alt+Shift+M.');
+  await action.setViewportSize({ width: 340, height: 200 });
+  await action.screenshot({ path: join(out, 'action-site-light.png'), fullPage: true });
+  await action.click('#site');
   await tab.waitForSelector('#line .ml-word[data-ml-lemma="猫"]');
   await other.waitForSelector('#line .ml-word[data-ml-lemma="猫"]');
   assert.equal(await action.isChecked('#site'), true);
-  assert.equal(await action.innerText('#site-state'), 'ON');
+  await action.emulateMedia({ colorScheme: 'dark' });
+  await action.screenshot({ path: join(out, 'action-site-dark.png'), fullPage: true });
+  await action.click('#enabled');
+  await action.locator('#minerr-off').waitFor();
+  assert.equal(await action.innerText('header'), 'Minerr\nOff\nOptions');
+  assert.equal(await action.innerText('#site-toggle'),
+    'On 127.0.0.1\n\nMinerr is off in all tabs.\n\nVideo subtitles\nUse Subtitles below.\nOFF\nあ\nWords on the page\nTitles, comments, and other text. Shortcut: Alt+Shift+D.');
+  assert.equal(await action.isChecked('#site'), true, 'Minerr off keeps the page text switch of the site');
+  await action.screenshot({ path: join(out, 'action-off-dark.png'), fullPage: true });
+  await action.emulateMedia({ colorScheme: 'light' });
+  await action.screenshot({ path: join(out, 'action-off-light.png'), fullPage: true });
+  await action.click('#enabled');
+  await action.locator('#minerr-off').waitFor({ state: 'hidden' });
+  assert.equal(await action.innerText('#video-state'), 'ON');
   assert.deepEqual(await options.evaluate(() => chrome.storage.local.get('enabledSites')), { enabledSites: ['127.0.0.1'] });
   await runCommand(worker, tab, 'toggle-site');
   await toast.filter({ hasText: 'Minerr page text off for 127.0.0.1.' }).waitFor();

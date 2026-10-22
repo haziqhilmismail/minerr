@@ -312,6 +312,13 @@ try {
   assert.equal(await action.textContent('[aria-pressed="true"]'), 'YouTube captions');
   assert.ok(await action.locator('[data-source="whisperx"]').isDisabled());
   await shot(action, 'action-youtube-light.png', { fullPage: true });
+  assert.equal(await action.innerText('#site-name'), 'youtube.com');
+  assert.equal(await action.innerText('#video-hint'), 'Always on.');
+  assert.equal(await action.innerText('#video-state'), 'ON');
+  // No transitions, so the shot does not catch the buttons between the two themes.
+  await action.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+  await shot(action, 'action-youtube-dark.png', { fullPage: true });
+  await action.emulateMedia({ colorScheme: 'light', reducedMotion: null });
 
   await action.click('#generate');
   await action.locator('#job', { hasText: 'Transcribing… 50%' }).waitFor({ timeout: 10000 });

@@ -115,7 +115,7 @@ On the options page, click **Check connection** in the **Anki** section. The pag
 Minerr reads the page text only on the sites that you turn on:
 
 1. Open a page with Japanese text.
-2. Press `Alt+Shift+D`. Or click the Minerr button in the Chrome toolbar, then click the large **Page text on this site** switch.
+2. Press `Alt+Shift+D`. Or click the Minerr button in the Chrome toolbar, then turn on **Words on the page**.
 
 Each unknown word of the page then gets an underline. The other words get their underline when the mouse is on them. The Minerr subtitle overlay and the pages of Minerr do not need the switch. See [Turn the page text on or off for a site](#turn-the-page-text-on-or-off-for-a-site).
 
@@ -182,7 +182,7 @@ Minerr sets each word that the selection touches to that status. A short message
 
 - To close the popup, press `Esc`, click outside it, or click **✕** in its top-right corner.
 - To turn Minerr off in all tabs, click the power button in the popup, or press `Alt+Shift+M`. The underlines and the popup stop at once.
-- To turn Minerr on again, press `Alt+Shift+M`, or click the Minerr button in the Chrome toolbar and turn on **Minerr on**.
+- To turn Minerr on again, press `Alt+Shift+M`, or click the Minerr button in the Chrome toolbar and turn on the switch next to **Minerr** at the top. The switch shows **On**.
 
 When Minerr is off, YouTube shows its own captions again, and the Minerr subtitle overlay is hidden.
 
@@ -201,7 +201,7 @@ Chrome runs these keys for Minerr. Thus a page cannot take them. The table shows
 | No key | Open the Minerr toolbar menu. |
 | No key | Turn the sentence highlight on or off. `Alt+Shift+S` on a page also does this. |
 
-If Chrome, the system, or another extension already uses a key, Minerr does not get that key. The options page shows the keys that Minerr has now, in **Colors and shortcuts**. A key that Minerr does not have shows **Not set**. The toolbar menu also shows the key of **Minerr on** and of the page text switch.
+If Chrome, the system, or another extension already uses a key, Minerr does not get that key. The options page shows the keys that Minerr has now, in **Colors and shortcuts**. A key that Minerr does not have shows **Not set**. The toolbar menu also shows the key of the Minerr switch and of the **Words on the page** switch.
 
 #### Change a shortcut
 
@@ -217,7 +217,7 @@ The new key works at once in all tabs.
 
 The page text is off on each site until you turn it on. When it is off, Minerr does not parse the page text, and it shows no underlines and no popup for it.
 
-These parts of Minerr do not need the switch. They work while **Minerr on** is on:
+These parts of Minerr do not need the switch. They work while Minerr is on:
 
 - The Minerr subtitle overlay on YouTube and on other video sites, with its line list. Its words get underlines, the popup, the keys, the i+1 highlight, and cards.
 - The pages of Minerr: the player, the reader, the paste page, and the word browser.
@@ -225,7 +225,7 @@ These parts of Minerr do not need the switch. They work while **Minerr on** is o
 To turn the page text on for a site:
 
 - Press `Alt+Shift+D` on a page of the site. A short message at the bottom of the page confirms the change, for example `Minerr page text on for ja.wikipedia.org.`
-- Or click the Minerr button in the Chrome toolbar, then click the **Page text on this site** switch at the top of the menu. The switch fills with color and shows **On**.
+- Or click the Minerr button in the Chrome toolbar, then turn on **Words on the page** in the card for the site, for example **On ja.wikipedia.org**. The **Video subtitles** row of the card shows that subtitles work without this switch.
 
 A site includes its subdomains, and Minerr ignores `www.`. For example, if you turn the page text on at `www.youtube.com`, it is on for all of `youtube.com`, also `m.youtube.com`.
 
