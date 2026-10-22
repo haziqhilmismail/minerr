@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Page, PageScreenshotOptions } from 'playwright';
 import { at } from '../src/shared/guards.ts';
-import { START_LIMIT_MS } from '../src/video/server-status.ts';
+import { CLICK_KEY, START_LIMIT_MS } from '../src/video/server-status.ts';
 import { launch, listen, makeDictionary, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-subs-'));
@@ -64,7 +64,6 @@ const JSON3 = JSON.stringify({ events: [
 const whisperRequests: string[] = [];
 let cached = false;
 let jobPolls = 0;
-// Another program on the port of the server.
 let otherProgram = false;
 const whisper = createServer((req, res) => {
   if (otherProgram) {
@@ -641,8 +640,6 @@ try {
   await elsewhere.locator('#elsewhere:not([hidden])').waitFor();
   assert.ok(await elsewhere.locator('#controls').isHidden());
 
-  // The Start button of a Windows user: the native messaging host com.minerr.whisperx opens the launcher. Chromium on Linux reads
-  // user-level hosts from <user data dir>/NativeMessagingHosts, so the test registers a host script that brings the mock server back.
   const started = join(work, 'started');
   const hostScript = join(work, 'host.sh');
   writeFileSync(hostScript, `#!/bin/sh\ntouch "${started}"\n`, { mode: 0o755 });
@@ -660,6 +657,7 @@ try {
   await extensions.waitForURL(`chrome://extensions/?id=${extensionId}`);
   console.log('no host: the popup asks for one double-click of the launcher, and Show the Minerr folder opens the page of Minerr in chrome://extensions');
 
+  // Chromium on Linux reads user-level hosts from <user data dir>/NativeMessagingHosts.
   mkdirSync(join(work, 'profile', 'NativeMessagingHosts'), { recursive: true });
   writeFileSync(join(work, 'profile', 'NativeMessagingHosts', 'com.minerr.whisperx.json'), JSON.stringify({
     name: 'com.minerr.whisperx', description: 'Test host', path: hostScript, type: 'stdio', allowed_origins: [`chrome-extension://${extensionId}/`],
@@ -672,7 +670,7 @@ try {
   assert.ok(existsSync(started), 'Chrome ran the host');
   await win.reload();
   await win.locator('#server', { hasText: 'Starting the WhisperX server…' }).waitFor();
-  await win.evaluate(limit => chrome.storage.session.set({ serverStart: Date.now() - limit - 1000 }), START_LIMIT_MS);
+  await win.evaluate(([key, limit]) => chrome.storage.session.set({ [key]: Date.now() - limit - 1000 }), [CLICK_KEY, START_LIMIT_MS] as const);
   await win.reload();
   await win.locator('#server', { hasText: 'did not answer' }).waitFor();
   assert.equal(await win.textContent('#server'), 'The WhisperX server did not answer in 90 seconds. Look at the WhisperX window.');

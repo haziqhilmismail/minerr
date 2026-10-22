@@ -7,14 +7,13 @@ import { applyTheme } from '../src/shared/theme.ts';
 import { iPlusOne, minerrEnabled } from '../src/shared/settings.ts';
 import { enabledSites, siteIsOn, siteOf, toggleSiteOf } from '../src/page-text/site.ts';
 import { type JobStatus, serverHint } from '../src/video/whisper.ts';
-import { type HealthCheck, isNoHostError, type ServerFacts, type ServerStatus, serverStatus, START_LIMIT_MS } from '../src/video/server-status.ts';
+import { CLICK_KEY, type HealthCheck, isNoHostError, type ServerFacts, type ServerStatus, serverStatus, START_LIMIT_MS } from '../src/video/server-status.ts';
 import { at } from '../src/shared/guards.ts';
 
 applyTheme();
 
 const POLL_MS = 2000;
 const HOST = 'com.minerr.whisperx';
-const CLICK_KEY = 'serverStart';
 const HINT: Record<Source, string> = {
   youtube: 'Minerr shows the Japanese captions of YouTube. If the overlay stays empty, turn on CC in the YouTube player.',
   whisperx: 'The subtitles come from the WhisperX server on this computer.',
@@ -66,7 +65,6 @@ function showState(snapshot: Snapshot): void {
   else showMessage(`${JOB_TEXT[status.state]}${status.state === 'transcribing' ? ` ${status.progress}%` : ''}`, status.state === 'done' ? 'ok' : '');
 }
 
-// On Windows the popup starts the server through the native messaging host; elsewhere it shows the command.
 const windows = navigator.platform.startsWith('Win');
 const serverStart = byId('server-start', HTMLElement);
 const setup = byId('setup', HTMLElement);
@@ -78,7 +76,7 @@ const VIEW: { [S in ServerStatus['state']]: View<S> } = {
   running: { className: 'ok', start: false, folder: false, text: ({ health }) => `WhisperX server is running: ${health.model} on the ${health.device.toUpperCase()}.` },
   off: { className: 'error', start: true, folder: false, text: () => (windows ? 'The WhisperX server is not running.' : serverHint(navigator.platform)) },
   broken: { className: 'error', start: false, folder: false, text: ({ error }) => error },
-  starting: { className: '', start: false, folder: false, text: () => 'Starting the WhisperX server… The first start installs its packages, which takes some minutes.' },
+  starting: { className: '', start: false, folder: false, text: () => 'Starting the WhisperX server…' },
   setup: { className: 'error', start: false, folder: true, text: () => 'To set up the Start button, double-click "Start WhisperX server.cmd" in the Minerr folder one time.' },
   failed: { className: 'error', start: true, folder: false, text: () => `The WhisperX server did not answer in ${START_LIMIT_MS / 1000} seconds. Look at the WhisperX window.` },
 };
@@ -98,10 +96,10 @@ function show<S extends ServerStatus['state']>(status: StatusOf<S>): void {
 const showServer = (): void => show(serverStatus({ check, click }, Date.now()));
 
 async function checkServer(): Promise<void> {
-  check = await call({ type: 'whisperHealth' }).then((health): HealthCheck => (health ? { kind: 'ok', health } : { kind: 'off' }),
-    (error: unknown): HealthCheck => ({ kind: 'broken', error: messageOf(error) }));
+  check = await call({ type: 'whisperHealth' }).then((health): HealthCheck => (health ? { state: 'running', health } : { state: 'off' }),
+    (error: unknown): HealthCheck => ({ state: 'broken', error: messageOf(error) }));
   // The start worked, so a popup that opens after the server stops shows that it is not running, not a failed start.
-  if (check.kind === 'ok' && click !== null) {
+  if (check.state === 'running' && click !== null) {
     click = null;
     chrome.storage.session.remove(CLICK_KEY);
   }

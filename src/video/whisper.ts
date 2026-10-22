@@ -96,7 +96,6 @@ function toJob(value: unknown): Job {
   }
 }
 
-// The health of the server, or null when nothing answers on its port. Any other answer throws its error.
 export async function health(): Promise<Health | null> {
   const response = await fetch(`${SERVER}/health`).catch(() => null);
   if (!response) return null;

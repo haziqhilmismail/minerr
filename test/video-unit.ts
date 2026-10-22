@@ -194,26 +194,25 @@ test('serverHint tells a Windows user to use the Start button of the popup or th
 });
 
 test('serverStatus: a click on Start shows a start until the limit and a failed start after it, also in a popup that opens later', () => {
-  const health = { model: 'large-v3-turbo', device: 'cpu' };
-  const ok = { kind: 'ok', health } as const;
-  const off = { kind: 'off' } as const;
+  const running = { state: 'running', health: { model: 'large-v3-turbo', device: 'cpu' } } as const;
+  const off = { state: 'off' } as const;
   assert.deepEqual(serverStatus({ check: undefined, click: null }, 1000), { state: 'checking' });
   assert.deepEqual(serverStatus({ check: off, click: null }, 1000), { state: 'off' });
-  assert.deepEqual(serverStatus({ check: ok, click: null }, 1000), { state: 'running', health });
+  assert.deepEqual(serverStatus({ check: running, click: null }, 1000), { state: 'running', health: { model: 'large-v3-turbo', device: 'cpu' } });
   assert.deepEqual(serverStatus({ check: off, click: 1000 }, 90_999), { state: 'starting' });
   assert.deepEqual(serverStatus({ check: off, click: 1000 }, 91_000), { state: 'failed' });
-  assert.deepEqual(serverStatus({ check: ok, click: 1000 }, 91_000), { state: 'running', health });
+  assert.deepEqual(serverStatus({ check: running, click: 1000 }, 91_000), { state: 'running', health: { model: 'large-v3-turbo', device: 'cpu' } });
   assert.deepEqual(serverStatus({ check: undefined, click: 1000 }, 2000), { state: 'starting' }, 'a popup that opens within the limit');
   assert.deepEqual(serverStatus({ check: undefined, click: 1000 }, 120_000), { state: 'failed' }, 'a popup that opens after the limit, before its first check');
   assert.deepEqual(serverStatus({ check: off, click: 1000 }, 120_000), { state: 'failed' }, 'a popup that opens after the limit, after its first check');
   assert.deepEqual(serverStatus({ check: off, click: 'no host' }, 1000), { state: 'setup' });
-  assert.deepEqual(serverStatus({ check: ok, click: 'no host' }, 1000), { state: 'running', health });
+  assert.deepEqual(serverStatus({ check: running, click: 'no host' }, 1000), { state: 'running', health: { model: 'large-v3-turbo', device: 'cpu' } });
 });
 
 test('serverStatus: an answer on the port that is not the health shows its error, also during a start', () => {
-  const broken = { kind: 'broken', error: 'The WhisperX server answered 404.' } as const;
+  const broken = { state: 'broken', error: 'The WhisperX server answered 404.' } as const;
   assert.deepEqual(serverStatus({ check: broken, click: null }, 1000), { state: 'broken', error: 'The WhisperX server answered 404.' });
-  assert.deepEqual(serverStatus({ check: broken, click: 1000 }, 120_000), { state: 'broken', error: 'The WhisperX server answered 404.' });
+  assert.deepEqual(serverStatus({ check: broken, click: 1000 }, 2000), { state: 'broken', error: 'The WhisperX server answered 404.' });
 });
 
 test('isNoHostError knows the two errors of Chrome for a missing host; a host that exits is not one', () => {

@@ -399,7 +399,7 @@ On Linux, run this command in the Minerr folder. Keep the terminal open while yo
 uv run server/whisper_server.py
 ```
 
-The first start installs about 2.6 GB of packages, which takes more than 90 seconds. The first job also downloads the model, about 1.6 GB.
+The first start installs about 2.6 GB of packages. The first job also downloads the model, about 1.6 GB.
 
 Chrome on Windows connects to the server in WSL at `http://127.0.0.1:8766`, because WSL forwards localhost ports to Windows.
 
