@@ -4,12 +4,12 @@ export type ServerStatus =
   | { state: 'checking' }
   | { state: 'running'; health: Health }
   | { state: 'off' }
-  | { state: 'broken'; error: string }
+  | { state: 'error'; error: string }
   | { state: 'starting' }
   | { state: 'setup' }
   | { state: 'failed' };
 
-export type HealthCheck = Extract<ServerStatus, { state: 'running' | 'off' | 'broken' }>;
+export type HealthCheck = Extract<ServerStatus, { state: 'running' | 'off' | 'error' }>;
 
 // click is the time of the last click on Start the server until a popup sees the server answer, or 'no host' when Chrome
 // had no host for it. chrome.storage.session keeps the time, so a popup that opens again later shows the start.
@@ -20,8 +20,8 @@ export interface ServerFacts {
 
 export const CLICK_KEY = 'serverClick';
 
-// A start from the button follows the setup double-click, which installed the packages, so it takes seconds. The rest is
-// a margin for a cold WSL.
+// A start from the button usually follows the setup double-click, which installed the packages, so it takes seconds. The
+// rest is a margin for a cold WSL. A start that installs packages shows as failed until the server answers.
 // ponytail: a server that answered and stopped while no popup was open shows as failed on the next open, because only a
 // popup forgets the click.
 export const START_LIMIT_MS = 90_000;
@@ -33,8 +33,7 @@ export function serverStatus({ check, click }: ServerFacts, now: number): Server
   return check ?? { state: 'checking' };
 }
 
-// The host never replies. Of the errors that Chrome can give, only these two say that the host is missing.
-// ponytail: Chrome gives no error code, only these messages. If a release rewords them, a start without a host shows
-// starting until START_LIMIT_MS, then failed.
+// The host never replies. Chrome gives no error code, and of its messages only these two say that the host is missing.
+// If a release rewords them, a start without a host shows starting until START_LIMIT_MS, then failed.
 export const isNoHostError = (error: string): boolean =>
   error === 'Specified native messaging host not found.' || error === 'Access to the specified native messaging host is forbidden.';

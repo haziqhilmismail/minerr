@@ -209,13 +209,13 @@ test('serverStatus: a click on Start shows a start until the limit and a failed 
   assert.deepEqual(serverStatus({ check: running, click: 'no host' }, 1000), { state: 'running', health: { model: 'large-v3-turbo', device: 'cpu' } });
 });
 
-test('serverStatus: an answer on the port that is not the health shows its error, also during a start', () => {
-  const broken = { state: 'broken', error: 'The WhisperX server answered 404.' } as const;
-  assert.deepEqual(serverStatus({ check: broken, click: null }, 1000), { state: 'broken', error: 'The WhisperX server answered 404.' });
-  assert.deepEqual(serverStatus({ check: broken, click: 1000 }, 2000), { state: 'broken', error: 'The WhisperX server answered 404.' });
+test('serverStatus: a health check that ends in an error shows the error, also during a start', () => {
+  const error = { state: 'error', error: 'The WhisperX server answered 404.' } as const;
+  assert.deepEqual(serverStatus({ check: error, click: null }, 1000), { state: 'error', error: 'The WhisperX server answered 404.' });
+  assert.deepEqual(serverStatus({ check: error, click: 1000 }, 2000), { state: 'error', error: 'The WhisperX server answered 404.' });
 });
 
 test('isNoHostError knows the two errors of Chrome for a missing host; a host that exits is not one', () => {
   assert.deepEqual(['Specified native messaging host not found.', 'Access to the specified native messaging host is forbidden.',
-    'Error when communicating with the native messaging host.', ''].map(isNoHostError), [true, true, false, false]);
+    'Native host has exited.', 'Error when communicating with the native messaging host.', ''].map(isNoHostError), [true, true, false, false, false]);
 });

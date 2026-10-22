@@ -31,7 +31,7 @@ class Register(unittest.TestCase):
         self.local = local.name
         self.commands = []
         self.reg_error = None
-        windows = {self.local: r'C:\Users\haziq\AppData\Local', EXTENSION: r'C:\Users\haziq\minerr'}
+        windows_paths = {self.local: r'C:\Users\haziq\AppData\Local', EXTENSION: r'C:\Users\haziq\minerr'}
 
         def run(args, check, capture_output, text=False):
             self.commands.append(args)
@@ -39,8 +39,8 @@ class Register(unittest.TestCase):
                 if self.reg_error:
                     raise self.reg_error
                 return subprocess.CompletedProcess(args, 0, '', '')
-            root = next(root for root in windows if args[2].startswith(root))
-            return subprocess.CompletedProcess(args, 0, windows[root] + args[2][len(root):].replace('/', '\\') + '\n', '')
+            root = next(root for root in windows_paths if args[2].startswith(root))
+            return subprocess.CompletedProcess(args, 0, windows_paths[root] + args[2][len(root):].replace('/', '\\') + '\n', '')
         mock.patch.object(chrome_start.subprocess, 'run', run).start()
         mock.patch.object(chrome_start, '__file__', f'{EXTENSION}/server/chrome_start.py').start()
         self.addCleanup(mock.patch.stopall)

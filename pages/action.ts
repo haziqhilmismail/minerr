@@ -75,7 +75,7 @@ const VIEW: { [S in ServerStatus['state']]: View<S> } = {
   checking: { className: '', start: false, folder: false, text: () => 'Checking the WhisperX server…' },
   running: { className: 'ok', start: false, folder: false, text: ({ health }) => `WhisperX server is running: ${health.model} on the ${health.device.toUpperCase()}.` },
   off: { className: 'error', start: true, folder: false, text: () => (windows ? 'The WhisperX server is not running.' : serverHint(navigator.platform)) },
-  broken: { className: 'error', start: false, folder: false, text: ({ error }) => error },
+  error: { className: 'error', start: false, folder: false, text: ({ error }) => error },
   starting: { className: '', start: false, folder: false, text: () => 'Starting the WhisperX server…' },
   setup: { className: 'error', start: false, folder: true, text: () => 'To set up the Start button, double-click "Start WhisperX server.cmd" in the Minerr folder one time.' },
   failed: { className: 'error', start: true, folder: false, text: () => `The WhisperX server did not answer in ${START_LIMIT_MS / 1000} seconds. Look at the WhisperX window.` },
@@ -97,7 +97,7 @@ const showServer = (): void => show(serverStatus({ check, click }, Date.now()));
 
 async function checkServer(): Promise<void> {
   check = await call({ type: 'whisperHealth' }).then((health): HealthCheck => (health ? { state: 'running', health } : { state: 'off' }),
-    (error: unknown): HealthCheck => ({ state: 'broken', error: messageOf(error) }));
+    (error: unknown): HealthCheck => ({ state: 'error', error: messageOf(error) }));
   // The start worked, so a popup that opens after the server stops shows that it is not running, not a failed start.
   if (check.state === 'running' && click !== null) {
     click = null;

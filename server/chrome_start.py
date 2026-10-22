@@ -9,9 +9,9 @@ REGISTRY_KEY = rf'HKCU\Software\Google\Chrome\NativeMessagingHosts\{HOST}'
 
 
 def extension_id(windows_path):
-    """The id of the unpacked extension at windows_path: Chrome hashes the UTF-16 path, with an upper-case drive letter,
-    and writes the first 128 bits of the SHA-256 with the letters a to p. The hash takes the exact spelling of the path
-    that Chrome loaded: a junction, another letter case, or a moved folder gives another id, and Chrome refuses the host."""
+    """Chrome's id for an unpacked extension (GenerateIdForPath in Chromium components/crx_file/id_util.cc). Chrome hashes
+    the exact path that it loaded, so a junction, another letter case in a folder name, or a moved folder gives another
+    id, and then Chrome refuses the host."""
     if len(windows_path) > 1 and windows_path[1] == ':':
         windows_path = windows_path[0].upper() + windows_path[1:]
     digest = hashlib.sha256(windows_path.encode('utf-16-le')).hexdigest()[:32]
