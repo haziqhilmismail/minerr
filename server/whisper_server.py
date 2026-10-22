@@ -93,6 +93,8 @@ def receive(stream, length, filename):
                 out.write(chunk)
                 length -= len(chunk)
         except BaseException:
+            # Windows deletes no file that is open.
+            out.close()
             path.unlink(missing_ok=True)
             raise
     return path, digest.hexdigest()
@@ -116,15 +118,21 @@ class Transcriber:
         return subtitle_segments(result['segments'])
 
 
+# On Windows, os.replace fails while another thread reads the file, so the reads and the writes of the cache take turns.
+cache_lock = threading.Lock()
+
+
 def write_json(path, value):
     """Writes value to path in one step, so a reader never sees half a file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.with_suffix('.tmp').write_text(json.dumps(value, ensure_ascii=False), encoding='utf-8')
-    os.replace(path.with_suffix('.tmp'), path)
+    with cache_lock:
+        path.with_suffix('.tmp').write_text(json.dumps(value, ensure_ascii=False), encoding='utf-8')
+        os.replace(path.with_suffix('.tmp'), path)
 
 
 def read_json(path):
-    return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else None
+    with cache_lock:
+        return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else None
 
 
 def failure(error):
@@ -334,6 +342,11 @@ def handler(jobs, health, port=PORT):
     return Handler
 
 
+class Server(ThreadingHTTPServer):
+    # On Windows, SO_REUSEADDR lets a second server bind a port in use, so a second start would not fail.
+    allow_reuse_address = sys.platform != 'win32'
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--model', default='large-v3-turbo', help='faster-whisper model name (default: %(default)s)')
@@ -343,7 +356,7 @@ def main(argv=None):
     jobs = Jobs(Transcriber(args.model, args.threads, args.batch_size))
     health = {'ok': True, 'model': args.model, 'device': 'cpu', 'compute_type': 'int8'}
     try:
-        server = ThreadingHTTPServer(('127.0.0.1', PORT), handler(jobs, health))
+        server = Server(('127.0.0.1', PORT), handler(jobs, health))
     except OSError as error:
         if error.errno != errno.EADDRINUSE:
             raise
