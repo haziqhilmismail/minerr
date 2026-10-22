@@ -47,10 +47,10 @@ All data stays on your computer, with two exceptions. The extension sends reques
 
 Install Minerr from the Chrome Web Store, or load it unpacked.
 
-- **Chrome Web Store.** Open `https://chromewebstore.google.com/detail/<item id>`, and click **Add to Chrome**. Then go to step 3. The store version does not include the WhisperX add-on. See [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx).
+- **Chrome Web Store.** Minerr comes to the store soon. Until then, load it unpacked. The store version does not include the WhisperX add-on. See [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx).
 - **Load unpacked.** Download `minerr-v<version>.zip` from the [Releases](https://github.com/haziqhilmismail/minerr/releases) page, and unzip it. Then go to step 2. The zip has one folder, `minerr`, and the same zip works on all platforms. To build the extension from the source code, do step 1 first.
 
-<!-- TODO(owner): After the first upload, replace <item id> with the item ID from the Developer Dashboard, and make the address a link (docs/chrome-web-store.md, step 3). -->
+<!-- TODO(owner): When the store listing is live, put its address in the Chrome Web Store item, with the step to click Add to Chrome and then go to step 3 (docs/chrome-web-store.md, step 3). -->
 
 ### 1. Build the extension
 

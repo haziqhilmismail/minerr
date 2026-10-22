@@ -1,4 +1,4 @@
-Download the WhisperX add-on of Minerr here. Minerr itself comes from the Chrome Web Store. See [Get Minerr](#get-minerr).
+Download the WhisperX add-on of Minerr here. To get Minerr itself, see [Get Minerr](#get-minerr).
 
 ## What the WhisperX add-on does
 
@@ -63,11 +63,9 @@ If you move the `minerr-whisperx` folder on Windows, double-click the launcher i
 
 ## Get Minerr
 
-Install Minerr from the Chrome Web Store: `https://chromewebstore.google.com/detail/<item id>`
+Minerr comes to the Chrome Web Store soon. Until then, load it unpacked:
 
-<!-- TODO(owner): After the first upload, replace <item id> with the item ID from the Developer Dashboard, and make the address a link. Do the same in README.md (docs/chrome-web-store.md, step 3). -->
-
-You can also load Minerr unpacked:
+<!-- TODO(owner): When the store listing is live, put its address here and in README.md (docs/chrome-web-store.md, step 3). -->
 
 1. Download `minerr-v<version>.zip` from the assets of this release, and unzip it. The zip has one folder, `minerr`.
 2. Put the `minerr` folder in a place where it can stay. Chrome gives the extension an ID from the folder path. If you move the folder later, Minerr starts again with no data.

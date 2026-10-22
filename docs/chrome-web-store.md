@@ -12,7 +12,7 @@ This guide is for the owner of Minerr. It gives the state of the changes for the
 | A privacy policy. The Privacy practices tab asks for its URL. | Done. `PRIVACY.md`. See [Privacy practices](#4-fill-in-the-privacy-practices-tab). |
 | Texts for a store install. A store install has no Minerr folder, so the popup must not tell the user to open it. | Done. The popup tells a store install to get the WhisperX add-on from GitHub (`src/video/server-status.ts`). |
 | The item ID in `STORE_EXTENSION_ID` in `server/chrome_start.py`. The store gives Minerr a fixed ID, and Chrome refuses the Start button for an ID that the host manifest does not name. | Left. Fill it in after the first upload, then make a new release of the add-on. See [step 3](#3-upload-the-zip-and-fill-in-the-store-listing). |
-| The store address in `README.md` and `docs/release-notes.md`. | Left. Replace `<item id>` after the first upload. |
+| The store address in `README.md` and `docs/release-notes.md`. | Left. Both say that Minerr comes to the store soon. When the store listing is live, put its address there. |
 
 ## 1. Register a developer account
 
@@ -39,7 +39,7 @@ This guide is for the owner of Minerr. It gives the state of the changes for the
 1. In the dashboard, click **Add new item**, then upload `minerr-store-v<version>.zip`. The largest package that the store accepts is 2 GB.
 2. Write down the item ID that the dashboard shows. The ID does not change.
 3. Put the item ID in `STORE_EXTENSION_ID` in `server/chrome_start.py`.
-4. In `README.md` and `docs/release-notes.md`, replace `<item id>` with the item ID, make the store address a link, and remove the TODO comment.
+4. When the store listing is live, put its address in `README.md` and `docs/release-notes.md`, where they say that Minerr comes to the store soon, and remove the TODO comments. Until the review ends, the address shows no page.
 5. Set a higher version, and make a new release (README: Make a release). The WhisperX add-on of that release lets the store version use the Start button of the popup.
 6. On the **Package** tab, upload the store ZIP of the new version.
 7. On the **Store listing** tab, fill in these fields:
