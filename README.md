@@ -43,6 +43,8 @@ All data stays on your computer, with two exceptions. The extension sends reques
 
 ## Install
 
+To install a release, download the `.zip` file from the [Releases](https://github.com/haziqhilmismail/minerr/releases) page, unzip it, and go to step 2. The zip has one folder, `minerr`, and the same zip works on all platforms. To build the extension from the source code, do step 1.
+
 ### 1. Build the extension
 
 You need [Node.js](https://nodejs.org/) 24 or later.
@@ -67,7 +69,7 @@ npm run build && mkdir -p /mnt/c/Users/<you>/minerr && cp -r dist/. /mnt/c/Users
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode**.
 3. Click **Load unpacked**.
-4. Select the `minerr/dist` folder. If you use WSL, select the Windows folder.
+4. Select the `minerr/dist` folder, or the `minerr` folder of a release. If you use WSL, select the Windows folder.
 
 After you get a new version, run `npm run build` again. If you use WSL, copy the `dist` folder again with the command above. Then click the reload button on the extension card.
 
@@ -1116,6 +1118,8 @@ The path of a word from a page to a card:
 | `Start WhisperX server.cmd` | Starts the WhisperX server in WSL from the extension folder on Windows, after `server/chrome_start.py` sets up the Start button of the popup. Git writes the `.cmd` files with CRLF line ends (`.gitattributes`), because they are Windows batch files. |
 | `server/chrome_start.py` | Writes the manifest of the native messaging host `com.minerr.whisperx` to `%LOCALAPPDATA%\Minerr` and the registry value that points at it, for the extension in this folder. |
 | `server/start-from-chrome.cmd` | The native messaging host. Chrome runs it when you click **Start the server**. It opens `Start WhisperX server.cmd` in a window of its own and exits. |
+| `scripts/package.ts` | Packs `dist` into `release/minerr-v<version>.zip`, with one top folder `minerr`, and writes its SHA-256 to a `.sha256` file. |
+| `.github/workflows/release.yml`, `docs/release-notes.md` | For a pushed tag such as `v0.1.0`, the workflow builds and packs the extension and makes a draft GitHub release with the text of `docs/release-notes.md`. |
 | `src/video/server-status.ts` | Pure function: the status of the WhisperX server as the toolbar popup shows it, from the last health check and the last click on **Start the server**. |
 | `src/status/stats.ts` | The comprehension score and the recommended sentences of a tab, for the toolbar popup. |
 | `src/status/score.ts` | Pure functions for the score, its label, and the text of the i+1 sentences. |
@@ -1164,6 +1168,16 @@ The WhisperX server has two endpoints for the player:
 `node test/pages-unit.ts` tests the pure functions of the comprehension score, the word browser, and the reader. `node test/pages.ts` tests the comprehension score in the toolbar popup, the word browser, and the reader in Chromium. `npm test` runs both after `node test/media.ts`.
 
 `node test/sidebar.ts` tests the subtitle sidebar in the player: when the list follows the video, and **Create N cards**. It uses port 8765 and `ffmpeg`. `npm test` runs it after `node test/player.ts`.
+
+### Make a release
+
+1. Set the new version in `manifest.json` and in `package.json`.
+2. Run all tests. Then commit, and push to `main`.
+3. Run `git tag v<version>`, then `git push origin v<version>`.
+4. Open the [Releases](https://github.com/haziqhilmismail/minerr/releases) page. GitHub Actions makes a draft release with `minerr-v<version>.zip` and its `.sha256` file in about 2 minutes.
+5. Add what changed to the text of the draft, then click **Publish release**.
+
+The workflow stops when the tag is not the version in `manifest.json` and `package.json`. One zip works on all platforms, because the extension has no native code, and uv installs the packages of the WhisperX server for the platform at the first start. To make the zip on your computer, run `npm run build`, then `node scripts/package.ts`. The zip goes to the `release` folder.
 
 ## Third-party data
 

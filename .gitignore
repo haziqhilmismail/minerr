@@ -3,3 +3,4 @@ test/fixtures
 dist
 CLAUDE.md
 __pycache__/
+release/
