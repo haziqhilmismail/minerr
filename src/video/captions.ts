@@ -9,10 +9,10 @@ export interface SubtitleSegment {
 
 // lines are the text of the caption lines from top to bottom; empty lines drop out. The lines join without a break:
 // YouTube cuts its automatic captions into rows in mid-sentence, and a line break ends the sentence of a card.
-// Japanese has no spaces between words, but the rows of another language join with a space.
+// Rows of another language keep their line break, as YouTube shows them: no card takes their sentence.
 const JAPANESE = /[\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}\u3000-\u303f\uff00-\uffef]/u;
 export const captionText = (lines: string[]): string => lines.map(line => line.trim()).filter(Boolean)
-  .reduce((text, line) => (text && !JAPANESE.test(text.at(-1) ?? '') && !JAPANESE.test(line[0] ?? '') ? `${text} ${line}` : text + line), '');
+  .reduce((text, line) => (text && !JAPANESE.test(text.at(-1) ?? '') && !JAPANESE.test(line[0] ?? '') ? `${text}\n${line}` : text + line), '');
 
 // segments are sorted by start.
 export const segmentAt = (segments: SubtitleSegment[], time: number): SubtitleSegment | null =>

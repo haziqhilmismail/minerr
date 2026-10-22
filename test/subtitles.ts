@@ -637,7 +637,14 @@ try {
   await tab.waitForTimeout(1500);
   assert.equal(await line.innerText(), '猫が魚を食べなかった今日は雨', 'an English video has no Japanese track, so the overlay copies the captions');
   assert.ok(!timedtext.some(request => request.startsWith('englishvideo')), 'the tab asks for no translation into Japanese');
-  console.log('English video: no Japanese lines from a translation; the overlay copies the YouTube captions');
+  await tab.evaluate(() => {
+    const [top, bottom] = document.querySelectorAll('.ytp-caption-segment');
+    if (!top || !bottom) throw new Error('The page has no two caption lines');
+    top.textContent = 'so this is a';
+    bottom.textContent = 'test of the rows';
+  });
+  await lineText('so this is a\ntest of the rows');
+  console.log('English video: no Japanese lines from a translation; the overlay copies the YouTube captions, English rows on their own lines');
 
   await context.route('https://example.com/**', route => route.fulfill({ contentType: 'text/html', body: '<p>Not YouTube</p>' }));
   await (await context.newPage()).goto('https://example.com/');
