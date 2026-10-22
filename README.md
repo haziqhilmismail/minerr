@@ -1116,7 +1116,7 @@ The path of a word from a page to a card:
 | `Start WhisperX server.cmd` | Starts the WhisperX server in WSL from the extension folder on Windows, after `server/chrome_start.py` sets up the Start button of the popup. Git writes the `.cmd` files with CRLF line ends (`.gitattributes`), because they are Windows batch files. |
 | `server/chrome_start.py` | Writes the manifest of the native messaging host `com.minerr.whisperx` to `%LOCALAPPDATA%\Minerr` and the registry value that points at it, for the extension in this folder. |
 | `server/start-from-chrome.cmd` | The native messaging host. Chrome runs it when you click **Start the server**. It opens `Start WhisperX server.cmd` in a window of its own and exits. |
-| `src/video/server-status.ts` | Pure function: the status of the WhisperX server as the toolbar popup shows it, and the next status after a health reply, a click on **Start the server**, or the result of the host. |
+| `src/video/server-status.ts` | Pure function: the status of the WhisperX server as the toolbar popup shows it, from the last health check and the last click on **Start the server**. |
 | `src/status/stats.ts` | The comprehension score and the recommended sentences of a tab, for the toolbar popup. |
 | `src/status/score.ts` | Pure functions for the score, its label, and the text of the i+1 sentences. |
 | `pages/words.html`, `pages/words.ts` | The word browser page. |

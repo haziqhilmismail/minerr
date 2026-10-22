@@ -9,6 +9,7 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Page, PageScreenshotOptions } from 'playwright';
 import { at } from '../src/shared/guards.ts';
+import { START_LIMIT_MS } from '../src/video/server-status.ts';
 import { extension, launch, listen, makeDictionary, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-subs-'));
@@ -662,10 +663,21 @@ try {
   assert.ok(existsSync(started), 'Chrome ran the host');
   await win.reload();
   await win.locator('#server', { hasText: 'Starting the WhisperX server…' }).waitFor();
+  await win.evaluate(limit => chrome.storage.session.set({ serverStart: Date.now() - limit - 1000 }), START_LIMIT_MS);
+  await win.reload();
+  await win.locator('#server', { hasText: 'did not answer' }).waitFor();
+  assert.equal(await win.textContent('#server'), 'The WhisperX server did not answer in 90 seconds. Look at the WhisperX window.');
+  assert.ok(await win.locator('#start').isVisible(), 'a failed start offers the Start button again');
   await listen(whisper, 8766);
   await win.locator('#server.ok').waitFor({ timeout: 5000 });
   assert.equal(await win.textContent('#server'), 'WhisperX server is running: large-v3-turbo on the CPU.');
-  console.log('Start the server: Chrome ran the host, the popup kept the start over a reload, and it shows the server when the server answers');
+  await new Promise(resolve => whisper.close(resolve));
+  whisper.closeAllConnections();
+  await win.reload();
+  await win.locator('#server.error').waitFor({ timeout: 5000 });
+  assert.equal(await win.textContent('#server'), 'The WhisperX server is not running.', 'the popup forgets a start after the server answered');
+  console.log('Start the server: Chrome ran the host, a reopened popup shows the start, and after the limit a failed start;',
+    'it shows the server when the server answers, then forgets the start');
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('SUBTITLES E2E PASS');

@@ -6,34 +6,35 @@ export type ServerStatus =
   | { state: 'checking' }
   | { state: 'running'; health: Health }
   | { state: 'off' }
-  | { state: 'starting'; since: number }
+  | { state: 'starting' }
   // Chrome has no host for this extension: the user has to double-click the launcher one time.
   | { state: 'setup' }
-  // The server did not answer within START_LIMIT_MS of the click.
+  // The server did not answer within START_LIMIT_MS of the click on Start the server.
   | { state: 'failed' };
 
-export type ServerEvent =
-  // A health check; null when the server did not answer.
-  | { type: 'health'; health: Health | null }
-  // The user clicked Start the server.
-  | { type: 'start' }
-  // The result of the message to the host: the error of Chrome, or null for a reply. The host exits without a reply,
-  // so a start that worked also ends in an error: "Error when communicating with the native messaging host.".
-  | { type: 'host'; error: string | null };
+export type HealthCheck = { kind: 'off' } | { kind: 'ok'; health: Health };
+
+// What the popup knows. check is the last health check, undefined before the first one ends. click is the last click on
+// Start the server: its time until the server answers, or 'no host' when Chrome has no host for this extension.
+// chrome.storage.session keeps the time, because the window of the server takes the focus and closes the popup.
+export interface ServerFacts {
+  check: HealthCheck | undefined;
+  click: number | 'no host' | null;
+}
 
 // The first start of the server creates the uv environment, which takes a while.
 export const START_LIMIT_MS = 90_000;
-const SETUP_ERRORS = ['Specified native messaging host not found.', 'Access to the specified native messaging host is forbidden.'];
 
-export function nextStatus(status: ServerStatus, event: ServerEvent, now: number): ServerStatus {
-  switch (event.type) {
-    case 'start':
-      return { state: 'starting', since: now };
-    case 'host':
-      return event.error !== null && SETUP_ERRORS.includes(event.error) ? { state: 'setup' } : status;
-    case 'health':
-      if (event.health) return { state: 'running', health: event.health };
-      if (status.state === 'starting') return now - status.since < START_LIMIT_MS ? status : { state: 'failed' };
-      return status.state === 'setup' || status.state === 'failed' ? status : { state: 'off' };
-  }
+export function serverStatus({ check, click }: ServerFacts, now: number): ServerStatus {
+  if (check?.kind === 'ok') return { state: 'running', health: check.health };
+  if (click === 'no host') return { state: 'setup' };
+  if (click !== null) return now - click < START_LIMIT_MS ? { state: 'starting' } : { state: 'failed' };
+  return check ? { state: 'off' } : { state: 'checking' };
 }
+
+// Whether the error of chrome.runtime.sendNativeMessage says that Chrome has no host for this extension. The host exits
+// without a reply, so a start that worked also ends in an error ("Error when communicating with the native messaging host.").
+// ponytail: Chrome gives no error code, only these messages. If a release rewords them, a start without a host shows
+// starting until START_LIMIT_MS, then failed.
+export const isNoHostError = (error: string): boolean =>
+  error === 'Specified native messaging host not found.' || error === 'Access to the specified native messaging host is forbidden.';
