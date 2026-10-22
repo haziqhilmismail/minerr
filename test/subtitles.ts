@@ -633,6 +633,11 @@ try {
   await tab.waitForFunction(() => document.querySelector('.minerr-subs-rows')?.getAttribute('data-gone') === 'so this is a');
   assert.equal(await line.innerText(), 'test of the rows\nand a', 'the row that rolls up is no text of the line');
   await tab.waitForFunction(() => !document.querySelector('.minerr-subs-rows')?.hasAttribute('data-gone'));
+  const rowsShown = await tab.evaluate(() => {
+    const frame = document.querySelector<HTMLElement>('.minerr-subs-window');
+    return frame ? frame.getBoundingClientRect().height / parseFloat(getComputedStyle(frame).lineHeight) : 0;
+  });
+  assert.ok(Math.abs(rowsShown - 2) < 0.05, `the window of a left caption window shows two rows: ${rowsShown}`);
   console.log('a roll up of the YouTube captions slides the old row up and out of the line');
   await shot(tab, 'overlay-english-left.png');
   await tab.evaluate(() => { const window = document.querySelector<HTMLElement>('.caption-window'); if (window) Object.assign(window.style, { textAlign: '', left: '', transform: '' }); });

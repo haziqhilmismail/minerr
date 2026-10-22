@@ -322,12 +322,13 @@ test('isNoHostError knows the two errors of Chrome for a missing host; a host th
     'Native host has exited.', 'Error when communicating with the native messaging host.', ''].map(isNoHostError), [true, true, false, false, false]);
 });
 
-test('goneRows names the rows that a roll up of the captions takes away', async () => {
-  const { goneRows } = await import('../src/video/overlay.ts');
-  assert.deepEqual(goneRows('so this is a\ntest of the rows', 'test of the rows\nand a'), ['so this is a']);
-  assert.deepEqual(goneRows('so this is a\ntest of', 'test of the rows\nand a'), ['so this is a'], 'the row that stays got more words');
-  assert.deepEqual(goneRows('a\nb\nc', 'c\nd'), ['a', 'b']);
-  assert.deepEqual(goneRows('so this is a\ntest', 'so this is a\ntest of the rows'), [], 'a new word is no roll up');
-  assert.deepEqual(goneRows('so this is a', 'so this is a\ntest'), [], 'a new row under the row is no roll up');
-  assert.deepEqual(goneRows('猫が魚を食べた', '今日は雨'), [], 'a new line is no roll up');
+test('rollOf tells how the rows of the captions roll up', async () => {
+  const { rollOf } = await import('../src/video/overlay.ts');
+  assert.deepEqual(rollOf('so this is a\ntest of the rows', 'test of the rows\nand a'), { gone: ['so this is a'], shift: 1 });
+  assert.deepEqual(rollOf('so this is a\ntest of', 'test of the rows\nand a'), { gone: ['so this is a'], shift: 1 }, 'the row that stays got more words');
+  assert.deepEqual(rollOf('so this is a', 'so this is a\ntest'), { gone: [], shift: 1 }, 'a new row under the row');
+  assert.deepEqual(rollOf('a\nb', 'a\nb\nc'), { gone: [], shift: 1 }, 'a third row of YouTube pushes the first row out of the window');
+  assert.deepEqual(rollOf('a\nb\nc', 'b\nc'), { gone: ['a'], shift: 0 }, 'the first row was already out of the window');
+  assert.deepEqual(rollOf('so this is a\ntest', 'so this is a\ntest of the rows'), { gone: [], shift: 0 }, 'a new word');
+  assert.equal(rollOf('a\nb', 'c\nd'), null, 'new captions');
 });

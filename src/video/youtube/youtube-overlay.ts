@@ -88,7 +88,8 @@ function anchorOf(row: HTMLElement | undefined): CaptionAnchor {
   const area = layer.getBoundingClientRect();
   if ((side !== 'left' && side !== 'right') || !box || !area.width) return null;
   const inset = side === 'left' ? box.left - area.left : area.right - box.right;
-  return { side, inset: Math.max(0, inset) / area.width };
+  const font = parseFloat(getComputedStyle(row?.querySelector('.ytp-caption-segment') ?? row ?? document.body).fontSize);
+  return { side, inset: Math.max(0, inset) / area.width, width: font > 0 ? box.width / font : 0 };
 }
 
 const captions = new MutationObserver(() => {

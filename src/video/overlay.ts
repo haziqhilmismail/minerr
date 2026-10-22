@@ -34,11 +34,13 @@ const STYLE = `
   .minerr-subs-stack[data-align="left"] > * { text-align: left; }
   .minerr-subs-stack[data-align="right"] > * { text-align: right; }
   .minerr-subs-second { padding: 0.12em 0.7em 0.16em; font: 400 0.72em/1.45 var(--font-ui); }
-  /* A roll up, as in the captions of YouTube: the rows that went (data-gone, not text of the line) slide up out of the
-     line, and the rows that stay slide up into their place. The box keeps the height of the rows that stay. */
-  .minerr-subs-line[data-rolling] { overflow: clip; }
+  /* The window of the YouTube captions at one side has two rows and the width of that window: a new row comes in at the
+     bottom, and the top row slides up past the straight top edge. The rows that went stay in data-gone (no text of the
+     line) until the slide ends. */
+  .minerr-subs-stack[data-align] .minerr-subs-line { min-width: calc(var(--minerr-window, 0) * 1em + 1.2em); }
+  .minerr-subs-stack[data-align] .minerr-subs-window { display: flex; flex-direction: column; justify-content: flex-end; height: 2lh; overflow: clip; }
+  .minerr-subs-stack[data-align] .minerr-subs-rows { white-space: pre; }
   .minerr-subs-rows[data-gone]::before { content: attr(data-gone) "\\A"; }
-  .minerr-subs-rows[data-gone] { margin-bottom: calc(-1lh * var(--minerr-roll)); }
   .minerr-subs[data-second="hover"]:not([data-paused]) .minerr-subs-stack:not(:hover) .minerr-subs-second { visibility: hidden; }
   .minerr-subs-line[hidden], .minerr-subs-second[hidden], .minerr-subs-toast[hidden] { display: none; }
   .minerr-subs[data-obscure="blur"]:not([data-paused]) .minerr-subs-line:not(:hover) { filter: blur(0.3em); }
@@ -58,24 +60,25 @@ const STYLE = `
 const TOAST_MS = 2500;
 const ROLL_MS = 300;
 
-// The first rows of before that text no longer has, when text keeps the rows after them at its start: YouTube rolls its
-// captions up by a row. The last row that stays can have more words in text. [] when text is no roll up of before.
-export function goneRows(before: string, text: string): string[] {
+// How text rolls up from before, as the captions of YouTube: the rows of before from the first row that text starts with
+// stay (the last of them can have more words), the rows above them are gone, and the rows that stay move up by shift
+// rows. null when text does not start with rows of before.
+export function rollOf(before: string, text: string): { gone: string[]; shift: number } | null {
   const old = before.split('\n');
   const now = text.split('\n');
-  for (let gone = 1; gone < old.length; gone++) {
+  for (let gone = 0; gone < old.length; gone++) {
     const kept = old.slice(gone);
     const last = kept.length - 1;
     if (kept.join('') && kept.length <= now.length && kept.every((row, i) => (i === last ? now[i]?.startsWith(row) : now[i] === row))) {
-      return old.slice(0, gone);
+      return { gone: old.slice(0, gone), shift: now.length - kept.length };
     }
   }
-  return [];
+  return null;
 }
 
-// The caption window of the site: the side of its text, and its distance from that side of the video, as a fraction of
-// the width of the video. null is a centered window.
-export type CaptionAnchor = { side: 'left' | 'right'; inset: number } | null;
+// The caption window of the site: the side of its text, its distance from that side of the video as a fraction of the
+// width of the video, and its width in the font size of its captions. null is a centered window.
+export type CaptionAnchor = { side: 'left' | 'right'; inset: number; width: number } | null;
 
 export interface Overlay {
   layer: HTMLDivElement;
@@ -110,7 +113,9 @@ export function createOverlay(): Overlay {
   const stack = Object.assign(document.createElement('div'), { className: 'minerr-subs-stack' });
   const line = Object.assign(document.createElement('div'), { className: 'minerr-subs-line', hidden: true });
   const rows = Object.assign(document.createElement('div'), { className: 'minerr-subs-rows' });
-  line.append(rows);
+  const frame = Object.assign(document.createElement('div'), { className: 'minerr-subs-window' });
+  frame.append(rows);
+  line.append(frame);
   // The second line is the secondary track, for example English, under the Japanese line.
   const secondLine = Object.assign(document.createElement('div'), { className: 'minerr-subs-second', hidden: true });
   const note = Object.assign(document.createElement('div'), { className: 'minerr-subs-toast', hidden: true, role: 'status' });
@@ -127,32 +132,32 @@ export function createOverlay(): Overlay {
   };
   const still = matchMedia('(prefers-reduced-motion: reduce)');
   let rolling: Animation | null = null;
-  const roll = (gone: string[]) => {
-    if (!gone.length || still.matches) return;
+  const roll = (gone: string[], shift: number) => {
+    if (!shift || still.matches) return;
     rolling?.cancel();
-    rows.dataset.gone = gone.join('\n');
-    rows.style.setProperty('--minerr-roll', String(gone.length));
-    line.dataset.rolling = '';
-    const animation = rows.animate({ translate: ['0 0', `0 calc(-1lh * ${gone.length})`] }, { duration: ROLL_MS, easing: 'ease-out' });
+    if (gone.length) rows.dataset.gone = gone.join('\n');
+    const animation = rows.animate({ translate: [`0 ${shift}lh`, '0 0'] }, { duration: ROLL_MS, easing: 'ease-out' });
     rolling = animation;
     animation.onfinish = animation.oncancel = () => {
       if (rolling !== animation) return;
       rolling = null;
       delete rows.dataset.gone;
-      delete line.dataset.rolling;
     };
   };
   const show = (text: string, second: string, anchor: CaptionAnchor = null) => {
     if (anchor) {
       stack.dataset.align = anchor.side;
       stack.style.setProperty('--minerr-inset', `${(anchor.inset * 100).toFixed(2)}cqw`);
+      stack.style.setProperty('--minerr-window', anchor.width.toFixed(2));
     } else {
       delete stack.dataset.align;
       stack.style.removeProperty('--minerr-inset');
+      stack.style.removeProperty('--minerr-window');
     }
     const before = shown.get(line) ?? '';
     set(line, text, rows);
-    if (text && before) roll(goneRows(before, text));
+    const rolled = anchor && before && text ? rollOf(before, text) : null;
+    if (rolled) roll(rolled.gone, rolled.shift);
     set(secondLine, second);
   };
   let timer: ReturnType<typeof setTimeout> | undefined;
