@@ -77,7 +77,7 @@ const VIEW: { [S in ServerStatus['state']]: View<S> } = {
   off: { className: 'error', start: true, folder: false, text: () => (windows ? 'The WhisperX server is not running.' : serverHint(navigator.platform)) },
   error: { className: 'error', start: false, folder: false, text: ({ error }) => error },
   starting: { className: '', start: false, folder: false, text: () => 'Starting the WhisperX server…' },
-  setup: { className: 'error', start: false, folder: true, text: () => 'To set up the Start button, double-click "Start WhisperX server.cmd" in the Minerr folder one time.' },
+  setup: { className: 'error', start: false, folder: true, text: () => 'To set up the Start button, double-click "Start WhisperX server (Windows).cmd" in the Minerr folder one time. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.' },
   failed: { className: 'error', start: true, folder: false, text: () => `The WhisperX server did not answer in ${START_LIMIT_MS / 1000} seconds. Look at the WhisperX window.` },
 };
 

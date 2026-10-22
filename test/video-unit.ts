@@ -187,7 +187,7 @@ test('summary tells what Create N cards did', () => {
 
 test('serverHint tells a Windows user to use the Start button of the popup or the launcher, and other users to run uv', () => {
   assert.deepEqual(['Win32', 'Linux x86_64', 'MacIntel'].map(serverHint), [
-    'Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server.cmd" in the Minerr folder.',
+    'Start the WhisperX server: click the Minerr button in the toolbar, then click Start the server. You can also double-click "Start WhisperX server (Windows).cmd" in the Minerr folder. If you use WSL, double-click "Start WhisperX server (WSL).cmd" instead.',
     'Start the WhisperX server: uv run server/whisper_server.py',
     'Start the WhisperX server: uv run server/whisper_server.py',
   ]);
