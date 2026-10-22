@@ -78,6 +78,26 @@ test('parseCaptions joins the rows of YouTube automatic captions into sentences,
   ]);
 });
 
+test('parseCaptions spreads a row without word times over the time until the next row, not over its short duration', async () => {
+  const { parseCaptions } = await import('../src/video/captions.ts');
+  // The events from 72670 to 84720 ms of the automatic captions of 4fJeeOaPk5Q. YouTube gives the row of four sentences
+  // 3 s on the screen, but they are spoken until the next row at 84.71 s.
+  const json3 = JSON.stringify({ events: [
+    { tStartMs: 72670, aAppend: 1, segs: [{ utf8: '\n' }] },
+    { tStartMs: 72680, dDurationMs: 3000, segs: [{ utf8: 'うん。ちょっと席が汚いぐらい。以前バティックエアで遅延して飛行機を逃すた嫌な記憶があったんですけど、今回は遅延もなくこのパンも美味しくて機械に過ごすことができました。' }] },
+    { tStartMs: 84710, aAppend: 1, segs: [{ utf8: '\n' }] },
+    { tStartMs: 84720, dDurationMs: 6480, segs: [{ utf8: 'バリ島' }, { utf8: 'から', tOffsetMs: 439 }] },
+  ] });
+  const round = (time: number) => Math.round(time * 100) / 100;
+  assert.deepEqual(parseCaptions('json3', json3).map(line => ({ ...line, start: round(line.start), end: round(line.end) })), [
+    { start: 72.68, end: 73.11, text: 'うん。' },
+    { start: 73.11, end: 74.85, text: 'ちょっと席が汚いぐらい。' },
+    { start: 74.85, end: 79.93, text: '以前バティックエアで遅延して飛行機を逃すた嫌な記憶があったんですけど、' },
+    { start: 79.93, end: 84.71, text: '今回は遅延もなくこのパンも美味しくて機械に過ごすことができました。' },
+    { start: 84.72, end: 91.2, text: 'バリ島から' },
+  ]);
+});
+
 test('parseCaptions ends a sentence line at a tag, a sentence mark, a comma after 25 characters, a pause of 1.5 s, or 80 characters', async () => {
   const { parseCaptions } = await import('../src/video/captions.ts');
   // 'あ、' + 22 い + '、' is 25 characters; 'お' + 79 か is 80. The row at 2 s has no word times and two sentences.

@@ -91,23 +91,35 @@ const rowLines = (rows: Row[]): SubtitleSegment[] => rows.flatMap(({ start, end,
 // Splits after each sentence or clause mark. A point or comma before a digit is part of a number, as 1.2 or 1,000.
 const AFTER_MARK = /(?<=[。！？!?、])|(?<=[.,])(?!\d)/;
 
-// The words of one seg, which ends at until. A seg with several sentences splits after each mark, and each part
-// starts in proportion to the characters before it.
-function segWords(seg: SubtitleSegment, until: number): SubtitleSegment[] {
+// A word of a sentence line. pause is true when the speaker stops for PAUSE_SECONDS or more after the word.
+interface Word extends SubtitleSegment { pause: boolean }
+
+// The words of one seg, which ends at until; the next seg starts at next. A seg with several sentences splits after each
+// mark, and each part starts in proportion to the characters before it. The parts are spoken without a pause between them.
+function segWords(seg: SubtitleSegment, until: number, next: number): Word[] {
   const span = Math.max(0, until - seg.start);
-  const words: SubtitleSegment[] = [];
   let before = 0;
-  for (const text of seg.text.split(AFTER_MARK)) {
-    if (text.trim()) words.push({ ...seg, start: seg.start + span * before / seg.text.length, text });
+  const words = seg.text.split(AFTER_MARK).flatMap(text => {
+    const start = seg.start + span * before / seg.text.length;
     before += text.length;
-  }
-  return words;
+    return text.trim() ? [{ ...seg, start, text }] : [];
+  });
+  return words.map((word, i) => ({ ...word, pause: i === words.length - 1 && next - word.start >= PAUSE_SECONDS }));
 }
 
+// YouTube gives a row without word times a fixed 3 s on the screen, but its sentences are spoken until the next row.
+const spoken = (rows: Row[]): Row[] => rows.map((row, i) => {
+  const end = row.timed ? row.end : Math.max(row.end, rows[i + 1]?.start ?? row.end);
+  return { ...row, end, segs: row.segs.map(seg => ({ ...seg, end })) };
+});
+
 // The words of the rows. A seg ends where the next seg starts, at most where its row ends: the next row may start later.
-function captionWords(rows: Row[]): SubtitleSegment[] {
+function captionWords(rows: Row[]): Word[] {
   const segs = rows.flatMap(row => row.segs.filter(seg => seg.text.trim()));
-  return segs.flatMap((seg, i) => segWords(seg, Math.min(segs[i + 1]?.start ?? seg.end, seg.end)));
+  return segs.flatMap((seg, i) => {
+    const next = segs[i + 1]?.start ?? Infinity;
+    return segWords(seg, Math.min(next, seg.end), next);
+  });
 }
 
 const SENTENCE_END = /[。！？!?.]$/;
@@ -122,18 +134,18 @@ const PAUSE_SECONDS = 1.5;
 const MAX_CHARS = 80;
 
 // True when line (trimmed) ends after word.
-function lineEnds(line: string, word: SubtitleSegment, next: SubtitleSegment | undefined): boolean {
+function lineEnds(line: string, word: Word, next: Word | undefined): boolean {
   if (next === undefined) return true;
   const last = word.text.trim();
   return TAG.test(last) || TAG.test(next.text.trim())
     || SENTENCE_END.test(last)
     || (CLAUSE_END.test(last) && line.length >= CLAUSE_CHARS)
-    || next.start - word.start >= PAUSE_SECONDS
+    || word.pause
     || line.length >= MAX_CHARS;
 }
 
 // Joins the words into sentence lines. A line stays on the screen with the row of its last word.
-function sentenceLines(words: SubtitleSegment[]): SubtitleSegment[] {
+function sentenceLines(words: Word[]): SubtitleSegment[] {
   const lines: SubtitleSegment[] = [];
   let start = 0;
   let text = '';
@@ -154,7 +166,7 @@ function sentenceLines(words: SubtitleSegment[]): SubtitleSegment[] {
 function parseJson3(file: string): SubtitleSegment[] {
   const rows = captionRows(file);
   const timed = rows.some(row => row.timed);
-  const lines = timed ? sentenceLines(captionWords(rows)) : rowLines(rows);
+  const lines = timed ? sentenceLines(captionWords(spoken(rows))) : rowLines(rows);
   return lines.map((line, i) => ({ ...line, end: Math.min(line.end, lines[i + 1]?.start ?? Infinity) })).filter(line => line.end > line.start);
 }
 
