@@ -50,20 +50,31 @@ async function capture(windowId: number): Promise<MediaFile> {
   return { data: jpegDataUrl.split(',')[1] ?? '', filename: `minerr-${Date.now()}.jpg` };
 }
 
+const PANEL_URL = chrome.runtime.getURL('pages/sidepanel.html');
+
+// The tab of a message with its id: the tab of a content script, or the tab that the subtitle side panel belongs to
+// (pages/sidepanel.ts), named in its URL, because a message from a side panel has no sender.tab.
+async function tabOf(sender: chrome.runtime.MessageSender): Promise<chrome.tabs.Tab & { id: number }> {
+  const panelTab = sender.url?.startsWith(PANEL_URL) ? Number(new URL(sender.url).searchParams.get('tab') ?? NaN) : NaN;
+  const tab = Number.isInteger(panelTab) ? await chrome.tabs.get(panelTab) : sender.tab;
+  if (tab?.id === undefined) throw new Error('Add cards from a tab.');
+  return { ...tab, id: tab.id };
+}
+
 // The note of a card with its media: the screenshot of the tab, the audio of the subtitle line, and the audio of the word.
 // A protected video (DRM) gives neither the screenshot nor the line audio.
 async function cardDraft({ card }: Message<'cardDraft'>, sender: chrome.runtime.MessageSender): Promise<NoteDraft> {
-  if (!sender.tab || sender.tab.id === undefined) throw new Error('Add cards from a tab.');
-  const line = await cardLine(sender.tab.id);
+  const tab = await tabOf(sender);
+  const line = await cardLine(tab.id);
   const guarded = line?.protected ?? false;
-  const image = guarded ? null : await capture(sender.tab.windowId);
+  const image = guarded ? null : await capture(tab.windowId);
   const noteType = await getNoteType();
   // After the screenshot, because the tab may play the line again to record it.
-  const audio = line && !guarded ? await lineAudio(line, sender.tab.id) : null;
+  const audio = line && !guarded ? await lineAudio(line, tab.id) : null;
   // One audio per card, so Anki plays one: the line audio of a video, else the audio of the word if the user did not turn it off.
   const word = !audio && usesWordAudio(noteType) && await wordAudioEnabled.get() ? await wordAudio(card.word, card.reading) : null;
   const sentence = line?.combined ? widenSentence(line.text, card.sentence) : card.sentence;
-  const { url = '', title = '' } = sender.tab;
+  const { url = '', title = '' } = tab;
   const media = { ...(image ? { image } : {}), ...(audio ? { audio } : {}), ...(word ? { wordAudio: word } : {}) };
   return noteDraft(noteType, { ...card, sentence, ...media }, { url, title });
 }
@@ -80,6 +91,16 @@ async function importKnown({ query, field }: Message<'importKnown'>): Promise<nu
   const keys = await toOffscreen({ type: 'wordKeys', words });
   await setStatuses(keys.map(key => ({ key })), 'known');
   return words.length;
+}
+
+// Opens the subtitle side panel next to the tab of the sender, or closes it. setOptions() and open() run in the task of the
+// message of the G key: an await or a microtask before open() loses the user gesture, and open() then fails (Chrome 156).
+function sidePanel({ open }: Message<'sidePanel'>, sender: chrome.runtime.MessageSender): Promise<void> {
+  const tabId = sender.tab?.id;
+  if (tabId === undefined) throw new Error('The subtitle sidebar opens from a tab with a video.');
+  if (!open) return chrome.sidePanel.close({ tabId });
+  chrome.sidePanel.setOptions({ tabId, path: `pages/sidepanel.html?tab=${tabId}` });
+  return chrome.sidePanel.open({ tabId });
 }
 
 // The browser shortcuts of manifest.json. Each one but toggle-minerr goes to the page of the active tab.
@@ -116,6 +137,7 @@ serve(
     whisperJob: ({ id }) => getJob(id),
     whisperCached: ({ videoId }) => cachedSegments(videoId),
     siteCaptions: ({ url, lang }) => siteCaptions(url, lang),
+    sidePanel,
   },
   target => target === undefined,
 );

@@ -9,11 +9,8 @@
   header { display: flex; align-items: baseline; gap: var(--space-3); margin: 0 var(--space-1) var(--space-4); }
   header span { color: var(--muted); }
 
-  /* The subtitle sidebar (src/video/sidebar/sidebar.ts) is at the right of the window, also in full screen, where the video makes room for it. */
-  .watch { display: flex; }
   .watch:fullscreen { padding: var(--space-3); background: var(--bg); }
-  :root[data-minerr-side]:not([data-minerr-off]) .watch:fullscreen { padding-right: calc(var(--minerr-side-width) + var(--space-3)); }
-  .stage { position: relative; display: grid; place-items: center; flex: 1; min-width: 0; aspect-ratio: 16 / 9;
+  .stage { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 9;
     max-height: calc(100vh - 150px); min-height: 240px; overflow: hidden; border-radius: var(--radius-l); corner-shape: var(--corner);
     background: #000; box-shadow: var(--shadow-2); }
   .watch:fullscreen .stage { max-height: none; aspect-ratio: auto; }

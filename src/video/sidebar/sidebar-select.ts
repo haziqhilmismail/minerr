@@ -1,5 +1,6 @@
 // The multi-select of the subtitle sidebar (src/video/sidebar/sidebar.ts), as in Migaku: the user selects line cards, and
 // "Create N cards" adds one card for each line, one after another, because the screenshot needs the video at that line.
+// pages/sidepanel.html holds the CSS of the boxes and the bar.
 
 // What happened to a line of a run: a card, no card because the line needs a target word, or an error of the card.
 export type Outcome = 'added' | 'skipped' | 'failed';
@@ -24,23 +25,6 @@ export function summary(outcomes: Outcome[], total: number): string {
     failed ? `${count(failed, 'card')} failed: the popup shows why.` : '',
   ].filter(Boolean).join(' ');
 }
-
-export const SELECT_CSS = `
-  .minerr-lines .card-head .check { flex: none; width: 22px; height: 22px; min-height: 0; margin-right: var(--space-2); padding: 0;
-    border: 1.5px solid var(--muted); border-radius: 7px; corner-shape: var(--corner); color: var(--on-accent); font-size: 14px; font-weight: 800;
-    line-height: 19px; opacity: 0; }
-  .minerr-lines :is(li:hover, [data-selecting] li) .check, .minerr-lines .card-head .check:focus-visible { opacity: 1; }
-  .minerr-lines .card-head .check[aria-pressed="true"] { border-color: var(--accent-fill); background: var(--accent-fill); color: var(--on-accent); }
-  .minerr-lines li:has(.check[aria-pressed="true"]) { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent-fill) 50%, transparent), var(--shadow-1); }
-  .minerr-lines-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
-    border-top: 1px solid var(--separator); }
-  .minerr-lines-foot[hidden] { display: none; }
-  .minerr-lines-foot span { flex: 1 1 160px; color: var(--muted); font-size: var(--text-footnote); font-weight: 600; }
-  .minerr-lines-foot button { min-height: 36px; padding: 0 var(--space-4); background: var(--raised); }
-  .minerr-lines-foot button[hidden] { display: none; }
-  .minerr-lines-foot .create { background: var(--accent-fill); color: var(--on-accent); }
-  .minerr-lines-foot .create:hover { background: var(--accent-fill); filter: brightness(1.08); }
-`;
 
 export interface Selection {
   // Selects the line, or takes it out of the selection. A run keeps the selection as it is.

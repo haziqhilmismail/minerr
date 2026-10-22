@@ -1,4 +1,5 @@
-// End-to-end test of the subtitle sidebar in the video player: when the list follows the video, and Create N cards.
+// End-to-end test of the subtitle sidebar of the video player: the G key opens and closes the side panel, and in the panel page,
+// when the list follows the video, and Create N cards.
 // Uses port 8765 (mock AnkiConnect) and ffmpeg for a test clip. Saves screenshots to OUT_DIR (default: the temporary work folder).
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -6,7 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { at } from '../src/shared/guards.ts';
-import { launch, makeDictionary, mockAnki, useCjkFonts } from './harness.ts';
+import { launch, makeDictionary, mockAnki, openSidebar, sidePanels, until, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-sidebar-'));
 const out = process.env.OUT_DIR ?? work;
@@ -45,18 +46,28 @@ try {
   await player.setInputFiles('#video-file', clip);
   await player.setInputFiles('#subs-file', srt);
   await player.locator('#status').filter({ hasText: `Subtitles from clip.srt: ${LINES} lines.` }).waitFor();
-  const popup = player.locator('minerr-popup .popup');
-  const sidebar = player.locator('.minerr-lines');
-  const cards = sidebar.locator('li');
-  const paused = sidebar.getByText('Scroll paused');
   const seek = (time: number) => player.evaluate(t => new Promise(resolve => {
     const video = document.querySelector('video');
     if (!video) throw new Error('The page has no video');
     video.addEventListener('seeked', resolve, { once: true });
     video.currentTime = t;
   }), time);
+  await seek(20.5);
+  await player.keyboard.press('g');
+  await until(async () => (await sidePanels(worker)).length === 1, 'G opens the side panel');
+  const [opened] = await sidePanels(worker);
+  assert.match(opened ?? '', /\/pages\/sidepanel\.html\?tab=\d+$/, 'the side panel is the panel page of the tab');
+  await player.keyboard.press('g');
+  await until(async () => (await sidePanels(worker)).length === 0, 'G again closes the side panel');
+  console.log('G opens the side panel of Chrome for the tab, and closes it:', opened);
+
+  const panel = await openSidebar(context, worker, extensionId, player);
+  const popup = panel.locator('minerr-popup .popup');
+  const sidebar = panel.locator('.minerr-lines');
+  const cards = sidebar.locator('li');
+  const paused = sidebar.getByText('Scroll paused');
   const video = (action: 'play' | 'pause') => player.evaluate(name => { document.querySelector('video')?.[name](); }, action);
-  const currentCard = (time: string) => player.waitForFunction(t => document.querySelector('.minerr-lines li[aria-current="true"] time')?.textContent === t, time);
+  const currentCard = (time: string) => panel.waitForFunction(t => document.querySelector('.minerr-lines li[aria-current="true"] time')?.textContent === t, time);
   const listTop = () => sidebar.locator('ol').evaluate(list => Math.round(list.scrollTop));
   // The scrollTop that puts the card of the current line in the middle of the list.
   const centered = () => sidebar.locator('ol').evaluate(list => {
@@ -64,7 +75,7 @@ try {
     if (!row) throw new Error('The list has no current line');
     return Math.round(Math.min(list.scrollHeight - list.clientHeight, Math.max(0, row.offsetTop - (list.clientHeight - row.offsetHeight) / 2)));
   });
-  const waitCentered = () => player.waitForFunction(() => {
+  const waitCentered = () => panel.waitForFunction(() => {
     const list = document.querySelector('.minerr-lines ol');
     const row = list?.querySelector<HTMLElement>('li[aria-current="true"]');
     if (!list || !row) return false;
@@ -82,8 +93,8 @@ try {
   const wheel = async (by: number) => {
     const before = await listTop();
     await sidebar.locator('ol').hover();
-    await player.mouse.wheel(0, by);
-    await player.waitForFunction(top => Math.round(document.querySelector('.minerr-lines ol')?.scrollTop ?? 0) !== top, before);
+    await panel.mouse.wheel(0, by);
+    await panel.waitForFunction(top => Math.round(document.querySelector('.minerr-lines ol')?.scrollTop ?? 0) !== top, before);
     return listTop();
   };
   const hoverWord = async () => {
@@ -94,10 +105,8 @@ try {
     return index;
   };
 
-  await seek(20.5);
-  await player.keyboard.press('g');
   await sidebar.locator('li .ml-word.ml-unknown[data-ml-lemma="魚"]').first().waitFor();
-  await player.mouse.move(0, 0);
+  await panel.mouse.move(0, 0);
   await currentCard('0:20');
   await waitCentered();
   assert.ok(await listTop() > 0, 'the list opens at the current line');
@@ -106,15 +115,15 @@ try {
   const scrolled = await wheel(-600);
   await paused.waitFor();
   await hoverWord();
-  await player.mouse.move(0, 0);
-  await player.waitForTimeout(400);
+  await panel.mouse.move(0, 0);
+  await panel.waitForTimeout(400);
   assert.equal(await listTop(), scrolled, 'the list stays where the user scrolled it when the mouse leaves the sidebar');
   assert.equal(await paused.isVisible(), true, 'the badge shows while the list does not follow the video');
-  await player.keyboard.press('Escape');
+  await panel.keyboard.press('Escape');
   await popup.waitFor({ state: 'hidden' });
   await seek(25.5);
   await currentCard('0:25');
-  await player.waitForTimeout(200);
+  await panel.waitForTimeout(200);
   assert.equal(await listTop(), scrolled, 'a line change of the paused video does not scroll the list after a user scroll');
   console.log('sidebar: after a scroll, the list stays where the user left it, also when the mouse leaves');
 
@@ -132,10 +141,10 @@ try {
   const heldTop = await wheel(-500);
   await hoverWord();
   await player.waitForFunction(() => document.querySelector('video')?.paused === true);
-  await player.mouse.move(0, 0);
-  await player.keyboard.press('Escape');
+  await panel.mouse.move(0, 0);
+  await panel.keyboard.press('Escape');
   await player.waitForFunction(() => document.querySelector('video')?.paused === false);
-  await player.waitForTimeout(1500);
+  await panel.waitForTimeout(1500);
   assert.equal(await listTop(), heldTop, 'the end of the popup pause does not scroll the list back');
   await paused.waitFor();
   await video('pause');
@@ -144,10 +153,10 @@ try {
   await setStorage({ pauseOnSidebar: false });
   await video('play');
   await hoverWord();
-  await player.waitForTimeout(500);
+  await panel.waitForTimeout(500);
   assert.equal(await player.evaluate(() => document.querySelector('video')?.paused), false, 'with the switch off, a sidebar popup does not pause');
-  await player.mouse.move(0, 0);
-  await player.keyboard.press('Escape');
+  await panel.mouse.move(0, 0);
+  await panel.keyboard.press('Escape');
   await popup.waitFor({ state: 'hidden' });
   await setStorage({ pauseOnSidebar: true });
   await video('pause');
@@ -157,7 +166,7 @@ try {
   const time = await cards.nth(target).locator('time').innerText();
   await cards.nth(target).locator('time').click();
   await currentCard(time);
-  await player.mouse.move(0, 0);
+  await panel.mouse.move(0, 0);
   await waitCentered();
   assert.equal(await listTop(), await centered());
   await paused.waitFor({ state: 'hidden' });
@@ -171,7 +180,7 @@ try {
   await select(0);
   await select(1);
   assert.equal(await footerText.innerText(), '2 lines selected');
-  await player.keyboard.press('Escape');
+  await panel.keyboard.press('Escape');
   await footer.waitFor({ state: 'hidden' });
   assert.deepEqual(await selectedLines(), [], 'Esc clears the selection');
   for (const index of [0, 1, 2]) await select(index);
@@ -179,8 +188,8 @@ try {
   await select(3);
   assert.deepEqual(await selectedLines(), [0, 1, 2]);
   await sidebar.locator('ol').evaluate(list => { list.scrollTop = 0; });
-  await player.mouse.move(0, 0);
-  await player.screenshot({ path: join(out, 'sidebar-selection.png') });
+  await panel.mouse.move(0, 0);
+  await panel.screenshot({ path: join(out, 'sidebar-selection.png') });
   const before = anki.requests.length;
   await footer.getByRole('button', { name: 'Create 3 cards' }).click();
   await footerText.filter({ hasText: 'Adding card 1 of 3…' }).waitFor();
@@ -195,8 +204,8 @@ try {
     assert.match(String(at(fields, 'Image')), /^<img src="minerr-\d+\.jpg">$/, 'each card has a screenshot');
   }
   assert.deepEqual(await selectedLines(), [1], 'the line that needs a target word stays selected');
-  await player.mouse.move(0, 0);
-  await player.screenshot({ path: join(out, 'sidebar-created.png') });
+  await panel.mouse.move(0, 0);
+  await panel.screenshot({ path: join(out, 'sidebar-created.png') });
   await footer.getByRole('button', { name: 'Clear' }).click();
   await footer.waitFor({ state: 'hidden' });
   assert.deepEqual(await selectedLines(), []);
@@ -215,7 +224,7 @@ try {
   await popup.locator('.message', { hasText: 'The mock has no such action' }).waitFor();
   assert.deepEqual(await selectedLines(), [0, 4], 'after an error, the lines without a card stay selected');
   anki.replies.addNote = addNote;
-  await player.keyboard.press('Escape');
+  await panel.keyboard.press('Escape');
   await footer.getByRole('button', { name: 'Clear' }).click();
   await footer.waitFor({ state: 'hidden' });
   console.log('Create 2 cards with an Anki error: the run stops, and the popup shows the error');

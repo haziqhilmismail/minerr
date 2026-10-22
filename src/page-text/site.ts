@@ -6,7 +6,7 @@ import { minerrEnabled, setting } from '../shared/settings.ts';
 // 'off': Minerr is off. 'video': only the subtitles over a video and their line list. 'on': the page text too.
 export type Active = 'off' | 'video' | 'on';
 
-// The subtitle overlay (src/video/overlay.ts) and the subtitle sidebar (src/video/sidebar/sidebar.ts). Their words show while Minerr is on, on every site.
+// The subtitle overlay (src/video/overlay.ts) and the subtitle sidebar (src/video/sidebar/sidebar.ts, in the side panel page). Their words show while Minerr is on.
 export const VIDEO = '.minerr-subs, .minerr-lines';
 
 // The sites where Minerr reads the page text. The old disabledSites key (off on a list of sites) is not read.

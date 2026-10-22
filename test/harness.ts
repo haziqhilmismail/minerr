@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { join } from 'node:path';
-import { chromium, type Page, type Worker } from 'playwright';
+import { type BrowserContext, chromium, type Page, type Worker } from 'playwright';
 import { BUILTIN, type NoteType } from '../src/anki/anki.ts';
 import type { MetaRow } from '../src/dictionary/meta.ts';
 import { at } from '../src/shared/guards.ts';
@@ -48,6 +48,32 @@ export async function runCommand(worker: Worker, page: Page, command: string): P
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     await (globalThis as unknown as { runCommand: (command: string, tab?: chrome.tabs.Tab) => Promise<void> }).runCommand(name, tab);
   }, command);
+}
+
+// The subtitle side panel page of the tab of page, in a tab of its own, 400 px wide as a side panel: Playwright cannot reach
+// the side panel of Chrome. page stays the active tab, so the screenshot of a card shows it, as with the real side panel.
+export async function openSidebar(context: BrowserContext, worker: Worker, extensionId: string, page: Page): Promise<Page> {
+  await page.bringToFront();
+  const [tab] = await worker.evaluate(() => chrome.tabs.query({ active: true, lastFocusedWindow: true }));
+  if (tab?.id === undefined) throw new Error('The page has no tab');
+  const panel = await context.newPage();
+  await panel.setViewportSize({ width: 400, height: 720 });
+  await panel.goto(`chrome-extension://${extensionId}/pages/sidepanel.html?tab=${tab.id}`);
+  await page.bringToFront();
+  return panel;
+}
+
+// The URLs of the open side panels of Chrome, from the service worker.
+export const sidePanels = (worker: Worker): Promise<string[]> =>
+  worker.evaluate(async () => (await chrome.runtime.getContexts({ contextTypes: ['SIDE_PANEL'] })).map(found => found.documentUrl ?? ''));
+
+// Waits until check() gives true, for up to 5 s.
+export async function until(check: () => Promise<boolean>, what: string): Promise<void> {
+  for (let i = 0; i < 50; i++) {
+    if (await check()) return;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw new Error(`Timed out: ${what}`);
 }
 
 // If CJK_FONT_DIR is set, Chromium launched after this call also uses the fonts in that folder.

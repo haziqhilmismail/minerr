@@ -8,7 +8,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Locator, Page } from 'playwright';
-import { launch, listen, useCjkFonts } from './harness.ts';
+import { launch, listen, openSidebar, useCjkFonts } from './harness.ts';
 
 const out = process.env.OUT_DIR ?? '/tmp/minerr-ui';
 const suffix = process.env.SUFFIX ? `-${process.env.SUFFIX}` : '';
@@ -144,14 +144,15 @@ try {
   await player.waitForFunction(() => (document.querySelector('video')?.readyState ?? 0) >= 3);
   await player.locator('.minerr-subs-line .ml-word[data-ml-lemma="食べる"]').waitFor({ timeout: 20000 });
   await both(player, 'player', async () => { await player.mouse.move(0, 0); });
-  await player.keyboard.press('g');
-  const cards = player.locator('.minerr-lines li');
+  const panel = await openSidebar(context, worker, extensionId, player);
+  if (store) await panel.setViewportSize({ width: 400, height: 800 });
+  const cards = panel.locator('.minerr-lines li');
   await cards.nth(3).locator('.ml-word').first().waitFor({ timeout: 20000 });
   await cards.nth(1).hover();
   await cards.nth(1).locator('.check').click();
   await cards.nth(2).hover();
   await cards.nth(2).locator('.check').click();
-  await both(player, 'sidebar', async () => { await player.mouse.move(0, 0); });
+  await both(panel, 'sidebar', async () => { await panel.mouse.move(0, 0); });
   await both(player, 'video', async () => {
     await player.mouse.move(0, 0);
     await player.keyboard.press('Escape');

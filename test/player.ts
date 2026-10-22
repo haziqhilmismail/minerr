@@ -6,7 +6,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { at } from '../src/shared/guards.ts';
-import { launch, makeDictionary, mockAnki, useCjkFonts } from './harness.ts';
+import { launch, makeDictionary, mockAnki, openSidebar, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-player-'));
 const out = process.env.OUT_DIR ?? work;
@@ -281,31 +281,16 @@ try {
 
   await setStorage({ 'w:魚': 'unknown' });
   await seek(1);
-  await player.keyboard.press('g');
-  const sidebar = player.locator('.minerr-lines');
+  const panel = await openSidebar(context, worker, extensionId, player);
+  const panelPopup = panel.locator('minerr-popup .popup');
+  const sidebar = panel.locator('.minerr-lines');
   const cards = sidebar.locator('li');
   await sidebar.locator('li .ml-word.ml-unknown[data-ml-lemma="魚"]').waitFor();
-  const layout = async () => {
-    const boxes = await player.evaluate(() => Object.fromEntries(['#stage', '.bar', '.minerr-lines'].map(selector => {
-      const box = document.querySelector(selector)?.getBoundingClientRect();
-      if (!box) throw new Error(`The page has no ${selector}`);
-      return [selector, { left: box.left, right: box.right, top: box.top, bottom: box.bottom }];
-    })));
-    console.log('sidebar layout:', boxes);
-    const [video, bar, side] = [boxes['#stage'], boxes['.bar'], boxes['.minerr-lines']];
-    assert.ok(video && bar && side && side.left >= video.right && side.left >= bar.right, 'the sidebar is at the right of the video and its bar, not over them');
-    assert.deepEqual(side && [side.top, side.bottom, side.right], [0, 720, 1000], 'the sidebar is as high as the window, at its right side');
-  };
-  await layout();
-  await player.click('#fullscreen');
-  assert.equal(await player.evaluate(() => document.fullscreenElement?.id), 'watch');
-  await layout();
-  await player.evaluate(() => document.exitFullscreen());
   assert.deepEqual(await cards.evaluateAll(rows => rows.map(row => `${row.querySelector('time')?.textContent} ${row.querySelector('.text')?.textContent}`)),
     ['0:00 猫が魚を食べた', '0:03 今日は雨が降っている']);
-  console.log('sidebar: a card with its time for each line at the right of the video');
+  console.log('sidebar: a card with its time for each line in the side panel');
 
-  const currentCard = (time: string) => player.waitForFunction(t => document.querySelector('.minerr-lines li[aria-current="true"] time')?.textContent === t, time);
+  const currentCard = (time: string) => panel.waitForFunction(t => document.querySelector('.minerr-lines li[aria-current="true"] time')?.textContent === t, time);
   await currentCard('0:00');
   await seek(4);
   await currentCard('0:03');
@@ -320,7 +305,7 @@ try {
 
   const requestsBefore = anki.requests.length;
   await cards.nth(0).getByRole('button', { name: 'Add a card for a word of the line' }).click();
-  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor({ timeout: 15000 });
+  await panelPopup.locator('.message', { hasText: 'Added to Anki.' }).waitFor({ timeout: 15000 });
   const fields = at(anki.requests.slice(requestsBefore).find(r => at(r, 'action') === 'addNote'), 'params', 'note', 'fields');
   console.log('card from +:', fields);
   assert.equal(at(fields, 'Word'), '魚');
@@ -328,8 +313,17 @@ try {
   assert.match(String(at(fields, 'SentenceAudio')), /^\[sound:minerr-\d+\.webm\]$/, 'the card has the audio of the line');
   assert.match(String(at(fields, 'Image')), /^<img src="minerr-\d+\.jpg">$/, 'the card has a screenshot');
   assert.deepEqual(await playback(), { paused: true, time: 0 }, '+ pauses the video at the start of the line');
-  await player.keyboard.press('Escape');
-  await player.mouse.move(0, 0);
+  await panel.keyboard.press('Escape');
+  await panel.mouse.move(0, 0);
+  // New lines from the tab (here: the same lines, cleaned) give new cards, and the current line gets its mark again.
+  await panel.evaluate(() => { document.querySelector<HTMLElement>('.minerr-lines li[aria-current="true"]')?.setAttribute('data-old', ''); });
+  await setStorage({ cleanSubs: true });
+  await panel.waitForFunction(() => {
+    const row = document.querySelector('.minerr-lines li[aria-current="true"]');
+    return row !== null && !row.hasAttribute('data-old') && row.querySelector('time')?.textContent === '0:00';
+  });
+  await setStorage({ cleanSubs: false });
+  console.log('sidebar: after the tab sent its lines again, the current line has its mark');
 
   await setStorage({ 'w:今日': 'unknown', 'w:雨': 'unknown', 'w:降る': 'known' });
   await sidebar.locator('li .ml-word.ml-known[data-ml-lemma="降る"]').waitFor();
@@ -339,41 +333,41 @@ try {
   const choices = await chooser.getByRole('button').evaluateAll(nodes => nodes.map(node => (node instanceof HTMLInputElement ? node.value : node.textContent)));
   console.log('+ on a line with two unknown words:', choices);
   assert.deepEqual(choices, ['今日', '雨', '降っている', 'Cancel'], 'the chooser lists the unknown words first');
-  assert.equal(await player.evaluate(() => (document.activeElement as HTMLInputElement | null)?.value), '今日', 'the first word has the focus');
-  await player.screenshot({ path: join(out, 'sidebar-chooser.png') });
-  await player.keyboard.press('Escape');
+  assert.equal(await panel.evaluate(() => (document.activeElement as HTMLInputElement | null)?.value), '今日', 'the first word has the focus');
+  await panel.screenshot({ path: join(out, 'sidebar-chooser.png') });
+  await panel.keyboard.press('Escape');
   await chooser.waitFor({ state: 'detached' });
   await cards.nth(1).getByRole('button', { name: 'Add a card for a word of the line' }).click();
   const chosenBefore = anki.requests.length;
   await chooser.getByRole('button', { name: '雨' }).click();
-  await popup.locator('.message', { hasText: 'Added to Anki.' }).waitFor({ timeout: 15000 });
+  await panelPopup.locator('.message', { hasText: 'Added to Anki.' }).waitFor({ timeout: 15000 });
   const chosen = at(anki.requests.slice(chosenBefore).find(r => at(r, 'action') === 'addNote'), 'params', 'note', 'fields');
   console.log('card from the chooser:', chosen);
   assert.equal(at(chosen, 'Word'), '雨');
   assert.equal(at(chosen, 'Sentence'), '今日は<b>雨</b>が降っている', 'the card sentence is the whole line');
   assert.match(String(at(chosen, 'SentenceAudio')), /^\[sound:minerr-\d+\.webm\]$/, 'the card has the audio of the line');
   assert.equal(await chooser.count(), 0, 'the chooser closes');
-  await player.keyboard.press('Escape');
-  await player.mouse.move(0, 0);
+  await panel.keyboard.press('Escape');
+  await panel.mouse.move(0, 0);
 
-  const sidebarDisplay = () => sidebar.evaluate(node => getComputedStyle(node).display);
+  const off = panel.locator('#off');
   await setStorage({ enabled: false });
-  await player.waitForFunction(() => document.documentElement.hasAttribute('data-minerr-off'));
-  assert.equal(await sidebarDisplay(), 'none', 'Minerr off hides the sidebar');
+  await off.waitFor();
+  assert.equal(await off.innerText(), 'Minerr is off. Press Alt+Shift+M to turn it on.');
+  assert.equal(await sidebar.isVisible(), false, 'Minerr off hides the lines');
   await setStorage({ enabled: true });
-  await player.waitForFunction(() => !document.documentElement.hasAttribute('data-minerr-off'));
-  assert.equal(await sidebarDisplay(), 'flex');
-  await player.keyboard.press('g');
-  await sidebar.waitFor({ state: 'hidden' });
-  console.log('sidebar +: a card for 魚 with the line, its audio, and a screenshot; Minerr off hides the sidebar');
+  await off.waitFor({ state: 'hidden' });
+  assert.equal(await sidebar.isVisible(), true);
+  console.log('sidebar +: a card for 魚 with the line, its audio, and a screenshot; Minerr off hides the lines');
 
   const POOL = ['猫が魚を食べた。', '今日は雨が降っている。', '本を読む。', '彼は駅まで歩いて行った。', '明日は友達と映画を見る予定です。'];
   const stamp = (seconds: number) => `00:${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')},000`;
   const longTrack = join(work, 'long.srt');
   writeFileSync(longTrack, Array.from({ length: 1500 }, (_, i) => `${i + 1}\n${stamp(i * 2)} --> ${stamp(i * 2 + 2)}\n${POOL[i % POOL.length]}\n`).join('\n'));
   await player.setInputFiles('#subs-file', longTrack);
+  const opened = Date.now();
   await status.filter({ hasText: 'Subtitles from long.srt: 1500 lines.' }).waitFor();
-  await player.evaluate(() => {
+  await panel.evaluate(() => {
     const gaps: number[] = [];
     Object.assign(window, { gaps });
     let last = performance.now();
@@ -385,13 +379,11 @@ try {
     };
     requestAnimationFrame(tick);
   });
-  const opened = Date.now();
-  await player.keyboard.press('g');
   await sidebar.locator('li').nth(1499).locator('.ml-word').first().waitFor({ state: 'attached', timeout: 60000 });
   const parsedMs = Date.now() - opened;
-  const gaps = await player.evaluate(() => (Reflect.get(window, 'gaps') as number[]).toSorted((a, b) => b - a));
+  const gaps = await panel.evaluate(() => (Reflect.get(window, 'gaps') as number[]).toSorted((a, b) => b - a));
   console.log(`sidebar with 1,500 lines: all words after ${parsedMs} ms; longest frames (ms): ${gaps.slice(0, 6).map(t => t.toFixed(0)).join(' ')}; ${gaps.filter(gap => gap > 50).length} frames over 50 ms`);
-  assert.ok((gaps[0] ?? 0) < 500, 'the sidebar opens 1,500 lines without a freeze of the tab');
+  assert.ok((gaps[0] ?? 0) < 500, 'the panel shows 1,500 lines without a freeze');
   const listTop = () => sidebar.locator('ol').evaluate(list => list.scrollTop);
   const paused = sidebar.getByText('Scroll paused');
   assert.equal(await paused.isVisible(), false);
@@ -399,13 +391,13 @@ try {
   await paused.waitFor();
   await sidebar.locator('ol').evaluate(list => { list.scrollTop = 3000; });
   await seek(5);
-  await player.waitForFunction(() => document.querySelector('.minerr-lines li[aria-current="true"] time')?.textContent === '0:04');
+  await currentCard('0:04');
   assert.equal(await listTop(), 3000, 'the list does not scroll under the mouse');
-  await player.mouse.move(0, 0);
+  await panel.mouse.move(0, 0);
   await paused.waitFor({ state: 'hidden' });
   assert.equal(await listTop(), 3000, 'the list does not scroll when the mouse leaves');
   console.log('sidebar: the list stops to follow the video while the mouse is over it, with a "Scroll paused" badge');
-  await player.keyboard.press('g');
+  await panel.close();
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
   console.log('PLAYER E2E PASS');

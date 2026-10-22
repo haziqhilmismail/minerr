@@ -3,11 +3,10 @@
 // Netflix has DRM: the server cannot download the video, so the overlay has no WhisperX and no line audio (src/video/video.ts).
 import { askPage } from '../ask-page.ts';
 import type { SubtitleSegment } from '../captions.ts';
-import { SIDE_OPEN } from '../sidebar/sidebar.ts';
 import { choose, fetchTrack, type Manifest, type PageReply, toReply } from './netflix-captions.ts';
 import { followVideo } from '../overlay.ts';
 import { serve } from '../../shared/rpc.ts';
-import { attach, layer, setLines, sidebar, toast } from '../video.ts';
+import { attach, layer, setLines, toast } from '../video.ts';
 import { secondDisplay } from '../videosettings.ts';
 
 const WAIT_MS = 1000;
@@ -15,11 +14,9 @@ const WAIT_MS = 1000;
 const WATCH = /^\/watch\/(\d+)/;
 
 // Netflix's own subtitles stay in the DOM, but they are invisible while the overlay has lines (data-minerr-netflix on the root).
-// The open subtitle sidebar narrows the player, which fills the window: a width from the window, so it holds for a fixed player too.
 const STYLE = `
   :root[data-minerr-netflix]:not([data-minerr-off]) .player-timedtext { opacity: 0 !important; pointer-events: none !important; }
   :root[data-minerr-off] .minerr-subs { display: none; }
-  ${SIDE_OPEN} .watch-video { width: calc(100vw - var(--minerr-side-width)) !important; }
 `;
 
 // What the tab has for a track of the title: its lines, or why it has none (nofile: Netflix gave no file for the track).
@@ -117,7 +114,6 @@ function sync(): void {
     video = found;
     if (video) followVideo(video, layer);
   }
-  if (sidebar.parentElement !== document.body) document.body.append(sidebar);
   const movieId = WATCH.exec(location.pathname)?.[1] ?? null;
   if (movieId === (state?.movieId ?? null)) return;
   state = movieId === null ? null : { movieId, manifest: null, known: [], japanese: null, english: null };

@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Page } from 'playwright';
 import { at } from '../src/shared/guards.ts';
-import { launch, makeDictionary, mockAnki, useCjkFonts } from './harness.ts';
+import { launch, makeDictionary, mockAnki, openSidebar, useCjkFonts } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-netflix-'));
 const out = process.env.OUT_DIR ?? work;
@@ -147,19 +147,13 @@ try {
   assert.deepEqual(cdn, ['/ja.vtt', '/en.vtt']);
   console.log('Netflix: D goes to the next line through the player, and the English track shows under the line');
 
-  await tab.keyboard.press('g');
-  const sidebar = tab.locator('.minerr-lines');
-  const cards = sidebar.locator('li');
-  await sidebar.locator('li .ml-word[data-ml-lemma="食べる"]').waitFor();
+  const panel = await openSidebar(context, worker, extensionId, tab);
+  const cards = panel.locator('.minerr-lines li');
+  await cards.locator('.ml-word[data-ml-lemma="食べる"]').waitFor();
   assert.deepEqual(await cards.evaluateAll(rows => rows.map(row => `${row.querySelector('time')?.textContent} ${row.querySelector('.text')?.textContent}`)),
     ['0:00 猫が魚を食べた', '0:03 今日は雨']);
-  const narrowed = await tab.evaluate(() => innerWidth - document.querySelector('.watch-video')!.getBoundingClientRect().right);
-  assert.ok(narrowed > 100, `the open sidebar narrows the player: ${narrowed}px free at the right`);
-  // The overlay follows the video every 250 ms.
-  await tab.waitForFunction(() => document.querySelector('.minerr-subs')?.getBoundingClientRect().width === document.querySelector('video')?.getBoundingClientRect().width);
-  await shot(tab, 'netflix-sidebar.png');
-  await tab.keyboard.press('g');
-  await sidebar.waitFor({ state: 'hidden' });
+  await shot(panel, 'netflix-sidebar.png');
+  await panel.close();
 
   await line.locator('.ml-word[data-ml-lemma="雨"]').hover();
   const popup = tab.locator('minerr-popup .popup');

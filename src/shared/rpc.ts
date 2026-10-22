@@ -10,11 +10,13 @@ import type { WordId } from '../status/status.ts';
 import type { Snapshot, Source } from '../video/youtube/youtube-overlay.ts';
 import type { Entry, PitchPattern } from '../dictionary/meta.ts';
 import type { Health, Job } from '../video/whisper.ts';
+import type { Go } from '../video/sidebar/sidebar-port.ts';
 
 // Every message type, with the fields that call() sends and the value that its handler replies with.
 // The service worker handles parse to siteCaptions; it passes parse (as segments), lookup, inflection, pitch, lookupText, and wordKeys on to the offscreen document.
 // The content scripts of a YouTube tab handle subsState, subsGenerate, and subsUse.
-// The page with the video overlay (a content script, or the player page) handles videoLine and videoRecord.
+// The page with the video overlay (a content script, or the player page) handles videoLine, videoRecord, and videoGo.
+// The service worker handles sidePanel for the tab of the sender.
 // The content scripts of a page that is not YouTube handle videoAttach.
 // The content scripts of every tab, and the reader page, handle pageStats (src/status/stats.ts).
 // The content scripts and the pages of Minerr handle command (src/popup/keys.ts).
@@ -54,6 +56,10 @@ interface Protocol {
   videoLine: { request: {}; reply: CardLine | null };
   videoRecord: { request: { start: number; end: number }; reply: MediaFile | null };
   videoAttach: { request: {}; reply: string };
+  // A card of the subtitle side panel acts on the video of the tab: a seek to the line, a play of it, or a pause at its start.
+  videoGo: { request: { index: number; how: Go }; reply: void };
+  // Opens the subtitle side panel next to the tab of the sender (the G key), or closes it.
+  sidePanel: { request: { open: boolean }; reply: void };
   pageStats: { request: {}; reply: PageStats };
   // A browser shortcut of manifest.json for the page of the active tab.
   command: { request: { command: PageCommand }; reply: void };
@@ -82,8 +88,8 @@ export function serve<K extends MessageType>(handlers: Handlers<K>, accepts: (ta
   chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
     const type = at(message, 'type');
     if (!accepts(at(message, 'target')) || !isHandled(handlers, type)) return false;
-    Promise.resolve()
-      .then(() => dispatch(handlers, type, message, sender))
+    // The handler runs in the task of the message: sidePanel needs the user gesture of the sender, which a microtask later is gone.
+    new Promise<Reply<K>>(resolve => resolve(dispatch(handlers, type, message, sender)))
       .then(value => sendResponse({ value }), error => sendResponse({ error: messageOf(error) }));
     return true;
   });

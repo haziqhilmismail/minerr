@@ -8,7 +8,7 @@ import { parseSubtitles, type SubtitleSegment, toSrt } from '../src/video/captio
 import { byId } from '../src/shared/dom.ts';
 import { messageOf } from '../src/shared/rpc.ts';
 import { applyTheme } from '../src/shared/theme.ts';
-import { attach, layer, setLines, sidebar } from '../src/video/video.ts';
+import { attach, layer, setLines } from '../src/video/video.ts';
 import { getJob, uploadFile, waitForJob } from '../src/video/whisper.ts';
 
 applyTheme();
@@ -37,7 +37,6 @@ const subsInput = byId('subs-file', HTMLInputElement);
 const secondInput = byId('second-file', HTMLInputElement);
 
 stage.append(layer);
-watch.append(sidebar);
 attach({ video: () => video });
 
 let file: File | null = null;

@@ -3,7 +3,9 @@ import type { SubtitleSegment } from './captions.ts';
 import { modePause, played, setHold } from './autopause.ts';
 import type { CardLine } from '../anki/lineaudio.ts';
 import { play } from '../shared/dom.ts';
-import { createLineList, TIMES_SOURCE } from './sidebar/sidebar.ts';
+import { toggleBookmark } from './sidebar/bookmarks.ts';
+import { type PanelEvent, PORT_NAME, type TabEvent } from './sidebar/sidebar-port.ts';
+import { TIMES_SOURCE } from './sidebar/sidebar.ts';
 import { type CaptionAnchor, createOverlay, wordStatuses } from './overlay.ts';
 import { isPopupOpen } from '../popup/popup.ts';
 import { isEditable } from '../popup/chord.ts';
@@ -11,7 +13,7 @@ import {
   autoPause, cleanSegments, cleanText, GAP_LEAD, GAP_MODES, gapEnd, type GapMode, jumpTarget, lastStarted, onLine, PLAY_MODES, type PlayMode,
 } from './playback.ts';
 import { recordPart } from './record.ts';
-import { serve } from '../shared/rpc.ts';
+import { call, messageOf, serve } from '../shared/rpc.ts';
 import { isIPlusOne } from '../text/sentence.ts';
 import { setTrack } from '../status/stats.ts';
 import { type VideoAction, videoKey } from './videokeys.ts';
@@ -54,7 +56,6 @@ const TIMED_HINT = `This key needs subtitles with times. ${TIMES_SOURCE}`;
 const SEEK_WAIT_MS = 2000;
 
 const { layer, line, show, toast } = createOverlay();
-const list = createLineList({ seek: goTo, play: playLine, still: stillAt, toast });
 let target: Target = { video: () => null };
 // The lines from the page, and the lines that the overlay uses: the same, or without bracketed text.
 let given: Lines = { kind: 'none' };
@@ -77,15 +78,19 @@ let lastTime = 0;
 // The line that the play mode paused at its end: it stays on the screen until the video plays or seeks.
 let heldIndex = -1;
 let secondShown: SecondDisplay = 'show';
-// The segments in the subtitle sidebar.
+// The segments that the subtitle side panel has.
 let listed: SubtitleSegment[] | null = null;
+// The ports of the open subtitle side panels of this tab (pages/sidepanel.ts): one, or none.
+const panels = new Set<chrome.runtime.Port>();
+// The line of the open word popup in the side panel, or null. The video pauses for it (pauseOnSidebar), and a card from it gets its audio.
+let panelLine: number | null = null;
+// The index that the panels have as the current line.
+let panelCurrent = -1;
 // The first of two lines that J joined, for one card with both; it ends when the video leaves the two lines.
 let combined: number | null = null;
 // The line that Play in the sidebar plays: the video pauses at its end. A seek out of the line ends it.
 let playOnce: { index: number; segment: SubtitleSegment } | null = null;
 
-// The host page puts the sidebar in the page: in the body, or in the element that goes full screen.
-export const sidebar = list.panel;
 export { layer, toast };
 
 const video = () => target.video();
@@ -116,8 +121,38 @@ function render(): void {
   const second = found && !target.blocked?.() && secondShown !== 'off' ? found.second?.find(s => s.start <= time && time < s.end)?.text : '';
   show(shownLines().map(segment => segment.text).join('\n'), second ?? '');
   // Between two lines, the sidebar keeps the mark on the line before.
-  list.setCurrent(shownIndex >= 0 || !found ? shownIndex : lastStarted(found.segments, time));
+  setPanelCurrent(shownIndex >= 0 || !found ? shownIndex : lastStarted(found.segments, time));
 }
+
+const tellPanels = (event: TabEvent) => { for (const panel of panels) panel.postMessage(event); };
+const linesEvent = (): TabEvent => {
+  const found = timed();
+  return { kind: 'lines', id: found?.id ?? null, segments: found?.segments ?? [] };
+};
+
+function setPanelCurrent(index: number): void {
+  if (index === panelCurrent) return;
+  panelCurrent = index;
+  tellPanels({ kind: 'current', index });
+}
+
+chrome.runtime.onConnect.addListener(port => {
+  if (port.name !== PORT_NAME) return;
+  panels.add(port);
+  // The sender is the side panel (pages/sidepanel.ts), which sends PanelEvent values.
+  port.onMessage.addListener((event: PanelEvent) => {
+    panelLine = event.index;
+    syncHolds();
+  });
+  port.onDisconnect.addListener(() => {
+    panels.delete(port);
+    if (panels.size) return;
+    panelLine = null;
+    syncHolds();
+  });
+  port.postMessage(linesEvent());
+  port.postMessage({ kind: 'current', index: panelCurrent } satisfies TabEvent);
+});
 
 function crossGap(playing: HTMLVideoElement): void {
   const found = timed();
@@ -181,7 +216,9 @@ function useLines(next: Lines): void {
   setTrack(segments);
   if (segments !== listed) {
     listed = segments;
-    list.setLines(segments, lines.kind === 'timed' ? lines.id : null);
+    tellPanels(linesEvent());
+    // The panels build new cards without a mark; the render after this sends the current line again.
+    panelCurrent = -1;
   }
   follow();
 }
@@ -220,13 +257,12 @@ async function stillAt(index: number): Promise<void> {
   await Promise.race([seeked, new Promise(resolve => setTimeout(resolve, SEEK_WAIT_MS))]);
 }
 
+// The service worker opens the side panel next to this tab, or closes it. Chrome shows no side panel in full screen.
 function toggleList(): void {
-  list.toggle();
-  const full = document.fullscreenElement;
-  if (!list.panel.hidden && full && !full.contains(list.panel)) toast('The subtitle sidebar shows when you leave full screen.');
-  follow();
+  const open = !panels.size;
+  call({ type: 'sidePanel', open }).catch(error => toast(messageOf(error)));
+  if (open && document.fullscreenElement) toast('The subtitle sidebar shows when you leave full screen.');
 }
-
 
 function seek(time: number): void {
   const playing = video();
@@ -299,7 +335,10 @@ const ACTIONS: Record<VideoAction, () => boolean | void> = {
   // render first: a seek just now changed the time, and the seeked event that renders comes later.
   bookmark: () => {
     render();
-    list.toggleBookmark(shownIndex);
+    const found = timed();
+    const segment = found?.segments[shownIndex];
+    if (!found || !segment) return toast('Go to a line first, then bookmark it.');
+    toggleBookmark(found.id, segment.start).then(toast);
   },
   second: () => {
     const next = secondShown === 'off' ? 'show' : 'off';
@@ -324,15 +363,17 @@ window.addEventListener('keydown', event => {
   event.stopImmediatePropagation();
 }, true);
 
-// The line of the word that the popup shows, for the sentence audio of its card. A word elsewhere on the page has no line.
+// The line of the word that the popup shows, for the sentence audio of its card: the line in the overlay when the popup of
+// this page is on a word of it, else the line of the popup in the side panel. A word elsewhere on the page has no line.
 function cardLine(): CardLine | null {
   const found = timed();
+  if (!found) return null;
   const word = document.querySelector('.ml-word[data-ml-active]');
-  const row = word && list.panel.contains(word) ? list.rowIndex(word) : null;
-  const shown = row === null ? shownLines() : found?.segments.slice(row, row + 1) ?? [];
+  if (word && !line.contains(word)) return null;
+  const shown = word ? shownLines() : panelLine === null ? [] : found.segments.slice(panelLine, panelLine + 1);
   const [first] = shown;
   const last = shown.at(-1);
-  if (!found || !first || !last || !word || (row === null && !line.contains(word))) return null;
+  if (!first || !last) return null;
   const text = shown.map(segment => segment.text).join('\n');
   const playing = video();
   const guarded = playing !== null && isProtected(playing);
@@ -361,7 +402,10 @@ async function record({ start, end }: { start: number; end: number }) {
   }
 }
 
-serve({ videoLine: cardLine, videoRecord: record }, target => target === undefined);
+// What a card of the side panel asks of the video (src/video/sidebar/sidebar-port.ts Go).
+const GO = { seek: goTo, play: playLine, still: stillAt };
+
+serve({ videoLine: cardLine, videoRecord: record, videoGo: async ({ index, how }) => { await GO[how](index); } }, target => target === undefined);
 
 let effect: SubEffect = 'blur';
 let obscured = false;
@@ -383,7 +427,7 @@ secondDisplay.watch(value => {
   follow();
 });
 
-// popup.ts marks the word of the open popup with data-ml-active, in the overlay or in the sidebar.
+// popup.ts marks the word of the open popup with data-ml-active; the side panel tells its popup line (panelLine).
 const hasPopup = (root: HTMLElement) => root.querySelector('.ml-word[data-ml-active]') !== null;
 let holdOverlay = true;
 let holdSidebar = true;
@@ -392,15 +436,13 @@ function syncHolds(): void {
   if (!playing || recording) return;
   setHold(playing, 'hover', holdOverlay && line.matches(':hover'));
   setHold(playing, 'popup', holdOverlay && hasPopup(layer));
-  setHold(playing, 'sidebar', holdSidebar && hasPopup(list.panel));
+  setHold(playing, 'sidebar', holdSidebar && panelLine !== null);
 }
 pauseOnHover.watch(value => { holdOverlay = value; syncHolds(); });
 pauseOnSidebar.watch(value => { holdSidebar = value; syncHolds(); });
 line.addEventListener('mouseenter', syncHolds);
 line.addEventListener('mouseleave', syncHolds);
-for (const root of [layer, list.panel]) {
-  new MutationObserver(syncHolds).observe(root, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-ml-active'] });
-}
+new MutationObserver(syncHolds).observe(layer, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-ml-active'] });
 
 subScale.watch(value => {
   scale = value;
@@ -417,6 +459,6 @@ for (const type of ['play', 'pause', 'seeked', 'timeupdate']) {
     if (type === 'seeked' && playOnce && !onLine(playOnce.segment, lineTime())) playOnce = null;
     if (type !== 'timeupdate') lastTime = lineTime();
     follow();
-    if (userPlay) list.resumeFollow();
+    if (userPlay) tellPanels({ kind: 'played' });
   }, true);
 }

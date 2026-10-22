@@ -1,7 +1,6 @@
 import { captionText, type SubtitleSegment } from '../captions.ts';
-import { SIDE_OPEN } from '../sidebar/sidebar.ts';
 import { call, type Message, messageOf, serve } from '../../shared/rpc.ts';
-import { attach, layer, type Lines, setLines, sidebar } from '../video.ts';
+import { attach, layer, type Lines, setLines } from '../video.ts';
 import type { CaptionAnchor } from '../overlay.ts';
 import { secondDisplay } from '../videosettings.ts';
 import { type JobStatus, waitForJob } from '../whisper.ts';
@@ -13,19 +12,9 @@ const MAX_RETRY_MS = 60000;
 
 // YouTube's caption window stays in the DOM (the overlay reads it), but it is invisible and takes no mouse events.
 // When Minerr is off (page.ts sets data-minerr-off on the root), YouTube's own captions come back and the overlay hides.
-// The open subtitle sidebar (src/video/sidebar/sidebar.ts) narrows the page. The masthead is fixed, so it gets its own right edge.
-// The theater player is as high as the narrower page is wide, where YouTube makes it as high as the window is wide.
-// YouTube sets the min-width of #columns from the window, wider than the narrower page. Minerr removes that min-width
-// and hides #secondary (the recommended videos), so the player column gets the width of the page.
 const STYLE = `
   :root:not([data-minerr-off]) .ytp-caption-window-container { opacity: 0 !important; pointer-events: none !important; }
   :root[data-minerr-off] .minerr-subs { display: none; }
-  ${SIDE_OPEN} #masthead-container { left: 0 !important; right: var(--minerr-side-width) !important; width: auto !important; }
-  ${SIDE_OPEN} ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container {
-    height: calc((100vw - var(--minerr-side-width)) * 9 / 16) !important;
-  }
-  ${SIDE_OPEN} ytd-watch-flexy #columns { min-width: 0 !important; }
-  ${SIDE_OPEN} ytd-watch-flexy #secondary { display: none !important; }
 `;
 
 // 'youtube' shows the YouTube subtitles: with times when the server or the tab got them, else a mirror of YouTube's own captions.
@@ -181,7 +170,6 @@ function sync(): void {
     if (player) captions.observe(player, { childList: true, subtree: true, characterData: true });
   }
   if (player && layer.parentElement !== player) player.append(layer);
-  if (sidebar.parentElement !== document.body) document.body.append(sidebar);
   const videoId = currentVideoId();
   if (videoId !== state.videoId) changeVideo(videoId);
 }
