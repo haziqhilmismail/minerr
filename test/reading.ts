@@ -156,6 +156,8 @@ try {
   const tabId = await worker.evaluate(async url => (await chrome.tabs.query({ url }))[0]?.id, pageUrl);
   const action = await context.newPage();
   await action.goto(`chrome-extension://${extensionId}/pages/action.html?tab=${tabId}`);
+  // The menu shows the site switch only after it read the tab and the settings.
+  await action.locator('#site-toggle').waitFor();
   assert.equal(await action.innerText('#site-toggle'), 'Page text on this site\n127.0.0.1. Shortcut: Alt+Shift+D. Video subtitles work without it.\nOFF');
   assert.equal(await action.isChecked('#site'), false);
   assert.equal(await action.innerText('#enabled-hint'), 'In all tabs. Shortcut: Alt+Shift+M.', 'the toolbar menu shows the key that Chrome has now');
