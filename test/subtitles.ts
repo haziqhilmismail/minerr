@@ -661,6 +661,15 @@ try {
   assert.deepEqual(await boxOf(), before, 'a new word of a left caption window does not move the line');
   await shot(tab, 'overlay-english-left.png');
   await tab.evaluate(() => { const window = document.querySelector<HTMLElement>('.caption-window'); if (window) window.style.textAlign = ''; });
+  await options.evaluate(() => chrome.storage.local.set({ enabled: false }));
+  await tab.waitForFunction(() => document.documentElement.hasAttribute('data-minerr-off'));
+  await tab.waitForTimeout(500);
+  const englishOff = await tab.evaluate(() => ({ layer: getComputedStyle(document.querySelector('.minerr-subs') ?? document.body).display,
+    line: document.querySelector<HTMLElement>('.minerr-subs-line')?.checkVisibility(), layers: document.querySelectorAll('.minerr-subs').length }));
+  console.log("English video, Minerr off:", englishOff);
+  assert.equal(await line.isVisible(), false, 'Minerr off hides the overlay on an English video');
+  await options.evaluate(() => chrome.storage.local.set({ enabled: true }));
+  await tab.waitForFunction(() => !document.documentElement.hasAttribute('data-minerr-off'));
   console.log('English video: no Japanese lines from a translation; the overlay copies the YouTube captions, English rows on their own lines');
 
   await context.route('https://example.com/**', route => route.fulfill({ contentType: 'text/html', body: '<p>Not YouTube</p>' }));
