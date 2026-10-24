@@ -47,10 +47,8 @@ All data stays on your computer, with two exceptions. The extension sends reques
 
 Install Minerr from the Chrome Web Store, or load it unpacked.
 
-- **Chrome Web Store.** Minerr comes to the store soon. Until then, load it unpacked. The store version does not include the WhisperX add-on. See [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx).
+- **Chrome Web Store.** Open [Minerr in the Chrome Web Store](https://chromewebstore.google.com/detail/minerr/ikpmeofnjpikdoajmibnhkcnmgjkkmkl), click **Add to Chrome**, and go to step 3. The store version does not include the WhisperX add-on. See [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx).
 - **Load unpacked.** Download `minerr-v<version>.zip` from the [Releases](https://github.com/haziqhilmismail/minerr/releases) page, and unzip it. Then go to step 2. The zip has one folder, `minerr`, and the same zip works on all platforms. To build the extension from the source code, do step 1 first.
-
-<!-- TODO(owner): When the store listing is live, put its address in the Chrome Web Store item, with the step to click Add to Chrome and then go to step 3 (docs/chrome-web-store.md, step 3). -->
 
 ### 1. Build the extension
 
@@ -1184,7 +1182,7 @@ The path of a word from a page to a card:
 | `src/video/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
 | `server/whisper_server.py`, `server/media.py` | The local server: WhisperX jobs and the HTTP routes, and the video side (cache keys, `yt-dlp`, `ffmpeg`, the audio cache, and line clips). The server uses `yt-dlp` and `ffmpeg` from the `PATH`, else the `yt-dlp` package and the `ffmpeg` of `imageio-ffmpeg`. |
 | `Start WhisperX server (Windows).cmd` | Starts the WhisperX server on Windows, after `server/chrome_start.py` sets up the Start button of the popup. It downloads uv when it finds none, and it gets the newest `yt-dlp` at each start. Git writes the `.cmd` files with CRLF line ends (`.gitattributes`), because they are Windows batch files. |
-| `server/chrome_start.py` | Writes the manifest of the native messaging host `com.minerr.whisperx` to `%LOCALAPPDATA%\Minerr` and the registry value that points at it. The manifest lets Minerr from the Chrome Web Store use the host (`STORE_EXTENSION_ID`, empty until the first upload), and the unpacked extension in this folder, if the folder has `manifest.json`. The folder of the add-on has no `manifest.json`. If no extension can use the host, the file registers nothing. The Windows launcher runs it with Python of Windows. |
+| `server/chrome_start.py` | Writes the manifest of the native messaging host `com.minerr.whisperx` to `%LOCALAPPDATA%\Minerr` and the registry value that points at it. The manifest lets Minerr from the Chrome Web Store use the host (`STORE_EXTENSION_ID`), and the unpacked extension in this folder, if the folder has `manifest.json`. The folder of the add-on has no `manifest.json`. The Windows launcher runs it with Python of Windows. |
 | `server/start-from-chrome-windows.cmd` | The native messaging host of the Windows launcher. Chrome runs the registered host when you click **Start the server**. The host opens its launcher in a window of its own and exits. |
 | `scripts/logo.py`, `docs/logo.svg`, `icons/` | `scripts/logo.py` draws the logo and the extension icons as pixel art in one palette. It writes `docs/logo.svg` and `icons/icon-16.png`, `-32`, `-48`, and `-128`, a 16 x 16 pickaxe at a whole scale. Run `python3 scripts/logo.py`. |
 | `scripts/package.ts` | Packs `dist` into three zips in `release`, each with a `.sha256` file: `minerr-whisperx-v<version>.zip` (the WhisperX add-on, the server and its launcher), `minerr-v<version>.zip` (the whole extension in the top folder `minerr`, for Load unpacked), and `minerr-store-v<version>.zip` (the extension without the add-on, with `manifest.json` at the root, for the Chrome Web Store). |

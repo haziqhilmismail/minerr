@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Minerr",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Colors Japanese words by status, shows dictionary definitions on hover, and adds Anki cards.",
   "permissions": ["storage", "offscreen", "unlimitedStorage", "nativeMessaging", "sidePanel"],
   "optional_permissions": ["clipboardRead"],

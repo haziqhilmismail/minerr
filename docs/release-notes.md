@@ -57,9 +57,7 @@ If you move the `minerr-whisperx` folder on Windows, double-click the launcher i
 
 ## Get Minerr
 
-Minerr comes to the Chrome Web Store soon. Until then, load it unpacked:
-
-<!-- TODO(owner): When the store listing is live, put its address here and in README.md (docs/chrome-web-store.md, step 3). -->
+Install Minerr from the [Chrome Web Store](https://chromewebstore.google.com/detail/minerr/ikpmeofnjpikdoajmibnhkcnmgjkkmkl). To load it unpacked:
 
 1. Download `minerr-v<version>.zip` from the assets of this release, and unzip it. The zip has one folder, `minerr`.
 2. Put the `minerr` folder in a place where it can stay. Chrome gives the extension an ID from the folder path. If you move the folder later, Minerr starts again with no data.

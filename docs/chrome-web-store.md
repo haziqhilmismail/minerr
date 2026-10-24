@@ -11,8 +11,8 @@ This guide is for the owner of Minerr. It gives the state of the changes for the
 | A `LICENSE` file. Without a license, other people have no right to use or change the code. | Done. The MIT License. |
 | A privacy policy. The Privacy practices tab asks for its URL. | Done. `PRIVACY.md`. See [Privacy practices](#4-fill-in-the-privacy-practices-tab). |
 | Texts for a store install. A store install has no Minerr folder, so the popup must not tell the user to open it. | Done. The popup tells a store install to get the WhisperX add-on from GitHub (`src/video/server-status.ts`). |
-| The item ID in `STORE_EXTENSION_ID` in `server/chrome_start.py`. The store gives Minerr a fixed ID, and Chrome refuses the Start button for an ID that the host manifest does not name. | Left. Fill it in after the first upload, then make a new release of the add-on. See [step 3](#3-upload-the-zip-and-fill-in-the-store-listing). |
-| The store address in `README.md` and `docs/release-notes.md`. | Left. Both say that Minerr comes to the store soon. When the store listing is live, put its address there. |
+| The item ID in `STORE_EXTENSION_ID` in `server/chrome_start.py`. The store gives Minerr a fixed ID, and Chrome refuses the Start button for an ID that the host manifest does not name. | Done. `ikpmeofnjpikdoajmibnhkcnmgjkkmkl`, in the add-on of version 0.3.0. |
+| The store address in `README.md` and `docs/release-notes.md`. | Done. |
 
 ## 1. Register a developer account
 

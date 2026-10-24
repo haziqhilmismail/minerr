@@ -13,7 +13,7 @@ from unittest import mock
 import chrome_start
 from chrome_start import extension_id, register
 
-STORE = 'abcdefghijklmnopabcdefghijklmnop'
+STORE = 'ikpmeofnjpikdoajmibnhkcnmgjkkmkl'
 FOLDER = r'C:\Users\haziq\minerr'
 
 
@@ -55,45 +55,36 @@ class Register(unittest.TestCase):
 
     def test_writes_the_manifest_for_this_extension_and_points_the_registry_value_at_it(self):
         self.unpacked = True
-        self.assertEqual(register(FOLDER, self.local), (['lfmbihboldmlhbolbfdfdpdcnajbmkbo'], self.manifest))
+        self.assertEqual(register(FOLDER, self.local), ([STORE, 'lfmbihboldmlhbolbfdfdpdcnajbmkbo'], self.manifest))
         self.assertEqual(json.loads(Path(self.manifest).read_text()), {
             'name': 'com.minerr.whisperx',
             'description': 'Starts the Minerr WhisperX server.',
             'path': r'C:\Users\haziq\minerr\server\start-from-chrome-windows.cmd',
             'type': 'stdio',
-            'allowed_origins': ['chrome-extension://lfmbihboldmlhbolbfdfdpdcnajbmkbo/'],
+            'allowed_origins': [f'chrome-extension://{STORE}/', 'chrome-extension://lfmbihboldmlhbolbfdfdpdcnajbmkbo/'],
         })
         self.assertEqual(self.commands, [self.reg_add])
 
     def test_allows_the_store_id_and_the_unpacked_extension_only_in_a_folder_with_manifest_json(self):
-        with mock.patch.object(chrome_start, 'STORE_EXTENSION_ID', STORE):
-            self.assertEqual(register(FOLDER, self.local), ([STORE], self.manifest))
-            self.assertEqual(self.allowed(), [f'chrome-extension://{STORE}/'])
-            self.unpacked = True
-            self.assertEqual(register(FOLDER, self.local), ([STORE, 'lfmbihboldmlhbolbfdfdpdcnajbmkbo'], self.manifest))
-            self.assertEqual(self.allowed(), [f'chrome-extension://{STORE}/', 'chrome-extension://lfmbihboldmlhbolbfdfdpdcnajbmkbo/'])
-
-    def test_registers_nothing_without_a_store_id_in_the_folder_of_the_add_on(self):
-        self.assertEqual(self.main_output({'LOCALAPPDATA': self.local}),
-                         'Minerr could not set up the Start button of the popup, because this folder has no extension and STORE_EXTENSION_ID in '
-                         'chrome_start.py is empty. Start the server with a double-click of "Start WhisperX server (Windows).cmd".\n')
-        self.assertEqual(self.commands, [])
-        self.assertFalse(Path(self.local, 'Minerr').exists(), 'no manifest')
+        self.assertEqual(register(FOLDER, self.local), ([STORE], self.manifest))
+        self.assertEqual(self.allowed(), [f'chrome-extension://{STORE}/'])
+        self.unpacked = True
+        self.assertEqual(register(FOLDER, self.local), ([STORE, 'lfmbihboldmlhbolbfdfdpdcnajbmkbo'], self.manifest))
+        self.assertEqual(self.allowed(), [f'chrome-extension://{STORE}/', 'chrome-extension://lfmbihboldmlhbolbfdfdpdcnajbmkbo/'])
 
     def test_main_prints_one_line_with_the_id_on_success_and_one_line_with_the_double_click_on_failure(self):
-        with mock.patch.object(chrome_start, 'STORE_EXTENSION_ID', STORE):
-            self.assertEqual(self.main_output({'LOCALAPPDATA': self.local}),
-                             f'The Start button of the Minerr popup is ready for the extension {STORE}: '
-                             f'HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.minerr.whisperx -> {self.manifest}\n')
-            self.unpacked = True
-            self.assertEqual(self.main_output({'LOCALAPPDATA': self.local}),
-                             f'The Start button of the Minerr popup is ready for the extension {STORE} and the extension '
-                             f'{extension_id(str(Path(chrome_start.__file__).resolve().parents[1]))}: '
-                             f'HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.minerr.whisperx -> {self.manifest}\n')
-            self.reg_error = subprocess.CalledProcessError(1, self.reg_add)
-            self.assertEqual(self.main_output({'LOCALAPPDATA': self.local}),
-                             'Minerr could not set up the Start button of the popup. Start the server with a double-click of '
-                             f'"Start WhisperX server (Windows).cmd". The error: Command \'{self.reg_add}\' returned non-zero exit status 1.\n')
+        self.assertEqual(self.main_output({'LOCALAPPDATA': self.local}),
+                         f'The Start button of the Minerr popup is ready for the extension {STORE}: '
+                         f'HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.minerr.whisperx -> {self.manifest}\n')
+        self.unpacked = True
+        self.assertEqual(self.main_output({'LOCALAPPDATA': self.local}),
+                         f'The Start button of the Minerr popup is ready for the extension {STORE} and the extension '
+                         f'{extension_id(str(Path(chrome_start.__file__).resolve().parents[1]))}: '
+                         f'HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.minerr.whisperx -> {self.manifest}\n')
+        self.reg_error = subprocess.CalledProcessError(1, self.reg_add)
+        self.assertEqual(self.main_output({'LOCALAPPDATA': self.local}),
+                         'Minerr could not set up the Start button of the popup. Start the server with a double-click of '
+                         f'"Start WhisperX server (Windows).cmd". The error: Command \'{self.reg_add}\' returned non-zero exit status 1.\n')
         self.assertEqual(self.main_output({}), 'Minerr could not set up the Start button of the popup, because LOCALAPPDATA is not set. '
                          'Start the server with a double-click of "Start WhisperX server (Windows).cmd".\n')
 
