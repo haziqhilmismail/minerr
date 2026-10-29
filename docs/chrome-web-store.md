@@ -31,7 +31,7 @@ This guide is for the owner of Minerr. It gives the state of the changes for the
 2. Run all tests.
 3. Make the ZIP in one of these ways:
    - Run `npm run build`, then `node scripts/package.ts`. The store ZIP is `release/minerr-store-v<version>.zip`.
-   - Push the version tag (README: Make a release). The release workflow keeps the store ZIP on the page of its run, as the artifact `minerr-store-v<version>`. GitHub puts the artifact in a ZIP of its own, so unzip the download one time to get `minerr-store-v<version>.zip`.
+   - Push the version tag (docs/development.md: Make a release). The release workflow keeps the store ZIP on the page of its run, as the artifact `minerr-store-v<version>`. GitHub puts the artifact in a ZIP of its own, so unzip the download one time to get `minerr-store-v<version>.zip`.
 4. Check that `manifest.json` is at the root of the ZIP: `python3 -m zipfile -l release/minerr-store-v<version>.zip | grep manifest.json` must show `manifest.json`, not `minerr/manifest.json`.
 
 ## 3. Upload the ZIP and fill in the store listing
@@ -40,7 +40,7 @@ This guide is for the owner of Minerr. It gives the state of the changes for the
 2. Write down the item ID that the dashboard shows. The ID does not change.
 3. Put the item ID in `STORE_EXTENSION_ID` in `server/chrome_start.py`.
 4. When the store listing is live, put its address in `README.md` and `docs/release-notes.md`, where they say that Minerr comes to the store soon, and remove the TODO comments. Until the review ends, the address shows no page.
-5. Set a higher version, and make a new release (README: Make a release). The WhisperX add-on of that release lets the store version use the Start button of the popup.
+5. Set a higher version, and make a new release (docs/development.md: Make a release). The WhisperX add-on of that release lets the store version use the Start button of the popup.
 6. On the **Package** tab, upload the store ZIP of the new version.
 7. On the **Store listing** tab, fill in these fields:
 
@@ -147,4 +147,4 @@ The store version has a different extension ID from the folder version, so it st
 2. Make the store ZIP again (step 2).
 3. In the dashboard, open Minerr, open the **Package** tab, and upload the new ZIP.
 4. Click **Submit for review**.
-5. Push the version tag for the GitHub release too (README: Make a release), so both releases have the same version.
+5. Push the version tag for the GitHub release too (docs/development.md: Make a release), so both releases have the same version.

@@ -2,53 +2,53 @@
 
 <p align="center"><img src="docs/logo.svg" alt="The Minerr logo: a pixel-art pickaxe and the word 日本語" width="200"></p>
 
-Minerr is a Chrome extension for Japanese sentence mining. It is a personal project. I made it for my own study, and I give no support or guarantee.
+Minerr is a Chrome extension for Japanese sentence mining. It's a personal project: I built it for my own study, and it comes with no support and no guarantee.
 
-Sentence mining is a method to learn vocabulary from real content. You read or watch Japanese content. When you find an unknown word, you make a flashcard from the sentence that contains it. You then review the card in Anki.
+Sentence mining means learning vocabulary from real Japanese content. You read or watch something, and when you hit a word you don't know, you make a flashcard from the sentence it's in. Then you review the card in Anki.
 
-Minerr does these steps in the browser:
+Minerr handles that loop in the browser:
 
-1. It parses the Japanese text into words, with the [kuromoji](https://github.com/takuyaa/kuromoji.js) tokenizer. It reads the subtitles over a video on all sites, and the page text on the sites that you turn on.
-2. It underlines each word in the color of its status: unknown, learning, known, or ignored.
-3. When you move the mouse over a word, it shows the dictionary definitions with their tags, for example `n` (noun) and `⭐` (high priority).
-4. With one key, it makes an Anki card. The card has the word, the reading, the sentence, the definitions, and a screenshot of the tab.
+1. It splits Japanese text into words with the [kuromoji](https://github.com/takuyaa/kuromoji.js) tokenizer. It reads the subtitles over a video on any site, and the page text on sites you turn on.
+2. It underlines each word in the color of its status: unknown, learning, known or ignored.
+3. When you hover over a word, it shows the dictionary definitions with their tags, for example `n` (noun) and `⭐` (high priority).
+4. One key press makes an Anki card with the word, its reading, the sentence, the definitions and a screenshot of the tab.
 
 ![A Japanese Wikipedia article with status underlines and the popup for 狭義](docs/page.png)
 
 ![The Minerr video player with a subtitle line in the overlay, the subtitle sidebar, and the popup for 魚](docs/video.png)
 
-The first screenshot shows the Japanese Wikipedia article [ネコ](https://ja.wikipedia.org/wiki/%E3%83%8D%E3%82%B3) (CC BY-SA 4.0). The second shows the video player with a test clip and a subtitle file.
+The first screenshot is the Japanese Wikipedia article [ネコ](https://ja.wikipedia.org/wiki/%E3%83%8D%E3%82%B3) (CC BY-SA 4.0). The second is the video player with a test clip and a subtitle file.
 
 ## Features
 
-- The extension parses the text of a page, and also the text that appears later. The page text is off on each site until you turn it on with `Alt+Shift+D` or the toolbar menu. The Minerr subtitle overlay works on all sites.
-- It joins a verb or adjective with its inflections into one word. For example, 食べなかった is one word with the dictionary form 食べる.
-- It joins nouns into the longest word that the dictionary has. For example, 食肉目ネコ科ネコ属 is three words: 食肉目, ネコ科, and ネコ属.
-- All the spellings of one dictionary word share one status. For example, 猫, ねこ, and ネコ are one word.
-- It reads text across inline markup as one text. For example, in `<ruby>暖<rt>あたた</rt></ruby>かくて`, 暖かくて is one word with the dictionary form 暖かい. Minerr does not parse the ruby text あたた, and it does not put it in the card sentence.
-- It looks up definitions in a Yomitan dictionary that you import, for example JMdict.
-- It shows the tags of the dictionary in color, as Yomitan does. The tags of the word, for example `⭐` (high priority) and `ichi` or `news13k` (frequent), are next to the reading. The tags of each definition, for example `v1` (Ichidan verb) and `uk` (usually in kana), are before the definition. Move the mouse over a tag to see what it means.
-- If the word has more than one reading in the dictionaries, the popup shows each reading with its own definitions.
-- It keeps the word statuses in the browser. A status change updates the underlines in all open tabs at once.
-- It sends cards to Anki through AnkiConnect, by default to the Lapis note type of the [mining guide](https://learnjapanese.moe/mining/). It makes the deck if it does not exist.
-- You can edit each field of a card before Minerr sends it.
-- It can mark the words of your mature Anki cards as known.
-- On YouTube, it shows the subtitles in its own large overlay at the bottom center of the video. You can look up and mine the words in the overlay. The overlay also works on other video sites and on video files from your computer.
-- On Netflix, it shows the Japanese subtitles of the title in its overlay, with their times. The keys, the play modes, and the subtitle sidebar work as on YouTube. A card from Netflix gets no line audio and no screenshot, because the video has DRM.
-- A card from a subtitle line gets the audio of the line.
-- It can make Japanese subtitles for a YouTube video with WhisperX, in a small server on your computer.
-- It shows a comprehension score for each page or video.
-- It has a word browser to find, sort, and change word statuses, and to add a list of known words.
-- It has a reader for `.epub`, `.txt`, `.srt`, and `.vtt` files, with vertical text, and a page for pasted text.
+- Parses the text of a page, including text that loads later. Page text is off on every site until you turn it on with `Alt+Shift+D` or from the toolbar menu. The subtitle overlay works everywhere.
+- Treats a verb or adjective and its inflections as one word. 食べなかった is one word, with the dictionary form 食べる.
+- Joins nouns into the longest word the dictionary knows. 食肉目ネコ科ネコ属 becomes three words: 食肉目, ネコ科 and ネコ属.
+- Gives all spellings of a dictionary word one shared status, so 猫, ねこ and ネコ count as the same word.
+- Reads text across inline markup. In `<ruby>暖<rt>あたた</rt></ruby>かくて`, 暖かくて is one word with the dictionary form 暖かい. The ruby text あたた isn't parsed and doesn't end up in the card sentence.
+- Looks up definitions in a Yomitan dictionary that you import, such as JMdict.
+- Colors dictionary tags the way Yomitan does. Word tags, like `⭐` (high priority) and `ichi` or `news13k` (frequent), sit next to the reading. Definition tags, like `v1` (Ichidan verb) and `uk` (usually in kana), sit before each definition. Hover over a tag to see what it means.
+- If a word has several readings across your dictionaries, the popup shows each reading with its own definitions.
+- Stores word statuses in the browser. A status change updates the underlines in every open tab immediately.
+- Sends cards to Anki through AnkiConnect, by default to the Lapis note type from the [mining guide](https://learnjapanese.moe/mining/). It creates the deck if it doesn't exist.
+- Lets you edit any field of a card before it goes to Anki.
+- Can mark the words from your mature Anki cards as known.
+- On YouTube, shows the subtitles in its own large overlay at the bottom center of the video, where you can look up and mine words. The overlay also works on other video sites and on video files from your computer.
+- On Netflix, shows the title's Japanese subtitles in the overlay, with their times. The keys, play modes and subtitle sidebar work the same as on YouTube. Netflix cards get no line audio and no screenshot, because the video is DRM-protected.
+- Adds the audio of the subtitle line to a card mined from a subtitle.
+- Can generate Japanese subtitles for a YouTube video with WhisperX, running in a small server on your computer.
+- Shows a comprehension score for each page or video.
+- Has a word browser for finding, sorting and changing word statuses, and for adding a list of words you already know.
+- Has a reader for `.epub`, `.txt`, `.srt` and `.vtt` files, with vertical text, and a page for pasted text.
 
-All data stays on your computer, with two exceptions. The extension sends requests to AnkiConnect at `http://127.0.0.1:8765` and to the optional WhisperX server at `http://127.0.0.1:8766`. When you add a card with word audio, it sends the word and its reading to JapanesePod101 (`assets.languagepod101.com`). You can turn off the word audio in **Options**. See [Word audio](#word-audio). When you click **Install Lapis**, Anki downloads the Lapis package from GitHub.
+Everything stays on your computer, with two exceptions. The extension talks to AnkiConnect at `http://127.0.0.1:8765` and to the optional WhisperX server at `http://127.0.0.1:8766`, both local. When you add a card with word audio, it sends the word and its reading to JapanesePod101 (`assets.languagepod101.com`); you can turn word audio off in **Options** (see [Word audio](#word-audio)). And when you click **Install Lapis**, Anki downloads the Lapis package from GitHub.
 
 ## Install
 
-Install Minerr from the Chrome Web Store, or load it unpacked.
+You can install Minerr from the Chrome Web Store or load it unpacked.
 
-- **Chrome Web Store.** Open [Minerr in the Chrome Web Store](https://chromewebstore.google.com/detail/minerr/ikpmeofnjpikdoajmibnhkcnmgjkkmkl), click **Add to Chrome**, and go to step 3. The store version does not include the WhisperX add-on. See [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx).
-- **Load unpacked.** Download `minerr-v<version>.zip` from the [Releases](https://github.com/haziqhilmismail/minerr/releases) page, and unzip it. Then go to step 2. The zip has one folder, `minerr`, and the same zip works on all platforms. To build the extension from the source code, do step 1 first.
+- **Chrome Web Store.** Open [Minerr in the Chrome Web Store](https://chromewebstore.google.com/detail/minerr/ikpmeofnjpikdoajmibnhkcnmgjkkmkl), click **Add to Chrome**, and skip to step 3. The store version doesn't include the WhisperX add-on; see [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx).
+- **Load unpacked.** Download `minerr-v<version>.zip` from the [Releases](https://github.com/haziqhilmismail/minerr/releases) page and unzip it, then skip to step 2. The zip contains one folder, `minerr`, and the same zip works on every platform. To build from source instead, start at step 1.
 
 ### 1. Build the extension
 
@@ -61,9 +61,9 @@ npm ci
 npm run build
 ```
 
-The build compiles the TypeScript code and writes the extension to the `dist` folder.
+The build compiles the TypeScript and writes the extension to the `dist` folder.
 
-If you use WSL, Chrome on Windows must load the extension from a Windows folder. Build the extension, then copy the `dist` folder to a Windows folder:
+On WSL, Chrome on Windows has to load the extension from a Windows folder, so build it and copy `dist` over:
 
 ```sh
 npm run build && mkdir -p /mnt/c/Users/<you>/minerr && cp -r dist/. /mnt/c/Users/<you>/minerr/
@@ -74,60 +74,69 @@ npm run build && mkdir -p /mnt/c/Users/<you>/minerr && cp -r dist/. /mnt/c/Users
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode**.
 3. Click **Load unpacked**.
-4. Select the `minerr/dist` folder, or the `minerr` folder of a release. If you use WSL, select the Windows folder.
+4. Select the `minerr/dist` folder, or the `minerr` folder from a release. On WSL, select the Windows folder.
 
-After you get a new version, run `npm run build` again. If you use WSL, copy the `dist` folder again with the command above. Then click the reload button on the extension card.
+When you pull a new version, run `npm run build` again (and on WSL, copy `dist` again with the command above). Then click the reload button on the extension's card.
 
-Chrome gives an unpacked extension an ID from its folder path. If you load the extension from a different folder, it gets a new ID and starts with no data. Then you must import the dictionary again. To get your known words back, use **Import known words** (see below).
+Chrome derives an unpacked extension's ID from its folder path. If you load Minerr from a different folder, it gets a new ID and starts with no data, so you'll have to import the dictionary again. To get your known words back, use **Import known words** (see below).
 
 ### 3. Install AnkiConnect
 
 1. In Anki, click **Tools > Add-ons > Get Add-ons**.
 2. Enter the code `2055492159`.
-3. Restart Anki. AnkiConnect starts only when Anki starts.
+3. Restart Anki. AnkiConnect only starts when Anki starts.
 4. Keep Anki open while you add cards.
 
-AnkiConnect accepts requests from browser extensions by default. If the popup shows an error from AnkiConnect, open **Tools > Add-ons > AnkiConnect > Config**. Add `chrome-extension://<extension id>` to `webCorsOriginList`. The extension ID is on the `chrome://extensions` page.
+AnkiConnect accepts requests from browser extensions by default. If the popup shows an AnkiConnect error, open **Tools > Add-ons > AnkiConnect > Config** and add `chrome-extension://<extension id>` to `webCorsOriginList`. You'll find the extension ID on the `chrome://extensions` page.
 
 ### 4. Import a dictionary
 
 1. Download [`JMdict_english.zip`](https://github.com/yomidevs/jmdict-yomitan/releases/latest/download/JMdict_english.zip) from the jmdict-yomitan project.
-2. Open the options page. In `chrome://extensions`, click **Details** on Minerr, then click **Extension options**.
-3. In **Dictionaries**, select the zip file, or drop it on the import area.
-4. Wait for the message `Imported JMdict [...]: ... terms`. The import takes about one minute.
+2. Open the options page: in `chrome://extensions`, click **Details** on Minerr, then **Extension options**.
+3. In **Dictionaries**, select the zip file or drop it on the import area.
+4. Wait for `Imported JMdict [...]: ... terms`. The import takes about a minute.
 
-You can import other Yomitan term dictionaries in the same way. If you import a dictionary with the same title again, the new import replaces the old one.
+You can import other Yomitan term dictionaries the same way. Importing a dictionary with the same title again replaces the old copy.
 
-If you imported JMdict with an earlier version of Minerr, import it again. The new import keeps the entry number of each word, so the spellings of a word can share a status. Until you import it again, its row on the options page shows `Import again so that the spellings of a word share one status.` See [Spellings of one word](#spellings-of-one-word).
+Minerr shows the tags from all your dictionaries.
 
-Minerr shows the tags of all dictionaries. A dictionary that you imported with an earlier version of Minerr has no tags. Its row on the options page shows `Import again to show tags.` Import the zip file again to get the tags.
-
-On the options page, click **Check connection** in the **Anki** section. The page must show `Connected (AnkiConnect version 6)`.
+To check the Anki side, click **Check connection** in the **Anki** section of the options page. It should say `Connected (AnkiConnect version 6)`.
 
 ![The options page](docs/options.png)
+
+### Upgrade from an earlier version
+
+Most updates need nothing from you. A few changes do:
+
+- **Dictionaries imported before spellings shared a status.** Import JMdict again. The new import keeps each word's entry number, which lets the spellings of a word share one status. Until you do, its row on the options page says `Import again so that the spellings of a word share one status.` See [Spellings of one word](#spellings-of-one-word).
+- **Dictionaries imported before tags were shown.** These have no tags, and their row says `Import again to show tags.` Import the zip again to get them.
+- **Statuses stored under a kana spelling.** Older versions stored a status under the spelling of the dictionary form, for example ねこ. After a dictionary import finishes, Minerr moves each status to its word's key, for example from ねこ to 猫. It does this once per set of dictionaries.
+- **Page text that was on everywhere.** Older versions had page text on for every site and kept a list of sites where it was off. Minerr ignores that list now, so every site starts with page text off.
+- **The new `SentenceAudio` field.** If your note type comes from an older version, Anki asks for a full sync once after the update. Sync all your devices before you update Minerr. See [The note type](#the-note-type).
+- **Your note type choice.** If you picked a note type other than Lapis in an older version, Minerr keeps it.
+- **WhisperX subtitles with long lines.** Subtitles from an older version of the server have long lines. To get short ones, click **Generate with WhisperX** again.
 
 ## Use
 
 ### Read and set statuses
 
-Minerr reads the page text only on the sites that you turn on:
+Minerr only reads page text on sites you turn on:
 
 1. Open a page with Japanese text.
-2. Press `Alt+Shift+D`. Or click the Minerr button in the Chrome toolbar, then turn on **Words on the page**.
+2. Press `Alt+Shift+D`, or click the Minerr button in the Chrome toolbar and turn on **Words on the page**.
 
-Each unknown word of the page then gets an underline. The other words get their underline when the mouse is on them. The Minerr subtitle overlay and the pages of Minerr do not need the switch. See [Turn the page text on or off for a site](#turn-the-page-text-on-or-off-for-a-site).
-
+Every unknown word on the page gets an underline; other words show theirs when you hover over them. The subtitle overlay and Minerr's own pages don't need this switch. See [Turn the page text on or off for a site](#turn-the-page-text-on-or-off-for-a-site).
 
 | Status | Underline | Meaning |
 | --- | --- | --- |
-| Unknown | Red, always. Thicker under the mouse. | The default. You do not know the word yet. |
-| Learning | Orange, under the mouse only | You study the word now. |
+| Unknown | Red, always. Thicker under the mouse. | The default. You don't know the word yet. |
+| Learning | Orange, under the mouse only | You're studying the word. |
 | Known | Thin green, under the mouse only | You know the word. |
-| Ignored | None | You do not want to study the word, for example a name. |
+| Ignored | None | You don't want to study it, for example a name. |
 
-The words that Minerr reads have the hand cursor. Move the mouse onto a word and stop it there. The popup of the word opens after 0.3 seconds. To open the popup at once, hold `Shift` while the mouse is on a word. To change when the popup opens, see [Word popup](#word-popup). The popup does not open while text is selected or a mouse button is down.
+Words that Minerr has read get the hand cursor. Rest the mouse on a word and its popup opens after 0.3 seconds. To open it immediately, hold `Shift` while the mouse is on the word. To change when the popup opens, see [Word popup](#word-popup). The popup doesn't open while text is selected or a mouse button is held down.
 
-Use these keys on a word. The status keys, `1` to `4`, also work with no popup open. `A`, `E`, `V`, and `Esc` work when the popup is open.
+These keys work on a word. The status keys, `1` to `4`, work even with no popup open; `A`, `E`, `V` and `Esc` need the popup.
 
 | Key | Action |
 | --- | --- |
@@ -137,123 +146,119 @@ Use these keys on a word. The status keys, `1` to `4`, also work with no popup o
 | `4` | Set the word to ignored. |
 | `A` | Add an Anki card. |
 | `E` | Edit the card, then send it to Anki. See [Edit a card before you add it](#edit-a-card-before-you-add-it). |
-| `V` | Show the notes of the word in the Anki browser. See [Is the word in Anki?](#is-the-word-in-anki). |
+| `V` | Show the word's notes in the Anki browser. See [Is the word in Anki?](#is-the-word-in-anki). |
 | `Esc` | Close the card form, or close the popup. |
 
 A status key changes the first of these that applies:
 
-1. The words of a text selection.
-2. The word of a popup that a key opened (`N`, `Alt+S`, or the play mode), until the mouse goes onto or off a word.
-3. The word under the mouse, with or without a popup. If no popup shows the word, a short message shows the change.
+1. The words in a text selection.
+2. The word of a popup that a key opened (`N`, `Alt+S` or a play mode), until the mouse moves onto or off a word.
+3. The word under the mouse, whether or not it has a popup. If no popup shows the word, a short message confirms the change.
 4. The word of the popup under the mouse.
 
-If none applies, the page gets the key. For example, on YouTube `1` to `4` go to 10% to 40% of the video. An open popup does not take the status keys when the mouse is not on it.
+If none of these applies, the page gets the key. On YouTube, for example, `1` to `4` jump to 10% to 40% of the video. An open popup doesn't take the status keys unless the mouse is on it.
 
-The keys do not work when the focus is in a text field.
+The keys don't work while the focus is in a text field.
 
 ### Spellings of one word
 
-A status belongs to a word, not to a spelling. A word is one JMdict entry. For example, the entry 猫 has the spellings 猫 and ネコ and the reading ねこ. When you set 猫 to known, ねこ and ネコ also become known.
+A status belongs to a word, not to a spelling, and a word is one JMdict entry. The entry 猫, for example, has the spellings 猫 and ネコ and the reading ねこ. Set 猫 to known and ねこ and ネコ become known too.
 
-Minerr finds the entry from the dictionary form and the reading of the word on the page:
+Minerr finds the entry from the dictionary form and reading of the word on the page:
 
-- If one entry fits, all the spellings of that entry share one status.
-- If more than one entry fits, the spelling keeps its own status. For example, かみ can be 紙, 神, or 髪.
-- If one spelling has two readings in two entries, each entry has its own status. For example, 上手 (じょうず) and 上手 (うわて) are two words.
-- If you have no dictionary that has entry numbers, each spelling has its own status.
+- If exactly one entry fits, all its spellings share one status.
+- If several entries fit, the spelling keeps its own status. かみ, for example, can be 紙, 神 or 髪.
+- If one spelling has two readings in two different entries, each entry has its own status. 上手 (じょうず) and 上手 (うわて) are two words.
+- If none of your dictionaries has entry numbers, every spelling has its own status.
 
-The status key is the text that Minerr stores for the word. The key is the headword of the entry, for example 猫. If a more common entry has the same headword, the key also has the reading of the entry, for example `上手【うわて】`. The status file and the word browser show these keys.
+The status key is the text Minerr stores for a word. It's the entry's headword, for example 猫. If a more common entry has the same headword, the key adds the reading, as in `上手【うわて】`. You'll see these keys in the status file and the word browser.
 
-The popup shows the headword and the reading of the entry. If the spelling on the page is different, the popup also shows it, for example `On the page: ネコ`.
+The popup shows the entry's headword and reading. If the spelling on the page is different, the popup shows that too, for example `On the page: ネコ`.
 
-Earlier versions of Minerr stored the status under the spelling of the dictionary form, for example ねこ. When a dictionary import is complete, Minerr moves each status to the key of its word, for example from ねこ to 猫. Minerr does this one time for each set of dictionaries.
-
-If two spellings of one word have different statuses, the word gets the higher status. Known is the highest status, then ignored, then learning. Thus a move never makes a known word unknown or learning. An import of a status file uses the same rule.
+If two spellings of one word have different statuses, the word takes the higher one. Known ranks highest, then ignored, then learning, so merging never turns a known word back into unknown or learning. Importing a status file follows the same rule.
 
 ### Mark words in bulk
 
 1. Select text on the page with the mouse.
 2. Press a status key, `1` to `4`.
 
-Minerr sets each word that the selection touches to that status. A short message at the bottom of the page shows the number of words, for example `Marked 5 words as known.` The selection wins over an open popup.
+Every word the selection touches gets that status, and a short message at the bottom of the page shows the count, for example `Marked 5 words as known.` A selection takes priority over an open popup.
 
 ### Close the popup or turn Minerr off
 
 - To close the popup, press `Esc`, click outside it, or click **✕** in its top-right corner.
-- To turn Minerr off in all tabs, click the power button in the popup, or press `Alt+Shift+M`. The underlines and the popup stop at once.
-- To turn Minerr on again, press `Alt+Shift+M`, or click the Minerr button in the Chrome toolbar and turn on the switch next to **Minerr** at the top. The switch shows **On**.
+- To turn Minerr off in every tab, click the power button in the popup or press `Alt+Shift+M`. The underlines and the popup go away immediately.
+- To turn it back on, press `Alt+Shift+M`, or open the toolbar menu and turn on the switch next to **Minerr** at the top. The switch then says **On**.
 
-When Minerr is off, YouTube shows its own captions again, and the Minerr subtitle overlay is hidden.
+While Minerr is off, YouTube shows its own captions again and the subtitle overlay is hidden.
 
-Use this when you want to compare Minerr with another dictionary extension, for example Yomitan. To change the shortcut, see [Change a shortcut](#change-a-shortcut).
+This is handy when you want to compare Minerr with another dictionary extension, such as Yomitan. To change the shortcut, see [Change a shortcut](#change-a-shortcut).
 
 ### Browser shortcuts
 
-Chrome runs these keys for Minerr. Thus a page cannot take them. The table shows the default keys.
+Chrome handles these keys itself, so a web page can't intercept them. The table shows the defaults.
 
 | Key | Action |
 | --- | --- |
 | `Alt+Shift+M` | Turn Minerr on or off in all tabs. |
 | `Alt+S` | Look up the selected text. See [Look up selected text](#look-up-selected-text). |
 | `Alt+J` | Make the selected text one word, or remove that word override. See [Word overrides](#word-overrides). |
-| `Alt+Shift+D` | Turn the page text of this site on or off. |
+| `Alt+Shift+D` | Turn page text on or off for this site. |
 | No key | Open the Minerr toolbar menu. |
-| No key | Turn the sentence highlight on or off. `Alt+Shift+S` on a page also does this. |
+| No key | Turn the sentence highlight on or off. `Alt+Shift+S` on a page does this too. |
 
-If Chrome, the system, or another extension already uses a key, Minerr does not get that key. The options page shows the keys that Minerr has now, in **Colors and shortcuts**. A key that Minerr does not have shows **Not set**. The toolbar menu also shows the key of the Minerr switch and of the **Words on the page** switch.
+If Chrome, your system or another extension already uses a key, Minerr doesn't get it. The options page lists the keys Minerr actually has under **Colors and shortcuts**, and shows **Not set** for any it couldn't get. The toolbar menu also shows the keys for the Minerr switch and the **Words on the page** switch.
 
 #### Change a shortcut
 
 1. Open the options page.
-2. In **Colors and shortcuts**, click **Change the keys**. Or open `chrome://extensions/shortcuts` in a new tab.
+2. In **Colors and shortcuts**, click **Change the keys**, or open `chrome://extensions/shortcuts` in a new tab.
 3. Find **Minerr** in the list.
-4. Click the pencil button of the action.
-5. Press the new key, for example `Alt+K`. The key must start with `Alt` or `Ctrl`.
+4. Click the pencil button next to the action.
+5. Press the new key, for example `Alt+K`. It has to start with `Alt` or `Ctrl`.
 
-The new key works at once in all tabs.
+The new key works right away in every tab.
 
 ### Turn the page text on or off for a site
 
-The page text is off on each site until you turn it on. When it is off, Minerr does not parse the page text, and it shows no underlines and no popup for it.
+Page text is off on every site until you turn it on. While it's off, Minerr doesn't parse the page and shows no underlines or popups for its text.
 
-These parts of Minerr do not need the switch. They work while Minerr is on:
+These parts of Minerr work without the switch, as long as Minerr itself is on:
 
-- The Minerr subtitle overlay on YouTube and on other video sites, with its line list. Its words get underlines, the popup, the keys, the i+1 highlight, and cards.
-- The pages of Minerr: the player, the reader, the paste page, and the word browser.
+- The subtitle overlay on YouTube and other video sites, with its line list. Its words get underlines, the popup, the keys, the i+1 highlight and cards.
+- Minerr's own pages: the player, the reader, the paste page and the word browser.
 
-To turn the page text on for a site:
+To turn page text on for a site, either:
 
-- Press `Alt+Shift+D` on a page of the site. A short message at the bottom of the page confirms the change, for example `Minerr page text on for ja.wikipedia.org.`
-- Or click the Minerr button in the Chrome toolbar, then turn on **Words on the page** in the card for the site, for example **On ja.wikipedia.org**. The **Video subtitles** row of the card shows that subtitles work without this switch.
+- Press `Alt+Shift+D` on any page of the site. A short message at the bottom confirms it, for example `Minerr page text on for ja.wikipedia.org.`
+- Or open the toolbar menu and turn on **Words on the page** in the site's card, for example **On ja.wikipedia.org**. The card's **Video subtitles** row shows that subtitles work without this switch.
 
-A site includes its subdomains, and Minerr ignores `www.`. For example, if you turn the page text on at `www.youtube.com`, it is on for all of `youtube.com`, also `m.youtube.com`.
+A site includes its subdomains, and Minerr ignores `www.`. Turn page text on at `www.youtube.com` and it's on for all of `youtube.com`, including `m.youtube.com`.
 
-Minerr keeps the choice for all pages of that site, also after a restart of Chrome. The other sites do not change. To turn the page text off again, press `Alt+Shift+D` again or click the switch again. Minerr then removes its underlines from the page text at once.
-
-Earlier versions of Minerr were on for each site, and kept a list of the sites that were off. Minerr does not read that list now. Thus each site starts with the page text off.
+Minerr remembers the choice for every page of that site, even after Chrome restarts, and other sites aren't affected. To turn it off again, press `Alt+Shift+D` or flip the switch again; Minerr removes its underlines from the page immediately.
 
 ### Mine a sentence
 
 1. Find an unknown word in a sentence.
-2. Move the mouse over the word.
+2. Hover over the word.
 3. Press `A`.
 
-Minerr hides the popup and makes a screenshot of the tab. Then it adds the card to Anki. If the word was unknown, its status changes to learning.
+Minerr hides the popup, takes a screenshot of the tab and adds the card to Anki. If the word was unknown, it becomes learning.
 
-The sentence on the card is the sentence that contains the word. Minerr cuts it at `。`, `！`, `？`, and line breaks, and keeps closing quotes such as `」` with it. Minerr shows the word in bold in the sentence.
+The card's sentence is the one that contains the word. Minerr cuts it at `。`, `！`, `？` and line breaks, keeps closing quotes such as `」` attached, and puts the word in bold.
 
 ### Edit a card before you add it
 
-1. Move the mouse over a word.
+1. Hover over a word.
 2. Press `E`, or click **Edit** in the popup.
 3. Change the fields in the card form.
 4. Click **Send**.
 
-Minerr makes the screenshot and the audio when you press `E`. The form shows each field of the note type with its content, as HTML. The sentence has the word in `<b>`. Under the fields, the form shows the screenshot and an audio player for each audio file. **Send** adds the note with the fields as you edited them. Minerr stores only the files that a field still names.
+Minerr takes the screenshot and records the audio as soon as you press `E`. The form shows every field of the note type with its content as HTML; the word in the sentence is wrapped in `<b>`. Below the fields you'll see the screenshot and an audio player for each audio file. **Send** adds the note with your edits, and Minerr only stores the files that a field still refers to.
 
-To close the form without a card, click **Cancel** or press `Esc`. A second `Esc` closes the popup. The popup keys do not work while you type in the form. No other popup opens while the form is open.
+To close the form without making a card, click **Cancel** or press `Esc`. A second `Esc` closes the popup. The popup keys are disabled while you type in the form, and no other popup opens while it's open.
 
-The form works with Lapis, with the classic note type, and with your own note type.
+The form works with Lapis, with the classic note type and with your own note type.
 
 ### Import known words from Anki
 
@@ -261,41 +266,41 @@ The form works with Lapis, with the classic note type, and with your own note ty
 2. Enter an Anki search and the name of the field that holds the word.
 3. Click **Import known words**.
 
-Minerr sets each word from the matching cards to known. If a dictionary has the word, Minerr uses the status key of its entry, so 猫科 becomes ネコ科. The default search is `deck:"Minerr" prop:ivl>=21`, which finds the cards with an interval of 21 days or more. The default field is `Word`.
+Every word from the matching cards becomes known. If a dictionary has the word, Minerr uses its entry's status key, so 猫科 becomes ネコ科. The default search is `deck:"Minerr" prop:ivl>=21`, which finds cards with an interval of 21 days or more. The default field is `Word`.
 
 ## Find i+1 sentences
 
-An i+1 sentence has exactly one unknown word. You know all the other words in it, so it makes a good card. Minerr gives each i+1 sentence a soft yellow background.
+An i+1 sentence has exactly one unknown word. You know everything else in it, which makes it a good card. Minerr gives each i+1 sentence a soft yellow background.
 
-- Minerr counts only the words with a red underline. Learning, known, and ignored words do not count.
-- A sentence must have two words or more. A single word, for example a link or a menu item, gets no highlight.
-- Minerr cuts the sentences with the same rule as the card sentence: at `。`, `！`, `？`, and line breaks.
+- Only words with a red underline count as unknown. Learning, known and ignored words don't.
+- A sentence needs at least two words, so a lone word such as a link or menu item never gets highlighted.
+- Sentences are cut the same way as card sentences: at `。`, `！`, `？` and line breaks.
 - The highlight also shows in the subtitle overlay on YouTube and in the video player.
-- When a word status changes, the highlight changes in all open tabs.
+- When a word's status changes, the highlight updates in every open tab.
 
-The highlight does not change the page. Minerr uses the CSS Custom Highlight API.
+The highlight doesn't modify the page; it uses the CSS Custom Highlight API.
 
-To turn the highlight off or on:
+To turn it off or on:
 
 1. Click the Minerr button in the Chrome toolbar.
 2. Click the **Highlight i+1 sentences** switch.
 
-Or, on the options page, use **Highlight i+1 sentences** in **Word popup**.
+You can also use **Highlight i+1 sentences** under **Word popup** on the options page.
 
-When you turn Minerr off, the highlight also goes away.
+Turning Minerr off removes the highlight too.
 
 ## Comprehension score
 
 The toolbar menu shows how much of the current tab you understand.
 
-1. Open a page with Japanese text on a site with the page text on, or a YouTube video.
+1. Open a page with Japanese text on a site with page text on, or a YouTube video.
 2. Click the Minerr button in the Chrome toolbar.
 
-The **Comprehension** section shows these items:
+The **Comprehension** section shows:
 
-- The score: the percent of the words with the status known or ignored. A learning word does not count as understood.
-- A label for the score, as in Migaku. The table below gives the labels.
-- The number of different words with each status.
+- The score: the percentage of words that are known or ignored. Learning words don't count as understood.
+- A label for the score, borrowed from Migaku (see the table below).
+- How many different words have each status.
 
 | Score | Label |
 | --- | --- |
@@ -307,184 +312,191 @@ The **Comprehension** section shows these items:
 | 60% to 69% | Challenging |
 | Less than 60% | Ambitious |
 
-On a video with timed subtitles, the score uses all the subtitle lines of the video. Timed subtitles are WhisperX subtitles, the YouTube subtitles with times, or a subtitle file in the player. The score is available when the subtitles load, before you play the video. The menu then shows "N words in all M subtitle lines of the video."
+On a video with timed subtitles, the score covers every subtitle line in the video. Timed subtitles means WhisperX subtitles, YouTube subtitles with times, or a subtitle file in the player. The score is ready as soon as the subtitles load, before you press play, and the menu says "N words in all M subtitle lines of the video."
 
-If a YouTube video has only the YouTube captions in the overlay, the score uses only the lines that the overlay showed in the tab. The score changes while you watch. When you open a different video, the count starts again. The menu then shows "N words in the M subtitle lines that the overlay showed."
+If a YouTube video only has the YouTube captions in the overlay, the score covers only the lines the overlay has shown in this tab, so it changes as you watch and starts over when you open another video. The menu then says "N words in the M subtitle lines that the overlay showed."
 
-Migaku also uses the number of i+1 sentences in its score. Minerr uses only the percent of the words.
+Migaku also factors the number of i+1 sentences into its score. Minerr only uses the percentage of words.
 
 ## Subtitles on YouTube
 
-On a YouTube video page, Minerr shows the subtitles in its own overlay, in large white text on a dark box. The overlay is at the bottom center of the video, above the player controls. The text size changes with the player size, also in theater mode and full screen. Minerr hides the captions of YouTube, because the overlay shows the same text.
+On a YouTube video page, Minerr shows the subtitles in its own overlay: large white text on a dark box at the bottom center of the video, above the player controls. The text scales with the player, including theater mode and full screen. Minerr hides YouTube's own captions, since the overlay shows the same text.
 
-Open a video that has Japanese captions. After some seconds, the overlay shows the Japanese captions at the times of the video. You do not need the Minerr server, and you do not need to turn on **CC**. [YouTube subtitles with times](#youtube-subtitles-with-times) tells how this works.
+Open a video that has Japanese captions. After a few seconds, the overlay shows them in sync with the video. You don't need the Minerr server, and you don't need to turn on **CC**. [YouTube subtitles with times](#youtube-subtitles-with-times) explains how this works.
 
-If Minerr gets no captions with times, the overlay copies the captions that the YouTube player shows:
+If Minerr can't get captions with times, the overlay copies whatever the YouTube player shows instead:
 
-1. Turn on captions in the YouTube player. Click **CC** or press `C`.
-2. If the video has more than one caption track, select the Japanese track in **Settings > Subtitles/CC**.
+1. Turn on captions in the YouTube player: click **CC** or press `C`.
+2. If the video has several caption tracks, pick the Japanese one in **Settings > Subtitles/CC**.
 
-If the captions are off, the overlay shows nothing. When a caption has two lines, the overlay shows two lines.
+With captions off, the overlay shows nothing. When a caption has two lines, the overlay shows two lines.
 
-The overlay text is page text. Minerr underlines its words, and the popup and the keys work on it. Pause the video, then move the mouse over a word. If you press `A`, the `Sentence` field gets the overlay line that contains the word.
+Overlay text counts as page text: Minerr underlines its words, and the popup and keys work on it. Pause the video and hover over a word. If you press `A`, the `Sentence` field gets the overlay line that contains the word.
 
-You can also use the keyboard on the subtitle line:
+You can also work through a line with the keyboard:
 
-- Press `N` to open the popup of the first unknown word of the line. Press `N` again to go to the next unknown word. After the last unknown word, `N` goes back to the first one. If no popup is open, YouTube gets `Shift+N` (the next video).
-- Move the mouse onto a word, then press a status key, `1` to `4`, to set that word. You do not need to open the popup. See [Read and set statuses](#read-and-set-statuses).
+- Press `N` to open the popup of the line's first unknown word, and `N` again to move to the next one. After the last unknown word, `N` wraps back to the first. If no popup is open, YouTube gets `Shift+N` (next video).
+- Hover over a word and press a status key, `1` to `4`, to set it without opening the popup. See [Read and set statuses](#read-and-set-statuses).
 
-These keys work in the Minerr video player too. If the mouse is on no word, the page gets the status key, so the YouTube number keys still work. If the line has no unknown word, the page gets `N`.
+These keys work in the Minerr video player too. If the mouse isn't on a word, the page gets the status key, so YouTube's number keys still work. If the line has no unknown word, the page gets `N`.
 
 ### YouTube subtitles with times
 
-With subtitles that have times, these features work: the keys that go to a line, the play modes, the subtitle sidebar, the score of all the lines, and the sentence audio. The captions that Minerr copies from the YouTube player have no times, so these features do not work with them.
+Subtitles with times unlock the keys that jump between lines, the play modes, the subtitle sidebar, the score over all lines, and sentence audio. Captions that Minerr copies from the YouTube player have no times, so none of these work with them.
 
-Minerr gets the Japanese subtitles with times in two ways. It uses the subtitles that come first:
+Minerr gets timed Japanese subtitles in two ways and uses whichever arrives first:
 
-- **In the tab, without the server.** The YouTube player of the page gets the captions from YouTube, and Minerr reads them. If **CC** is off, Minerr selects the Japanese track in the player. The YouTube captions stay hidden under the overlay.
-- **From the Minerr server.** The server downloads the subtitles with `yt-dlp`. The server is necessary only when YouTube does not send the captions to the tab.
+- **In the tab, without the server.** The YouTube player on the page fetches the captions from YouTube, and Minerr reads them. If **CC** is off, Minerr selects the Japanese track in the player itself. YouTube's captions stay hidden under the overlay.
+- **From the Minerr server.** The server downloads the subtitles with `yt-dlp`. You only need this when YouTube doesn't send the captions to the tab.
 
-After the subtitles show, they do not change. When the WhisperX subtitles of the video are ready, the overlay shows them.
+Once subtitles are showing, they don't change, except that WhisperX subtitles replace them when they're ready.
 
-To get the subtitles from the server:
+To get subtitles from the server:
 
-1. Start the server, as [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx) shows.
+1. Start the server, as described in [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx).
 2. Open a YouTube video.
-3. Wait some seconds. The server downloads the subtitles with `yt-dlp`.
+3. Wait a few seconds while the server downloads the subtitles with `yt-dlp`.
 
-If you start the server after you open the video, the tab finds the server in some seconds. You do not need to reload the page.
+If you start the server after opening the video, the tab finds it within a few seconds. You don't need to reload.
 
-Both ways use the subtitles of the uploader first. If the video has none, they use the automatic subtitles of YouTube. YouTube cuts the automatic subtitles into short rows, also in the middle of a sentence. Minerr joins the rows into sentences from the time of each word. The overlay then shows the subtitles at the times of the video, also when the YouTube captions are off. If the video has no Japanese subtitles, the overlay copies the YouTube captions as before.
+Both ways prefer the uploader's subtitles and fall back to YouTube's automatic ones. YouTube splits automatic subtitles into short rows, often mid-sentence, so Minerr rejoins the rows into sentences using each word's timing. The overlay then shows them in sync with the video, even with YouTube's captions off. If the video has no Japanese subtitles at all, the overlay copies the YouTube captions as described above.
 
-The Japanese subtitles are never a machine translation. YouTube translates its automatic captions into every language, so an English video has "Japanese" captions too. Minerr does not use them: the overlay shows no Japanese subtitles on such a video. YouTube can also dub a video into Japanese with a machine voice. The automatic Japanese captions of that voice are a machine translation too, so Minerr does not use them. The second subtitles, for example English, can be a translation.
+Japanese subtitles are never a machine translation. YouTube auto-translates its automatic captions into every language, so even an English video has "Japanese" captions. Minerr skips those, and the overlay shows no Japanese subtitles on such a video. YouTube can also dub a video into Japanese with a synthetic voice; the automatic captions of that voice are a machine translation too, so Minerr skips them as well. The second subtitles, such as English, can be a translation.
 
-The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.captions.ja.v2.json`. The file of a video with no Japanese subtitles contains `{}`. After one day, the server asks YouTube again, because YouTube can add automatic subtitles some hours after the upload. To download the subtitles again at once, delete the file.
+The server caches subtitles in `~/.cache/minerr/subs/<video id>.captions.ja.v2.json`. For a video with no Japanese subtitles, the file contains `{}`. After a day, the server checks with YouTube again, because YouTube sometimes adds automatic subtitles a few hours after upload. To force a fresh download, delete the file.
 
 ## Generate subtitles with WhisperX
 
-Some videos have no Japanese captions, or captions of low quality. For these videos, Minerr can make subtitles from the audio with [WhisperX](https://github.com/m-bain/whisperX). WhisperX runs in a small server on your computer.
+Some videos have no Japanese captions, or bad ones. For those, Minerr can transcribe the audio with [WhisperX](https://github.com/m-bain/whisperX), which runs in a small server on your computer.
 
-The server does more than WhisperX. It gives Minerr these items:
+The server does more than WhisperX. It gives Minerr:
 
-- Japanese subtitles from WhisperX. They are much better than the automatic subtitles of YouTube.
-- The subtitles of YouTube and other video sites with their times, through `yt-dlp`. The subtitle sidebar, the score of all the lines of a video, and the sentence audio need these times. See [Subtitles on YouTube](#subtitles-on-youtube) and [Subtitles on other video sites](#subtitles-on-other-video-sites).
-- Sentence audio for cards as an MP3 file at one loudness. Without the server, the video plays the line again while the tab records it. See [Sentence audio](#sentence-audio).
+- Japanese subtitles from WhisperX, which are much better than YouTube's automatic ones.
+- Timed subtitles from YouTube and other video sites, through `yt-dlp`. The subtitle sidebar, the score over all of a video's lines, and sentence audio all need those times. See [Subtitles on YouTube](#subtitles-on-youtube) and [Subtitles on other video sites](#subtitles-on-other-video-sites).
+- Sentence audio for cards, as MP3 files at an even loudness. Without the server, the video replays the line while the tab records it. See [Sentence audio](#sentence-audio).
 
-The toolbar popup shows a short form of this list above the status of the server.
+The toolbar menu shows a short version of this list above the server status.
 
 ### Get the WhisperX add-on
 
-The server and its Windows launcher are the WhisperX add-on. A source checkout and the `minerr` folder of `minerr-v<version>.zip` already hold the add-on. If you installed Minerr from the Chrome Web Store, get the add-on from GitHub:
+The server and its Windows launcher make up the WhisperX add-on. A source checkout and the `minerr` folder from `minerr-v<version>.zip` already include it. If you installed Minerr from the Chrome Web Store, get the add-on from GitHub:
 
-1. Open the [latest release](https://github.com/haziqhilmismail/minerr/releases/latest). The **Get the WhisperX add-on** button of the Minerr popup opens the same page.
-2. Download `minerr-whisperx-v<version>.zip`, and unzip it. The zip has one folder, `minerr-whisperx`.
-3. Put the folder in a place where it can stay, for example your user folder.
+1. Open the [latest release](https://github.com/haziqhilmismail/minerr/releases/latest). The **Get the WhisperX add-on** button in the toolbar menu opens the same page.
+2. Download `minerr-whisperx-v<version>.zip` and unzip it. It contains one folder, `minerr-whisperx`.
+3. Move the folder somewhere it can stay, such as your user folder.
 
-The release page has the install steps for each platform. In this section, the add-on folder is the `minerr-whisperx` folder, or the Minerr folder of an unpacked install.
+The release page has install steps for each platform. In this section, "the add-on folder" means the `minerr-whisperx` folder, or the Minerr folder of an unpacked install.
 
 ### Requirements
 
-- Windows on an x64 processor, or Linux. On Windows on ARM, run the server in WSL with the Linux steps.
-- [uv](https://docs.astral.sh/uv/). uv installs Python 3.12, WhisperX, PyTorch, `yt-dlp`, and `ffmpeg` for the server. On Windows, `Start WhisperX server (Windows).cmd` downloads uv if your computer does not have it.
-- If your `PATH` has `yt-dlp` and `ffmpeg`, the server uses them. If not, the server uses its own copies: the `yt-dlp` package and the `ffmpeg` of the `imageio-ffmpeg` package. `yt-dlp` uses Node.js for the YouTube JavaScript challenges, if Node.js is in the `PATH`.
-- About 4 GB of free memory. The server uses about 3.5 GB of memory with the default model.
-- About 5 GB of free disk space on Linux, and 6 GB on Windows.
+- Windows on x64, or Linux. On Windows on ARM, run the server in WSL using the Linux steps.
+- [uv](https://docs.astral.sh/uv/), which installs Python 3.12, WhisperX, PyTorch, `yt-dlp` and `ffmpeg` for the server. On Windows, `Start WhisperX server (Windows).cmd` downloads uv for you if it's missing.
+- If `yt-dlp` and `ffmpeg` are on your `PATH`, the server uses them. Otherwise it uses its own copies: the `yt-dlp` package and the `ffmpeg` from the `imageio-ffmpeg` package. `yt-dlp` uses Node.js for YouTube's JavaScript challenges if Node.js is on the `PATH`.
+- About 4 GB of free memory. The server uses about 3.5 GB with the default model.
+- About 5 GB of free disk space on Linux, or 6 GB on Windows.
 
-The server uses the CPU. It does not need a GPU, so it also works on a computer with an AMD GPU or with no CUDA.
+The server runs on the CPU and doesn't need a GPU, so it also works on machines with an AMD GPU or without CUDA.
 
 ### Start the server
 
-On Windows, the add-on folder has the launcher `Start WhisperX server (Windows).cmd`. On Linux and in WSL, start the server with a command (see below).
+On Windows, the add-on folder contains the launcher `Start WhisperX server (Windows).cmd`. On Linux and WSL, you start the server with a command (see below).
 
-On Windows, click the Minerr button in the Chrome toolbar, then click **Start the server**. A window opens, and the server starts in it. Keep the window open while you use the server. To stop the server, close the window.
+On Windows, click the Minerr button in the Chrome toolbar, then **Start the server**. A window opens and the server runs in it. Keep the window open while you use the server; close it to stop the server.
 
-The button works after one double-click of the launcher. Before that double-click, the popup of an unpacked Minerr tells you to do it:
+The button only works after you've double-clicked the launcher once. Until then, the toolbar menu of an unpacked Minerr walks you through it:
 
-1. Click **Show the Minerr folder**. The page of Minerr in `chrome://extensions` opens.
+1. Click **Show the Minerr folder**. Minerr's page in `chrome://extensions` opens.
 2. Click the path after **Loaded from**. The Minerr folder opens.
-3. Double-click `Start WhisperX server (Windows).cmd`. The server starts, and the button is set up.
+3. Double-click `Start WhisperX server (Windows).cmd`. The server starts, and the button is now set up.
 
-If you installed Minerr from the Chrome Web Store, the popup shows **Get the WhisperX add-on** in place of **Show the Minerr folder**. The button opens the latest release on GitHub. Download and unzip the add-on, then double-click the launcher in the `minerr-whisperx` folder. When the server is off, the popup of a store install also shows this button under **Start the server**.
+If you installed from the Chrome Web Store, the toolbar menu shows **Get the WhisperX add-on** instead of **Show the Minerr folder**. It opens the latest release on GitHub. Download and unzip the add-on, then double-click the launcher in the `minerr-whisperx` folder. While the server is off, a store install also shows this button under **Start the server**.
 
-Each start of the launcher sets up the button again for its folder. Thus the button starts the launcher that you double-clicked last. The launcher writes two things for Chrome:
+Every run of the launcher points the button at its own folder, so the button always starts the launcher you double-clicked last.
 
-- The file `%LOCALAPPDATA%\Minerr\com.minerr.whisperx.json`. It names the host of the launcher in the add-on folder, `server\start-from-chrome-windows.cmd`. It also names the extensions that can use the host: Minerr from the Chrome Web Store, and the unpacked extension in the add-on folder, if the folder holds one.
+If the server doesn't answer within 90 seconds of clicking **Start the server**, the toolbar menu tells you; check the server window for the error. If you move the add-on folder, double-click the launcher in its new location once. If the button still doesn't work after that, start the server by double-clicking the launcher.
+
+<details>
+<summary>What the Windows launcher does, and how to remove it</summary>
+
+`Start WhisperX server (Windows).cmd` needs no admin rights and doesn't change your `PATH` or any other Windows setting. It:
+
+1. Looks for uv on your `PATH` or in `%LOCALAPPDATA%\Minerr\uv`. If it can't find it, it asks first. When you press Y, it downloads uv 0.13.5 (15 MB) from GitHub with `curl.exe`, checks the file's SHA-256, and unpacks it to `%LOCALAPPDATA%\Minerr\uv`.
+2. Sets up the **Start the server** button.
+3. Fetches the newest `yt-dlp`, because YouTube often breaks old versions. If you're offline, the server starts with the `yt-dlp` it already has, as long as it has started once with internet access from the same add-on folder.
+4. Starts the server. On the first start, uv downloads Python 3.12 and the server's packages.
+
+To set up the button, the launcher writes two things for Chrome:
+
+- The file `%LOCALAPPDATA%\Minerr\com.minerr.whisperx.json`. It names the host in the add-on folder, `server\start-from-chrome-windows.cmd`, and the extensions allowed to use it: Minerr from the Chrome Web Store, plus the unpacked extension in the add-on folder if there is one.
 - The registry value `HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.minerr.whisperx`, which points at that file.
 
-When you click **Start the server**, Chrome runs the host, and the host opens its launcher in a window of its own. If the server does not answer in 90 seconds, the popup says so. Look at the window for the error. If you move the add-on folder, double-click the launcher in the new folder one time. If the button still asks for the double-click after one double-click, start the server with the double-click.
+When you click **Start the server**, Chrome runs the host, and the host opens its launcher in a separate window.
 
-#### The Windows launcher
+The launcher keeps Python's bytecode in `%LOCALAPPDATA%\Minerr\pycache`, so the add-on folder never changes. It doesn't work on Windows on ARM, because ctranslate2, the engine behind WhisperX, has no build for it; use WSL with the Linux steps there.
 
-`Start WhisperX server (Windows).cmd` needs no admin rights. It does not change the `PATH` or other settings of Windows. It does these steps:
-
-1. It finds uv in your `PATH` or in `%LOCALAPPDATA%\Minerr\uv`. If it finds no uv, it asks you first. When you press Y, it downloads uv 0.13.5 (15 MB) from GitHub with `curl.exe`, checks the SHA-256 of the file, and unpacks it to `%LOCALAPPDATA%\Minerr\uv`.
-2. It sets up the **Start the server** button.
-3. It gets the newest `yt-dlp`, because YouTube often breaks old versions. If your computer is offline, the server starts with the `yt-dlp` that it has. This works after one start with internet access from the same add-on folder.
-4. It starts the server. At the first start, uv downloads Python 3.12 and the packages of the server.
-
-The launcher keeps the bytecode of Python in `%LOCALAPPDATA%\Minerr\pycache`, so the add-on folder does not change. The launcher does not work on Windows on ARM, because ctranslate2, the engine of WhisperX, has no package for it. On Windows on ARM, run the server in WSL with the Linux steps.
-
-To remove what the launcher writes, run these commands in a Command Prompt. `%LOCALAPPDATA%\Minerr` holds the file for Chrome, and the uv and the bytecode of the Windows launcher.
+To remove what the launcher wrote, run these in a Command Prompt. `%LOCALAPPDATA%\Minerr` holds the file for Chrome, plus the launcher's uv and bytecode.
 
 ```bat
 reg delete HKCU\Software\Google\Chrome\NativeMessagingHosts\com.minerr.whisperx /f
 rmdir /s /q %LOCALAPPDATA%\Minerr
 ```
 
-The Windows launcher also fills the cache of uv in `%LOCALAPPDATA%\uv` and the Python of uv in `%APPDATA%\uv\python`. The model is in `%USERPROFILE%\.cache\huggingface`. If you do not use uv and Hugging Face for other work, delete these folders too.
+The launcher also fills uv's cache in `%LOCALAPPDATA%\uv` and uv's Python in `%APPDATA%\uv\python`, and the model lives in `%USERPROFILE%\.cache\huggingface`. If you don't use uv or Hugging Face for anything else, delete those folders too.
 
-On Linux and in WSL, run this command in the add-on folder. Keep the terminal open while you use the server.
+</details>
+
+On Linux and WSL, run this in the add-on folder and keep the terminal open while you use the server:
 
 ```sh
 uv run server/whisper_server.py
 ```
 
-If your `PATH` has no `yt-dlp`, the server uses the `yt-dlp` package of its environment. To update that package, run `uv sync --script server/whisper_server.py --upgrade-package yt-dlp`.
+If `yt-dlp` isn't on your `PATH`, the server uses the `yt-dlp` package in its own environment. To update it, run `uv sync --script server/whisper_server.py --upgrade-package yt-dlp`.
 
-The first start installs about 2.6 GB of packages on Linux, and about 3.7 GB on Windows. The first job also downloads the model, about 1.6 GB. In a test on Windows, the first job also waited about 5 minutes before the transcription started. This wait occurs one time only.
+The first start installs about 2.6 GB of packages on Linux, or about 3.7 GB on Windows, and the first job downloads the model, about 1.6 GB more. In one test on Windows, the first job also sat for about 5 minutes before transcription started. That wait only happens once.
 
-If the server runs in WSL, Chrome on Windows connects to it at `http://127.0.0.1:8766`, because WSL forwards localhost ports to Windows.
+If the server runs in WSL, Chrome on Windows reaches it at `http://127.0.0.1:8766`, because WSL forwards localhost ports to Windows.
 
-If the window or the terminal shows `Port 8766 is in use: the WhisperX server already runs, or another program uses the port.`, the server already runs, or another program uses the port. Only one server can run at a time.
+If the window or terminal says `Port 8766 is in use: the WhisperX server already runs, or another program uses the port.`, that's exactly what happened: only one server can run at a time.
 
-To start the server when you log in to Windows, put a shortcut to the launcher in the Startup folder:
+To start the server automatically when you log in to Windows, put a shortcut to the launcher in your Startup folder:
 
 1. Press Win+R.
 2. Type `shell:startup`.
 3. Press Enter. The Startup folder opens.
-4. With the right mouse button, drag `Start WhisperX server (Windows).cmd` from the add-on folder to the Startup folder.
+4. Right-click-drag `Start WhisperX server (Windows).cmd` from the add-on folder into the Startup folder.
 5. Click **Create shortcuts here**.
 
-The default model is `large-v3-turbo`. To use a different model, add `--model`, for example `--model small`. The `small` model is about 2.5 times faster, but it makes more mistakes in Japanese. For example, it wrote 自身 for 地震, 部身 for 文, and 感じに振り金 for 漢字にふりがな.
+The default model is `large-v3-turbo`. To use another one, add `--model`, for example `--model small`. `small` is about 2.5 times faster but makes more mistakes in Japanese; in testing it wrote 自身 for 地震, 部身 for 文, and 感じに振り金 for 漢字にふりがな.
 
-The server uses one thread per CPU core. To change this, add `--threads`.
+The server uses one thread per CPU core. Add `--threads` to change that.
 
 ### Make subtitles for a video
 
 1. Open the YouTube video.
-2. Click the Minerr button in the Chrome toolbar. If you do not see it, click the extensions button and pin Minerr.
+2. Click the Minerr button in the Chrome toolbar. If you can't see it, click the extensions button and pin Minerr.
 3. Click **Generate with WhisperX**.
-4. Wait until the popup shows `The WhisperX subtitles are ready.`
+4. Wait for `The WhisperX subtitles are ready.`
 
-You can close the popup while the server works. The tab gets the subtitles when the job is done. Then the overlay shows the WhisperX subtitles at the time of the video.
+You can close the toolbar menu while the server works. The tab picks up the subtitles when the job finishes, and the overlay switches to them in sync with the video.
 
-To go back to the YouTube captions, open the popup and click **YouTube captions**. To show the WhisperX subtitles again, click **WhisperX**.
+To go back to the YouTube captions, open the toolbar menu and click **YouTube captions**. Click **WhisperX** to switch back.
 
 ### Speed
 
-On a Ryzen 5 7600X (6 cores), the server needs about 24 seconds for 100 seconds of audio with `large-v3-turbo`. This is about 4 times faster than the video. A 20-minute video takes about 5 minutes. The `small` model needs about 10 seconds for the same audio.
+On a Ryzen 5 7600X (6 cores), `large-v3-turbo` takes about 24 seconds per 100 seconds of audio, roughly 4 times faster than real time. A 20-minute video takes about 5 minutes. The `small` model takes about 10 seconds for the same audio.
 
 ### Cache and privacy
 
-Each subtitle line is at most about 8 seconds of speech, so a line is 1 or 2 lines of text. WhisperX cuts the audio into parts at pauses, and each part becomes one line.
+Each subtitle line is at most about 8 seconds of speech, which is one or two lines of text. WhisperX splits the audio at pauses, and each piece becomes a line.
 
-The server keeps the subtitles in `~/.cache/minerr/subs/<video id>.<model>.8s.json`. When you open a video again, Minerr shows these subtitles at once. To make the subtitles again, delete the file. Subtitles from an earlier version of the server have long lines. To get short lines, click **Generate with WhisperX** again.
+The server caches subtitles in `~/.cache/minerr/subs/<video id>.<model>.8s.json`, so reopening a video shows them instantly. Delete the file to make new ones.
 
-The server also keeps the audio of each video in `~/.cache/minerr/audio/`, for the sentence audio of the cards. A 20-minute video needs about 20 MB. To free the disk space, delete the files in this folder.
+It also keeps each video's audio in `~/.cache/minerr/audio/` for the cards' sentence audio. A 20-minute video takes about 20 MB. Delete the files in that folder to free the space.
 
 On Windows, `~` is your user folder, for example `C:\Users\<you>`.
 
-The audio stays on your computer. Only `yt-dlp` connects to YouTube, to download the audio. WhisperX downloads its models from Hugging Face the first time. The server accepts connections only from your computer. The Windows launcher downloads uv from GitHub one time, and uv downloads Python and the packages from the internet. At each start of the Windows launcher, uv asks PyPI for a new version of `yt-dlp`.
+The audio stays on your computer. Only `yt-dlp` connects to YouTube, to download it. WhisperX downloads its models from Hugging Face the first time. The server only accepts connections from your own computer. The Windows launcher downloads uv from GitHub once, uv downloads Python and the packages from the internet, and every start of the Windows launcher asks PyPI for a newer `yt-dlp`.
 
 ## Mine a local video
 
@@ -493,433 +505,427 @@ You can mine a video file from your computer. The Minerr video player shows the 
 1. Click the Minerr button in the Chrome toolbar.
 2. Click **Play a local video**. The player opens in a new tab.
 3. Drop a video file on the page, or click **Choose a video**.
-4. To use a subtitle file, drop it together with the video, or click **Add subtitle file**. Minerr reads `.srt` and `.vtt` files. To show a second subtitle file under the line, for example in English, click **Add second subtitle file**.
-5. Pause the video, then move the mouse over a word in the subtitles.
+4. To use a subtitle file, drop it together with the video or click **Add subtitle file**. Minerr reads `.srt` and `.vtt`. For a second subtitle file under the line, such as English, click **Add second subtitle file**.
+5. Pause the video and hover over a word in the subtitles.
 6. Press `A` to add an Anki card.
 
-The `Sentence` field gets the subtitle line that contains the word. The `Image` field gets a screenshot of the player tab.
+The `Sentence` field gets the subtitle line containing the word, and the `Image` field gets a screenshot of the player tab.
 
-Chrome plays MP4 and WebM files. If Chrome cannot play the file, the player shows an error. Then convert the file to MP4 or WebM, for example with `ffmpeg -i video.mkv video.mp4`.
+Chrome plays MP4 and WebM. If it can't play your file, the player shows an error; convert the file to MP4 or WebM, for example with `ffmpeg -i video.mkv video.mp4`.
 
-To show the video in full screen, click **Full screen**. Do not use the full screen of the video controls, because it shows the video without the subtitles. The player removes that button.
+For full screen, click **Full screen**. The video controls' own full-screen button would show the video without subtitles, so the player removes it.
 
 ### Make subtitles with WhisperX
 
-If you have no subtitle file, the WhisperX server can make the subtitles. Start the server first, as [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx) shows.
+No subtitle file? The WhisperX server can make one. Start the server first, as described in [Generate subtitles with WhisperX](#generate-subtitles-with-whisperx).
 
 1. Open the video in the player.
 2. Click **Generate with WhisperX**.
-3. Wait until the player shows `WhisperX subtitles: <number> lines.`
+3. Wait for `WhisperX subtitles: <number> lines.`
 
-The player sends the video file to the server on your computer. The file does not go to the internet. The server takes out the audio with ffmpeg and transcribes it. The server deletes its copy of the file when the job ends.
+The player sends the video file to the server on your computer; it doesn't go to the internet. The server extracts the audio with ffmpeg, transcribes it, and deletes its copy of the file when the job ends.
 
-Keep the player tab open while the server works. If you close the tab, open the video again and click **Generate with WhisperX** again. The server keeps the subtitles in `~/.cache/minerr/subs/<SHA-256 of the file>.<model>.8s.json`. Thus it does not transcribe the same file two times.
+Keep the player tab open while the server works. If you close it, open the video again and click **Generate with WhisperX** again. The server caches the subtitles in `~/.cache/minerr/subs/<SHA-256 of the file>.<model>.8s.json`, so it never transcribes the same file twice.
 
 ### Save the subtitles
 
-Click **Save subtitles** to download the WhisperX subtitles as an `.srt` file. The file gets the name of the video, for example `lesson.srt` for `lesson.mp4`. Keep the `.srt` file in the same folder as the video. Next time, open the video and the `.srt` file together. Then you do not need the server. Most video players also show an `.srt` file that has the name of the video.
+Click **Save subtitles** to download the WhisperX subtitles as an `.srt` file named after the video, for example `lesson.srt` for `lesson.mp4`. Keep it in the same folder as the video. Next time, open the video and the `.srt` file together and you won't need the server. Most video players also pick up an `.srt` file with the same name as the video.
 
 ## Subtitles on other video sites
 
-Minerr can show its subtitle overlay on the video of a page that is not YouTube.
+Minerr can put its subtitle overlay on a video on any page, not just YouTube.
 
 1. Open the page with the video.
 2. Click the Minerr button in the Chrome toolbar.
 3. Click **Subtitles for the video of this page**. Minerr puts its overlay on the largest video on the screen.
-4. Click a button at the top left of the video:
-   - **Subtitle file** reads an `.srt` or `.vtt` file from your computer.
-   - **Subtitles of the site** asks the Minerr server for the Japanese subtitles of the page. The server uses `yt-dlp`, which knows many video sites.
-   - **WhisperX** makes the subtitles from the audio of the page. The server downloads the audio with `yt-dlp`.
-5. To remove the buttons, click **Hide these buttons**. The overlay stays until you reload the page.
+4. Click one of the buttons at the top left of the video:
+   - **Subtitle file** loads an `.srt` or `.vtt` file from your computer.
+   - **Subtitles of the site** asks the Minerr server for the page's Japanese subtitles. The server uses `yt-dlp`, which supports many video sites.
+   - **WhisperX** transcribes the page's audio. The server downloads the audio with `yt-dlp`.
+5. To get rid of the buttons, click **Hide these buttons**. The overlay stays until you reload the page.
 
-The keys, the play modes, the subtitle sidebar, and the sentence audio work as on YouTube.
+The keys, play modes, subtitle sidebar and sentence audio work the same as on YouTube.
 
 Limits:
 
-- `yt-dlp` cannot download from a site with DRM. The overlay then shows the error of the server. Use a subtitle file, if you have one. The sentence audio then comes from a recording in the tab, if the site allows it.
-- The video must be in the page itself. Some sites play the video in a frame, and Minerr does not see a video in a frame.
-- Minerr copies the captions of the player on YouTube and on Netflix only. On other sites, it does not copy the captions.
+- `yt-dlp` can't download from sites with DRM; the overlay shows the server's error. Use a subtitle file if you have one. Sentence audio then comes from recording in the tab, if the site allows it.
+- The video has to be in the page itself. Some sites play video inside a frame, and Minerr can't see a video in a frame.
+- Minerr only copies the player's captions on YouTube and Netflix. On other sites it doesn't.
 
 ### Netflix
 
-On a Netflix watch page, Minerr shows its overlay with the Japanese subtitles of the title, with their times. You do not need the server and you do not need to click anything.
+On a Netflix watch page, Minerr shows the title's Japanese subtitles in its overlay, with their times. You don't need the server and you don't need to click anything.
 
-1. Open a title on netflix.com. The overlay shows the Japanese subtitles when the player starts the video.
-2. If the player shows Japanese subtitles, the overlay shows the same track. Else the overlay shows the regular Japanese subtitles, before the Japanese closed captions.
+1. Open a title on netflix.com. The overlay shows the Japanese subtitles once the player starts.
+2. If the player is showing Japanese subtitles, the overlay uses the same track. Otherwise it uses the regular Japanese subtitles in preference to the Japanese closed captions.
 3. Turn on the second subtitles (`Shift+W`) to see the English track under the Japanese line.
 
-How it works: the Netflix player asks Netflix for a list of the subtitle tracks of the title. Minerr reads that list in the tab, and asks for the WebVTT format of the tracks. Then it reads the Japanese track from the Netflix servers, as the player does. Minerr does not download the video and does not touch the DRM of the video. A seek from a Minerr key goes through the player of Netflix.
+How it works: the Netflix player asks Netflix for the title's list of subtitle tracks. Minerr reads that list in the tab, asks for the tracks in WebVTT format, and fetches the Japanese track from Netflix's servers the same way the player does. Minerr doesn't download the video or touch its DRM, and seeks from Minerr keys go through Netflix's own player.
 
 Limits:
 
-- The video has DRM, so Chrome gives no sound and no picture of it to an extension. A card from Netflix gets the line as the sentence and the word audio from JapanesePod101. It gets no line audio and no screenshot. The overlay says so when you add the card.
-- Some Japanese titles have subtitles as images. The overlay says so, and the captions of Netflix stay. Minerr cannot read them.
-- WhisperX does not work on Netflix, because the server cannot download the audio.
-- Forced subtitles (the few foreign lines of a film) are not the dialogue, so the overlay does not show them.
-- The toolbar button **Subtitles for the video of this page** tells the state of the overlay on Netflix, for example the number of lines.
+- The video has DRM, so Chrome gives an extension neither its sound nor its picture. A Netflix card gets the line as its sentence and word audio from JapanesePod101, but no line audio and no screenshot. The overlay tells you this when you add the card.
+- Some Japanese titles have image-based subtitles. Minerr can't read those; the overlay says so and Netflix's own captions stay on.
+- WhisperX doesn't work on Netflix, because the server can't download the audio.
+- Forced subtitles (the few foreign-language lines in a film) aren't the dialogue, so the overlay skips them.
+- On Netflix, the toolbar button **Subtitles for the video of this page** shows the overlay's state, such as the number of lines.
 
 ## Sentence audio
 
-A card for a word in a subtitle line gets the whole line as its sentence, as in asbplayer and Migaku. Minerr does not cut the line at `。`, `！`, or `？`. On a web page, the card sentence ends at `。`, `！`, `？`, and line breaks.
+A card for a word in a subtitle line gets the whole line as its sentence, the same as asbplayer and Migaku. Minerr doesn't cut subtitle lines at `。`, `！` or `？`. On a web page, the card sentence still ends at `。`, `！`, `？` and line breaks.
 
-When you add a card for a word in the subtitle overlay, the card also gets the audio of the subtitle line. The audio starts 0.5 seconds before the line and stops 0.5 seconds after it. To change this time, open the options page and change **Sentence audio padding** in **Video**.
+When you add a card from the subtitle overlay, it also gets the line's audio, starting 0.5 seconds before the line and ending 0.5 seconds after. To change that, open the options page and adjust **Sentence audio padding** under **Video**.
 
-The audio comes from one of these sources:
+The audio comes from one of two places:
 
-1. The Minerr server cuts the line from its copy of the audio, as an MP3 file. This works for a YouTube video, and for a file that you sent to the server with **Generate with WhisperX**. The first card of a video starts the download of its audio. The later cards of the video get the MP3 file.
-2. If the server is off or has no audio of the video, Minerr records the line in the tab. The video goes back to the start of the line and plays it again. Then the video goes back to where it was. The recording is a WebM file.
+1. The Minerr server cuts the line out of its copy of the audio as an MP3. This works for YouTube videos and for files you sent to the server with **Generate with WhisperX**. The first card from a video starts the audio download, and later cards from that video get MP3s.
+2. If the server is off or doesn't have the video's audio, Minerr records the line in the tab: the video jumps back to the start of the line, plays it, and returns to where it was. That recording is a WebM file.
 
-Minerr gives all sentence audio one loudness, so a card is not too loud or too quiet. The server sets each MP3 file to -16 LUFS (EBU R128). The tab recording only evens out the level: the start of a recording can be a little louder or quieter. A change of the volume of the video does not change the recording.
+Minerr evens out the loudness of all sentence audio so no card is too loud or too quiet. The server sets each MP3 to -16 LUFS (EBU R128). A tab recording only gets its level evened out, so its start can be slightly louder or quieter. Changing the video's volume doesn't affect the recording.
 
-The sentence audio needs subtitles with times. A card from the YouTube captions that Minerr copies from the player has no sentence audio.
+Sentence audio needs subtitles with times. A card from YouTube captions that Minerr copied from the player has no sentence audio.
 
-A video with DRM (Netflix and other sites) gives no sound to a recording and no picture to a screenshot. A card from such a video gets no sentence audio and no screenshot. It gets the word audio from JapanesePod101, if the note type has a field for it. The overlay shows **Protected video: the card gets no line audio and no screenshot.**
+A DRM-protected video (Netflix and some other sites) gives a recording no sound and a screenshot no picture, so its cards get neither sentence audio nor a screenshot. They still get word audio from JapanesePod101 if the note type has a field for it. The overlay shows **Protected video: the card gets no line audio and no screenshot.**
 
-The `SentenceAudio` field is new. If your note type is from an earlier version, Anki asks for a full sync one time after the update. Sync all your devices before you update Minerr. See [The note type](#the-note-type).
-
-Anki on a computer plays MP3 and WebM files. If a phone app does not play a WebM file, start the server before you add the card. Then the card gets an MP3 file.
+Anki on a computer plays both MP3 and WebM. If a phone app won't play a WebM file, start the server before adding the card so it gets an MP3 instead.
 
 ## Play modes
 
-A play mode pauses the video on its own. Open the options page, go to **Video**, and select a **Play mode**:
+A play mode pauses the video for you. Open the options page, go to **Video** and pick a **Play mode**:
 
 | Play mode | The video pauses |
 | --- | --- |
 | **Normal** | Never. This is the default. |
 | **Pause before each line** | At the start of each line. Read the line, then play the video to hear it. |
-| **Pause after each line** | At the end of each line. The line stays on the screen. |
+| **Pause after each line** | At the end of each line. The line stays on screen. |
 | **Pause after i+1 lines** | At the end of each line with exactly one unknown word. |
 
-The play modes need subtitles with times. Press `S` to hear the line again. Press `→` or `D` to go to the next line.
+Play modes need subtitles with times. Press `S` to hear the line again, or `→` or `D` to go to the next line.
 
-More settings in **Video**:
+Other settings under **Video**:
 
-- **Play again after a pause of the play mode.** The video plays again after 3, 6, or 10 seconds. It does not play while the mouse is on the line or a word popup is open.
-- **Open the first unknown word after a pause of the play mode.** The popup of the first unknown word of the line opens.
-- **Pause while the mouse is on the subtitles.** The video pauses when the mouse moves onto the subtitle line. It also stays paused while the popup of a subtitle word is open. The video plays again when the mouse goes away and the popup closes. This setting is on by default.
+- **Play again after a pause of the play mode.** The video resumes after 3, 6 or 10 seconds, but not while the mouse is on the line or a word popup is open.
+- **Open the first unknown word after a pause of the play mode.** Opens the popup of the line's first unknown word.
+- **Pause while the mouse is on the subtitles.** The video pauses when the mouse moves onto the subtitle line and stays paused while a subtitle word's popup is open. It resumes once the mouse leaves and the popup closes. This is on by default.
 
 ## Subtitle sidebar
 
-The subtitle sidebar shows all lines of the video as cards. It opens in the side panel of Chrome, at the right side of the window. Chrome makes the page narrower, so the panel covers nothing on the page. It needs subtitles with times.
+The subtitle sidebar lists every line of the video as a card. It opens in Chrome's side panel on the right of the window; Chrome narrows the page to make room, so the panel never covers anything. It needs subtitles with times.
 
-- The panel belongs to the tab of the video. On another tab, Chrome hides it. When you come back to the tab, Chrome shows it again.
-- In full screen, Chrome shows no side panel. The panel shows again when you leave full screen.
-- The panel has the colors of the Minerr theme (**Theme** on the options page), not the colors of the page.
+- The panel belongs to the video's tab. Chrome hides it when you switch tabs and brings it back when you return.
+- Chrome doesn't show side panels in full screen. The panel comes back when you leave full screen.
+- The panel uses Minerr's theme colors (**Theme** on the options page), not the page's.
 
-1. Press `G` on the video. The sidebar opens.
-2. Find a line. Each card shows the time and the line. The words have their status colors, and a word opens its popup on hover, as in the overlay.
-3. Do one of these steps on the card:
-   - Click the card, or its time, to go to the line.
-   - Click **▶** to play the line one time. The video pauses at the end of the line.
-   - Click **+** to add a card for a word of the line. The card gets the line as the sentence, the audio of the line, and a screenshot of the line. The video pauses at the start of the line for the screenshot.
+1. Press `G` on the video to open the sidebar.
+2. Find a line. Each card shows the line and its time. Words have their status colors, and hovering over one opens its popup, just like in the overlay.
+3. On the card, you can:
+   - Click the card or its time to jump to the line.
+   - Click **▶** to play the line once. The video pauses at the end of it.
+   - Click **+** to add a card for a word in the line. The card gets the line as its sentence, the line's audio and a screenshot of the line. The video pauses at the start of the line for the screenshot.
    - Click **★** to bookmark the line.
-4. Press `G` again, or click **×** at the top of the side panel, to close the sidebar.
+4. Press `G` again, or click **×** at the top of the side panel, to close it.
 
-The word of the card from **+**:
+Which word **+** makes a card for:
 
-- If the line has one unknown word, Minerr adds the card for that word at once.
-- If the line has two or more unknown words, the card shows **Select a target word**. The unknown words come first, then the other words of the line. Click a word to add its card.
-- If the line has no unknown word, the list shows all words of the line.
-- To close the list, click **Cancel**, click **+** again, or press `Esc`. Use `Tab` and `Enter` to select a word with the keyboard.
+- If the line has one unknown word, Minerr adds that card straight away.
+- If it has two or more, the card shows **Select a target word**, listing the unknown words first and then the rest of the line. Click a word to add its card.
+- If it has no unknown word, the list shows every word in the line.
+- To close the list, click **Cancel**, click **+** again, or press `Esc`. Use `Tab` and `Enter` to pick a word with the keyboard.
 
-To add cards for many lines at one time:
+To add cards for many lines at once:
 
-1. Click the box at the left of the time of each line. The bar at the bottom of the sidebar shows the number of selected lines.
-2. Click **Create N cards**. Minerr adds one card for each line, one after the other. Each card gets the line as the sentence, the audio of the line, and a screenshot of the line. The bar shows the progress.
-3. Read the result in the bar. A line that does not have exactly one unknown word gets no card, because only you can select its target word. That line stays selected. Use **+** on it.
-   - If Anki gives an error, Minerr stops. The popup of the line shows the error. The lines without a card stay selected.
-4. To stop the cards that are not added yet, click **Stop**. To clear the selection, click **Clear**, or press `Esc` while the sidebar has the focus.
+1. Tick the box to the left of each line's time. The bar at the bottom of the sidebar counts the selected lines.
+2. Click **Create N cards**. Minerr adds one card per line, one after another, each with the line as its sentence, the line's audio and a screenshot of the line. The bar shows progress.
+3. Check the result in the bar. A line that doesn't have exactly one unknown word gets no card, because only you can choose its target word; it stays selected, so use **+** on it.
+   - If Anki returns an error, Minerr stops. The line's popup shows the error, and the lines without cards stay selected.
+4. Click **Stop** to cancel the cards that haven't been added yet. To clear the selection, click **Clear**, or press `Esc` while the sidebar has focus.
 
-The sidebar follows the video. The card of the current line has a teal border, and the list scrolls to keep that card in view. While the sidebar does not follow the video, it shows **Scroll paused**:
+The sidebar follows the video: the current line's card gets a teal border, and the list scrolls to keep it in view. When it stops following, it shows **Scroll paused**:
 
-- While the mouse is on the list, the list does not scroll. When the mouse leaves the list, the list stays where it is.
-- When you scroll the list, or click in it, the list stays where you put it. A pause of the video for a popup does not change this.
-- When you play the video, the list goes to the current line and follows the video again.
-- When you click a card, its time, **▶**, or **+**, the list goes to that line and follows the video again.
+- While the mouse is over the list, it doesn't scroll. When the mouse leaves, the list stays put.
+- If you scroll or click in the list, it stays where you left it. A pause for a popup doesn't change that.
+- When you play the video, the list jumps to the current line and starts following again.
+- When you click a card, its time, **▶** or **+**, the list jumps to that line and starts following again.
 
-With only the YouTube captions that Minerr copies from the player, the sidebar shows a message. These captions have no times.
+If the only subtitles are YouTube captions that Minerr copied from the player, the sidebar shows a message instead, because those captions have no times.
 
-Select a filter at the top of the sidebar:
+Pick a filter at the top of the sidebar:
 
 | Filter | The sidebar shows |
 | --- | --- |
-| **All lines** | All lines. |
-| **1+ unknown words** | The lines with one or more unknown words. |
-| **2+ unknown words** | The lines with two or more unknown words. |
-| **1 unknown word** | The lines with exactly one unknown word, as the i+1 highlight counts them. |
-| **Unique 1 unknown word** | The lines with exactly one unknown word, but only the first line of each unknown word. |
-| **Learning** | The lines with a word that has the status learning. |
-| **All known** | The lines with only known or ignored words. |
-| **Bookmarks** | The lines that you bookmarked. The filter shows the number of bookmarks. |
+| **All lines** | Every line. |
+| **1+ unknown words** | Lines with at least one unknown word. |
+| **2+ unknown words** | Lines with at least two unknown words. |
+| **1 unknown word** | Lines with exactly one unknown word, counted the same way as the i+1 highlight. |
+| **Unique 1 unknown word** | Lines with exactly one unknown word, but only the first line for each unknown word. |
+| **Learning** | Lines containing a word with the status learning. |
+| **All known** | Lines made up only of known or ignored words. |
+| **Bookmarks** | Lines you bookmarked. The filter shows how many there are. |
 
-If no line matches the filter, the sidebar shows a message. Click **Clear filter** to show all lines again.
+If no line matches, the sidebar says so. Click **Clear filter** to show every line again.
 
-To bookmark the current line, press `B`, or click **★** on its card. Press `B` again to remove the bookmark. Minerr keeps the bookmarks of each video. The bookmarks of a YouTube video belong to its video ID, and the bookmarks of a file belong to its name and size.
+To bookmark the current line, press `B` or click **★** on its card; press `B` again to remove it. Bookmarks are saved per video: by video ID on YouTube, and by name and size for a file.
 
-When Minerr is off, the sidebar shows that Minerr is off.
+When Minerr is off, the sidebar says so.
 
 ## Subtitle display
 
-Open the options page and go to **Video** to change these settings. They apply to the subtitle overlay on all video pages.
+These settings live under **Video** on the options page and apply to the subtitle overlay on every video page.
 
-- **Subtitle size.** Move the slider to make the subtitles larger or smaller. On a video, `Alt+=` and `Alt+-` change the same size.
-- **Obscure the subtitles.** The overlay blurs or hides the text while the video plays. The text shows when you move the mouse onto it or pause the video. Select **Blur** or **Hide**. Press `W` on a video to turn this on or off.
-- **Second subtitles.** A second subtitle track, for example English, shows under the Japanese line. Select **Show**, **On hover or pause**, or **Off**. **Off** is the default. Press `Shift+W` on a video to show or hide it. On YouTube, Minerr gets the English subtitles of the video in the same two ways as the Japanese subtitles. If the video has no English subtitles, YouTube translates the Japanese subtitles. In the video player, click **Add second subtitle file**.
-- **Remove bracketed text.** Minerr removes text in brackets, for example （笑）, (laughs), [音楽], and 【拍手】. A line with only bracketed text does not show.
-- **Parts with no subtitles.** For a part of 1.5 seconds or more with no line, the video plays at 2× or 4× speed, or skips the part. The last 0.5 seconds before the next line play at the normal speed. This needs subtitles with times.
+- **Subtitle size.** Drag the slider to make the subtitles bigger or smaller. On a video, `Alt+=` and `Alt+-` change the same size.
+- **Obscure the subtitles.** Blurs or hides the overlay text while the video plays; it shows again when you hover over it or pause. Choose **Blur** or **Hide**. Press `W` on a video to toggle this.
+- **Second subtitles.** Shows a second track, such as English, under the Japanese line. Choose **Show**, **On hover or pause** or **Off** (the default). Press `Shift+W` on a video to show or hide it. On YouTube, Minerr fetches the English subtitles the same two ways as the Japanese ones; if the video has none, YouTube translates the Japanese subtitles. In the video player, click **Add second subtitle file**.
+- **Remove bracketed text.** Strips text in brackets, such as （笑）, (laughs), [音楽] and 【拍手】. A line made up only of bracketed text isn't shown.
+- **Parts with no subtitles.** For any stretch of 1.5 seconds or more without a line, the video plays at 2× or 4× speed, or skips ahead. The last 0.5 seconds before the next line play at normal speed. This needs subtitles with times.
 
 ## Video keys
 
-These keys work on a video with the Minerr subtitle overlay: on YouTube, in the video player, and on other sites. They do not work when the focus is in a text field.
+These keys work on any video with the Minerr subtitle overlay: on YouTube, in the video player and on other sites. They don't work while the focus is in a text field.
 
 | Key | Action | Note |
 | --- | --- | --- |
 | `→` or `D` | Go to the next line. | Needs subtitles with times. |
-| `←` or `A` | Go to the previous line. If a word popup is open, `A` adds the card of the word. | Needs subtitles with times. |
-| `S` | Play the current line again. | Needs subtitles with times. |
+| `←` or `A` | Go to the previous line. If a word popup is open, `A` adds the word's card instead. | Needs subtitles with times. |
+| `S` | Replay the current line. | Needs subtitles with times. |
 | `Alt+A` | Go back 5 seconds. | |
 | `Alt+D` | Go forward 5 seconds. | |
 | `C` | Copy the current line. | |
-| `J` | Join the next line to the current line. A card then gets both lines as the sentence, and the audio of both. Press `J` again to stop. | Needs subtitles with times. |
-| `G` | Open or close the subtitle sidebar in the side panel of Chrome. On YouTube captions with no times, the sidebar shows a message. | |
+| `J` | Join the next line to the current one. A card then gets both lines as its sentence, with the audio of both. Press `J` again to stop. | Needs subtitles with times. |
+| `G` | Open or close the subtitle sidebar in Chrome's side panel. With YouTube captions that have no times, the sidebar shows a message. | |
 | `B` | Bookmark the current line, or remove its bookmark. | Needs subtitles with times. |
-| `.` | Go one frame forward. The video pauses. | Needs subtitles with times. |
-| `,` | Go one frame back. The video pauses. | Needs subtitles with times. |
+| `.` | Step one frame forward. The video pauses. | Needs subtitles with times. |
+| `,` | Step one frame back. The video pauses. | Needs subtitles with times. |
 | `Alt+O` | Show the subtitles 0.1 seconds later. | Needs subtitles with times. |
 | `Alt+I` | Show the subtitles 0.1 seconds earlier. | Needs subtitles with times. |
-| `Alt+=` | Make the subtitles larger. | |
+| `Alt+=` | Make the subtitles bigger. | |
 | `Alt+-` | Make the subtitles smaller. | |
 | `Shift+W` | Show or hide the second subtitle track. | Needs subtitles with times. |
-| `W` | Blur or hide the subtitles until you move the mouse onto them or pause, or show them again. | |
+| `W` | Blur or hide the subtitles until you hover over them or pause, or show them again. | |
 
-Subtitles with times come from WhisperX, from a subtitle file, or from the YouTube subtitles that the Minerr server downloads. The YouTube captions that Minerr copies from the player have no times. With these captions, a key that needs times shows a hint, and YouTube gets the key.
+Subtitles with times come from WhisperX, from a subtitle file, or from YouTube subtitles that Minerr reads in the tab or that the server downloads. Captions that Minerr copies from the YouTube player have no times; with those, a key that needs times shows a hint and YouTube gets the key.
 
-YouTube also uses some of these keys, for example `C`, `J`, `.`, `,`, and the arrow keys. While the overlay shows subtitles, the Minerr action replaces the YouTube action. `C` copies a line only when the overlay shows one. Otherwise YouTube gets `C` and turns the captions on or off.
+YouTube uses some of these keys too, such as `C`, `J`, `.`, `,` and the arrow keys. While the overlay is showing subtitles, Minerr's action wins. `C` only copies a line when the overlay is showing one; otherwise YouTube gets `C` and toggles its captions.
 
-`A` is not a video key, because `A` adds a card in the word popup.
+The offset applies to the open video until you open another one. The text size applies to all videos and is saved.
 
-The offset applies to the open video until you open a different video. The text size applies to all videos, and Minerr keeps it.
-
-The options page also shows these keys, in **Colors and shortcuts**.
+The options page lists these keys too, under **Colors and shortcuts**.
 
 ## Read a file
 
-The Minerr reader shows the text of a book or a subtitle file. The words get underlines, and the popup, the keys, and the i+1 highlight work as on a web page.
+The Minerr reader shows the text of a book or a subtitle file. Words get underlines, and the popup, the keys and the i+1 highlight work just like on a web page.
 
 1. Click the Minerr button in the Chrome toolbar.
 2. Click **Read a file**. The reader opens in a new tab.
 3. Drop a file on the page, or click **Choose a file**.
 
-The reader reads these files:
+The reader opens these files:
 
 | File | Content |
 | --- | --- |
-| `.epub` | Each chapter of the book. The **Chapter** list shows the first heading of each chapter. |
-| `.txt` | Each line with text is a paragraph. A long file is cut into parts of about 10,000 characters. |
-| `.srt`, `.vtt` | Each subtitle is a paragraph. The reader does not show the times. |
+| `.epub` | Each chapter of the book. The **Chapter** list shows each chapter's first heading. |
+| `.txt` | Each line with text is a paragraph. Long files are split into parts of about 10,000 characters. |
+| `.srt`, `.vtt` | Each subtitle is a paragraph. The times aren't shown. |
 
-The reader keeps only the text of an EPUB file. It keeps the paragraphs, the headings, and the furigana (ruby). It removes the scripts, the styles, the links, and the images. The furigana is not page text, so a card sentence does not contain it.
+From an EPUB, the reader keeps only the text: paragraphs, headings and furigana (ruby). It drops scripts, styles, links and images. Furigana isn't page text, so it never ends up in a card sentence.
 
-Use these keys to turn the pages:
+Use these keys to turn pages:
 
 | Key | Action |
 | --- | --- |
-| `PageDown`, `Space`, `↓` | Go to the next page. At the end of a chapter, open the next chapter. |
-| `PageUp`, `Shift+Space`, `↑` | Go to the previous page. At the start of a chapter, open the end of the chapter before. |
-| `→` | Go to the next page. In vertical text, go to the previous page. |
-| `←` | Go to the previous page. In vertical text, go to the next page. |
+| `PageDown`, `Space`, `↓` | Next page. At the end of a chapter, open the next chapter. |
+| `PageUp`, `Shift+Space`, `↑` | Previous page. At the start of a chapter, open the end of the previous chapter. |
+| `→` | Next page. In vertical text, previous page. |
+| `←` | Previous page. In vertical text, next page. |
 
-The keys do not work when the focus is in a text field or a list.
+The keys don't work while the focus is in a text field or a list.
 
-To show vertical text, click **Vertical text**. The lines go from top to bottom, and from right to left. The mouse wheel also turns the lines. Click **Vertical text** again to show horizontal text. Minerr keeps this setting for all files.
+Click **Vertical text** for vertical text: lines run top to bottom, right to left, and the mouse wheel scrolls through them. Click it again to go back to horizontal text. The setting applies to all files.
 
-Minerr keeps the place where you stop in each file. When you open the same file again, the reader shows the same chapter and the same place. Minerr knows a file by its name and its size.
+Minerr remembers where you stopped in each file and reopens it at the same chapter and position. It identifies a file by its name and size.
 
 ## Paste text
 
-You can read text that you copy, for example from a game or a different program.
+You can read text you copy from anywhere, such as a game or another program.
 
 1. Click the Minerr button in the Chrome toolbar.
 2. Click **Paste text**.
-3. Copy Japanese text, then press `Ctrl+V` on the page.
+3. Copy some Japanese text and press `Ctrl+V` on the page.
 
-Each paste adds the text at the bottom of the page. To remove all the texts, click **Clear**.
+Each paste is added at the bottom of the page. Click **Clear** to remove everything.
 
 ### Auto-paste
 
-With **Auto-paste**, the page adds the text from the clipboard each time the page gets the focus. You do not press `Ctrl+V`.
+With **Auto-paste** on, the page adds whatever is on the clipboard each time it gets focus, so you don't need `Ctrl+V`.
 
 1. Select **Auto-paste**.
-2. Chrome asks for the permission to read the clipboard. Click **Allow**.
-3. Copy text in a different program, then click the Minerr page.
+2. Chrome asks for permission to read the clipboard. Click **Allow**.
+3. Copy text in another program, then click the Minerr page.
 
-If the clipboard has the same text as the last paste, the page adds nothing. Minerr asks for the clipboard permission only when you select **Auto-paste**, so the installation of Minerr asks for no clipboard permission.
+If the clipboard holds the same text as the last paste, nothing is added. Minerr only asks for clipboard access when you select **Auto-paste**, so installing it doesn't ask for clipboard access.
 
 ## Lapis note type
 
-Lapis is the default note type. It is the note type of the [mining guide of learnjapanese.moe](https://learnjapanese.moe/mining/). [Lapis](https://github.com/donkuri/lapis) is a separate project with the GPL-3.0 license. Minerr does not contain the Lapis templates. Minerr fills the fields of the Lapis note type in your Anki. It changes the note type only to add the `ExpressionKanji` field. See [The kanji spelling](#the-kanji-spelling).
-
-If you selected a different note type before this version, Minerr keeps your selection.
+Lapis is the default note type. It's the note type from the [learnjapanese.moe mining guide](https://learnjapanese.moe/mining/). [Lapis](https://github.com/donkuri/lapis) is a separate GPL-3.0 project, and Minerr doesn't include its templates; it fills in the fields of the Lapis note type in your Anki. The only change Minerr makes to the note type is adding the `ExpressionKanji` field (see [The kanji spelling](#the-kanji-spelling)).
 
 ### Install Lapis
 
-If Anki has no note type with the name `Lapis`, the popup shows an error when you add a card. To install Lapis:
+If Anki has no note type called `Lapis`, the popup shows an error when you add a card. To install it:
 
 1. Open Anki.
 2. Open the options page.
 3. In **Anki**, click **Check connection**.
 4. Click **Install Lapis**.
 
-Anki downloads `Lapis.apkg` of Lapis 1.7.0 from the [releases of the Lapis project](https://github.com/donkuri/lapis/releases) and imports it. Then Minerr deletes the downloaded file from the media folder. The package also makes a `Lapis` deck with one sample note. Minerr deletes this deck only if it contains the sample note and no other note. If Anki already has a Lapis note type, the button does nothing.
+Anki downloads `Lapis.apkg` for Lapis 1.7.0 from the [Lapis releases](https://github.com/donkuri/lapis/releases) and imports it, and Minerr then deletes the downloaded file from the media folder. The package also creates a `Lapis` deck with one sample note; Minerr deletes that deck, but only if it holds the sample note and nothing else. If Anki already has a Lapis note type, the button does nothing.
 
 ### Lapis fields
 
-Minerr fills the fields as the Yomitan setup of the [Lapis README](https://github.com/donkuri/lapis#how-to-use-lapis) does:
+Minerr fills the fields the same way as the Yomitan setup in the [Lapis README](https://github.com/donkuri/lapis#how-to-use-lapis):
 
 | Field | Content |
 | --- | --- |
-| `Expression` | The dictionary form of the word, for example 食べる. |
-| `ExpressionFurigana` | The word with the reading over each kanji, in the furigana syntax of Anki, for example `食[た]べる`. |
+| `Expression` | The word's dictionary form, for example 食べる. |
+| `ExpressionFurigana` | The word with the reading over each kanji, in Anki's furigana syntax, for example `食[た]べる`. |
 | `ExpressionReading` | The reading in hiragana, for example たべる. |
-| `ExpressionAudio` | The audio of the word. See [Word audio](#word-audio). |
-| `SelectionText` | The selected text, if you opened the popup with `Alt+S`. Else empty. |
-| `MainDefinition` | The definitions of the first dictionary that has the word. |
+| `ExpressionAudio` | The word's audio. See [Word audio](#word-audio). |
+| `SelectionText` | The selected text, if you opened the popup with `Alt+S`. Otherwise empty. |
+| `MainDefinition` | The definitions from the first dictionary that has the word. |
 | `DefinitionPicture` | Empty. |
-| `Sentence` | The sentence from the page. The word is in `<b>`. |
+| `Sentence` | The sentence from the page, with the word in `<b>`. |
 | `SentenceFurigana` | Empty, as the Lapis README recommends. |
-| `SentenceAudio` | The audio of the subtitle line. See [Sentence audio](#sentence-audio). |
+| `SentenceAudio` | The subtitle line's audio. See [Sentence audio](#sentence-audio). |
 | `Picture` | The screenshot of the tab. |
-| `Glossary` | The tags and the definitions of all dictionaries, as in the `Definition` field of the classic note type. |
-| `Hint`, `IsWordAndSentenceCard`, `IsClickCard`, `IsSentenceCard`, `IsAudioCard` | Empty. Lapis then makes a word card. |
-| `PitchPosition` | The pitch accent positions from the pitch dictionaries, for example `[0]`. More than one position is a list. |
-| `PitchCategories` | The pitch patterns, separated by commas: `heiban`, `atamadaka`, `nakadaka`, `odaka`, or `kifuku`. A verb or an i-adjective with a drop is `kifuku`. |
-| `Frequency` | The frequency of the word in each frequency dictionary, as a list. |
-| `FreqSort` | The harmonic mean of the frequency ranks, as Yomitan `{frequency-harmonic-rank}`. It is `9999999` if no dictionary gives a rank. Sort new cards by this field. |
-| `MiscInfo` | The title and the address of the page. |
-| `ExpressionKanji` | The kanji spelling of a word in kana, for example 可愛い for かわいい. Empty for a word with kanji. Minerr adds this field. See [The kanji spelling](#the-kanji-spelling). |
+| `Glossary` | The tags and definitions from all dictionaries, as in the classic note type's `Definition` field. |
+| `Hint`, `IsWordAndSentenceCard`, `IsClickCard`, `IsSentenceCard`, `IsAudioCard` | Empty, so Lapis makes a word card. |
+| `PitchPosition` | The pitch accent positions from your pitch dictionaries, for example `[0]`. Several positions make a list. |
+| `PitchCategories` | The pitch patterns, comma-separated: `heiban`, `atamadaka`, `nakadaka`, `odaka` or `kifuku`. A verb or i-adjective with a drop is `kifuku`. |
+| `Frequency` | The word's frequency in each frequency dictionary, as a list. |
+| `FreqSort` | The harmonic mean of the frequency ranks, like Yomitan's `{frequency-harmonic-rank}`, or `9999999` if no dictionary gives a rank. Sort new cards by this field. |
+| `MiscInfo` | The page title and address. |
+| `ExpressionKanji` | The kanji spelling of a kana word, for example 可愛い for かわいい. Empty for a word that already has kanji. Minerr adds this field. See [The kanji spelling](#the-kanji-spelling). |
 
-The **Word field** in **Known words** is `Expression` for Lapis.
+For Lapis, the **Word field** in **Known words** is `Expression`.
 
 ### The kanji spelling
 
-A word in kana, for example かわいい, often has a kanji spelling in the dictionary, for example 可愛い. The card keeps the word as it is on the page in `Expression`, because the known words come from that field. The kanji spelling goes to the `ExpressionKanji` field.
+A kana word like かわいい often has a kanji spelling in the dictionary, here 可愛い. The card keeps the word as written on the page in `Expression`, because known words are read from that field, and puts the kanji spelling in `ExpressionKanji`.
 
-Lapis has no such field. When you add the first card to Lapis, Minerr adds the `ExpressionKanji` field at the end of the fields of Lapis. If the back template has the line `<div class="vocab">{{Expression}}</div>`, Minerr also adds this line under it:
+Lapis doesn't have that field. The first time you add a card to Lapis, Minerr appends an `ExpressionKanji` field to Lapis. If the back template contains the line `<div class="vocab">{{Expression}}</div>`, Minerr also adds this line below it:
 
 ```
 {{#ExpressionKanji}}<div class="info">{{ExpressionKanji}}</div>{{/ExpressionKanji}}
 ```
 
-The back of the card then shows the kanji spelling under the word, only when the field is not empty. Minerr does each change one time. If the field or the line is already there, Minerr does not add it again. If the back template has no such line, Minerr only adds the field. Minerr changes nothing else in Lapis.
+The back of the card then shows the kanji spelling under the word whenever the field isn't empty. Minerr makes each change only once: if the field or the line is already there, it leaves it alone. If the back template doesn't have that line, Minerr only adds the field. It changes nothing else in Lapis.
 
-If an Anki Browse, Add, or Edit window is open at that time, Anki does not let Minerr change the note type, and the card is not added. Close the window, then add the card again.
+If an Anki Browse, Add or Edit window is open at that moment, Anki won't let Minerr change the note type and the card isn't added. Close the window and add the card again.
 
 ## Word audio
 
-When you add a card to Lapis, Minerr gets the audio of the word from JapanesePod101, the default audio source of Yomitan. The `ExpressionAudio` field gets the audio as `[sound:minerr-word-....mp3]`. The file name comes from the SHA-256 of the audio, so the same audio is one file in Anki.
+When you add a card to Lapis, Minerr fetches the word's audio from JapanesePod101, Yomitan's default audio source. The `ExpressionAudio` field gets it as `[sound:minerr-word-....mp3]`. The file name comes from the audio's SHA-256, so identical audio is stored as one file in Anki.
 
-If JapanesePod101 has no audio of the word, it sends a clip that says that the audio is not available. Minerr finds this clip by its SHA-256, as Yomitan does, and leaves the field empty. If the request fails, the field is also empty. In both cases, Minerr adds the card.
+When JapanesePod101 has no audio for a word, it sends a clip saying the audio isn't available. Minerr recognizes that clip by its SHA-256, as Yomitan does, and leaves the field empty. If the request fails, the field is empty too. Either way, the card is still added.
 
-For your own note type, use the `{wordaudio}` marker. The classic note type has no field for the word audio.
+For your own note type, use the `{wordaudio}` marker. The classic note type has no word audio field.
 
-To stop the requests to JapanesePod101, clear **Add the audio of the word from JapanesePod101** in the **Anki** section of **Options**. Then Minerr sends no request to JapanesePod101, and `ExpressionAudio` and `{wordaudio}` stay empty. Minerr still adds the card. A card from a page then has no audio, because only a word in video subtitles gets the audio of its line. The switch is on by default.
+To stop all requests to JapanesePod101, clear **Add the audio of the word from JapanesePod101** in the **Anki** section of **Options**. `ExpressionAudio` and `{wordaudio}` then stay empty, and cards are still added. A card from a web page then has no audio at all, since only words in video subtitles get line audio. The switch is on by default.
 
 ## The note type
 
-This section is about the classic `Minerr` note type. To use it, select **Minerr (classic)** in **Note type** on the options page.
+This section covers the classic `Minerr` note type. To use it, select **Minerr (classic)** under **Note type** on the options page.
 
-You do not make the note type yourself. When you add the first card, Minerr makes the deck and the note type in Anki through AnkiConnect. The default deck is `Minerr`. You can change the deck on the options page. Minerr adds the tag `minerr` to each note.
+You don't create the note type yourself: when you add the first card, Minerr creates the deck and the note type in Anki through AnkiConnect. The default deck is `Minerr`, and you can change it on the options page. Minerr tags every note with `minerr`.
 
-The note type is `Minerr`. It has these fields:
+The note type is called `Minerr` and has these fields:
 
 | Field | Content |
 | --- | --- |
-| `Word` | The dictionary form of the word, for example 食べる. |
+| `Word` | The word's dictionary form, for example 食べる. |
 | `Reading` | The reading from the dictionary, for example たべる. |
-| `Sentence` | The sentence from the page. The word is in `<b>`. |
-| `Definition` | The tags of the word, then the definitions as a numbered list with their tags and the dictionary name. It contains only the definitions for the reading in `Reading`. |
+| `Sentence` | The sentence from the page, with the word in `<b>`. |
+| `Definition` | The word's tags, then the definitions as a numbered list with their tags and the dictionary name. Only definitions for the reading in `Reading` are included. |
 | `Image` | The screenshot of the tab. |
-| `SentenceAudio` | The audio of the subtitle line, for a word in video subtitles. See [Sentence audio](#sentence-audio). |
+| `SentenceAudio` | The subtitle line's audio, for a word in video subtitles. See [Sentence audio](#sentence-audio). |
 
-The note type has one card type, `Recognition`:
+It has one card type, `Recognition`:
 
-- **Front.** The sentence in large text, with the word in color. The dictionary form is in small text below it.
-- **Back.** The front, then the word with its reading as furigana, the tags and the definitions, and the screenshot.
+- **Front.** The sentence in large text with the word in color, and the dictionary form in small text below it.
+- **Back.** The front, then the word with its reading as furigana, the tags and definitions, and the screenshot.
 
-The card has a light theme and a night mode theme. It also fits phone screens. If a field is empty, the card does not show it.
+The card has a light theme and a night mode theme, and fits phone screens. Empty fields are hidden.
 
 | Front | Back |
 | --- | --- |
 | ![Card front](docs/card-front.png) | ![Card back](docs/card-back.png) |
 
-Minerr keeps the note type up to date. Each time its background service worker starts, the first card that you add sets the templates and the CSS to the current version. If you change the templates or the CSS in Anki, Minerr replaces your changes. If the note type does not have a field of the current version, Minerr adds the field. For example, a note type from an earlier version gets the `SentenceAudio` field. Minerr does not remove or rename a field. If you want your own design, make a copy of the note type in Anki and edit the copy.
+Minerr keeps this note type up to date. Each time its background service worker starts, the first card you add resets the templates and CSS to the current version, which means any changes you make to them in Anki get overwritten. If the note type is missing a field from the current version, Minerr adds it; a note type from an older version gets the `SentenceAudio` field this way. Minerr never removes or renames a field. If you want your own design, copy the note type in Anki and edit the copy.
 
-A new field changes the schema of the note type. After this change, Anki asks for a full sync one time. A full sync replaces the collection on one side with the collection on the other side. Before you update Minerr, sync Anki on all your devices. Then add the first card, and upload the collection from this computer when Anki asks.
+Adding a field changes the note type's schema, so Anki asks for a full sync once afterwards. A full sync replaces the collection on one side with the one on the other. Before you update Minerr, sync Anki on all your devices. Then add the first card, and when Anki asks, upload the collection from this computer.
 
-If an Anki window to add, browse, or edit cards is open, AnkiConnect cannot change the note type. Then the popup tells you to close the window.
+If an Anki window for adding, browsing or editing cards is open, AnkiConnect can't change the note type, and the popup tells you to close the window.
 
 ## Use your own note type
 
-You can add cards to a note type that you made in Anki, as with the field templates of Yomitan.
+You can add cards to a note type you made in Anki, much like Yomitan's field templates.
 
 1. Open Anki.
 2. Open the options page.
-3. In **Anki**, click **Check connection**. Minerr gets the list of your note types.
-4. In **Note type**, select your note type. Minerr shows one text field for each field of the note type.
-5. In each text field, write the content of the field with markers. Minerr saves each change at once.
+3. In **Anki**, click **Check connection**. Minerr loads your note types.
+4. Under **Note type**, select yours. Minerr shows a text box for each of its fields.
+5. In each box, write the field's content using markers. Every change saves immediately.
 
 Minerr replaces each marker when it adds a card:
 
 | Marker | Content |
 | --- | --- |
-| `{word}` | The dictionary form of the word, for example 食べる. |
+| `{word}` | The word's dictionary form, for example 食べる. |
 | `{reading}` | The reading from the dictionary, for example たべる. |
-| `{kanji}` | The kanji spelling of a word in kana, from its dictionary entry, for example 可愛い for かわいい. It is empty for a word with kanji, and for a word whose entry has no kanji. |
-| `{furigana}` | The word with its reading in the furigana syntax of Anki, for example `食べる[たべる]`. Use it with `{{furigana:Field}}` in the card template. |
-| `{sentence}` | The sentence from the page. The word is in `<b>`. |
-| `{definition}` | The tags and the definitions, as in the `Definition` field of the classic note type. |
-| `{image}` | The screenshot of the tab, as `<img src="...">`. Minerr stores the file in the media folder of Anki. |
-| `{audio}` | The audio of the subtitle line, as `[sound:...]`. It is empty for a word that is not in video subtitles. |
-| `{wordaudio}` | The audio of the word from JapanesePod101, as `[sound:...]`. It is empty if JapanesePod101 has no audio of the word. See [Word audio](#word-audio). |
-| `{url}` | The address of the page. |
-| `{title}` | The title of the page. |
+| `{kanji}` | The kanji spelling of a kana word, from its dictionary entry, for example 可愛い for かわいい. Empty for a word that already has kanji, and for a word whose entry has no kanji. |
+| `{furigana}` | The word with its reading in Anki's furigana syntax, for example `食べる[たべる]`. Use it with `{{furigana:Field}}` in the card template. |
+| `{sentence}` | The sentence from the page, with the word in `<b>`. |
+| `{definition}` | The tags and definitions, as in the classic note type's `Definition` field. |
+| `{image}` | The screenshot of the tab, as `<img src="...">`. Minerr stores the file in Anki's media folder. |
+| `{audio}` | The subtitle line's audio, as `[sound:...]`. Empty for a word that isn't in video subtitles. |
+| `{wordaudio}` | The word's audio from JapanesePod101, as `[sound:...]`. Empty if JapanesePod101 has no audio for the word. See [Word audio](#word-audio). |
+| `{url}` | The page address. |
+| `{title}` | The page title. |
 
-The text around the markers stays as you write it. It can contain HTML, for example `<a href="{url}">{title}</a>`. You can put more than one marker in a field. You can leave a field empty.
+Any text around the markers stays as you wrote it, and it can include HTML, for example `<a href="{url}">{title}</a>`. A field can hold several markers, or be left empty.
 
-If a field contains an unknown marker, for example `{Word}`, the options page shows an error and does not save the change. The markers are in lower case.
+If a field has an unknown marker, such as `{Word}`, the options page shows an error and doesn't save. Markers are lower case.
 
-When you select a note type, Minerr suggests a marker for each field from the name of the field. For example, a field with the name `Expression` gets `{word}`, and a field with the name `Picture` gets `{image}`. Examine the suggestions, and change them if necessary.
+When you select a note type, Minerr suggests a marker for each field based on its name: a field called `Expression` gets `{word}`, and one called `Picture` gets `{image}`. Check the suggestions and fix any that are wrong.
 
-The **Preview** shows the fields of a card for 食べる, as Anki shows them.
+The **Preview** shows the fields of a card for 食べる as Anki would show them.
 
-With your own note type, Minerr does not make or change a note type. If you add, remove, or rename a field in Anki, open the options page again or click **Check connection**. Minerr then updates the list of fields. A new field gets a suggested marker.
+With your own note type, Minerr never creates or changes a note type. If you add, remove or rename a field in Anki, reopen the options page or click **Check connection**, and Minerr updates the field list. New fields get a suggested marker.
 
-The **Word field** in **Known words** changes to the field that contains `{word}`.
+The **Word field** in **Known words** switches to the field that contains `{word}`.
 
-To use the classic Minerr note type, select **Minerr (classic)**. To use Lapis, select **Lapis**.
+To go back to the classic Minerr note type, select **Minerr (classic)**. For Lapis, select **Lapis**.
 
 ## Back up word statuses
 
-Minerr keeps the word statuses in the browser. If you remove the extension or load it from a different folder, the statuses are lost. Export them to a file to keep a copy.
+Minerr keeps word statuses in the browser, so they're lost if you remove the extension or load it from a different folder. Export them to a file to keep a copy.
 
-The **Word statuses** section of the options page shows the number of words with each status.
+The **Word statuses** section of the options page shows how many words have each status.
 
-To export the statuses:
+To export:
 
 1. Open the options page.
 2. In **Word statuses**, click **Export statuses**.
 
-Chrome downloads the file `minerr-statuses-YYYY-MM-DD.json`. The file contains all words with the status learning, known, or ignored. Unknown words are not in the file.
+Chrome downloads `minerr-statuses-YYYY-MM-DD.json`, which contains every word marked learning, known or ignored. Unknown words aren't included.
 
-To import the statuses:
+To import:
 
 1. Open the options page.
 2. In **Word statuses**, click **Import statuses**.
-3. Select a file that you exported.
+3. Pick a file you exported.
 
-The import keeps the words that are not in the file. If a word is in the file, the status from the file replaces the current status. Minerr changes each word of the file to the status key of its entry, so ねこ becomes 猫. The page shows the number of words that the import added, changed, and did not change. The new statuses apply at once in all open tabs.
+Words that aren't in the file keep their status; words that are in it take the status from the file. Minerr converts each word in the file to its entry's status key, so ねこ becomes 猫. The page reports how many words the import added, changed and left unchanged, and the new statuses apply in every open tab immediately.
 
-If the file is not a correct Minerr status file, the page shows the problem, and Minerr changes no status.
+If the file isn't a valid Minerr status file, the page says what's wrong and no statuses change.
 
 The file is JSON:
 
@@ -937,94 +943,94 @@ The file is JSON:
 You can choose when the word popup opens.
 
 1. Open the options page.
-2. In **Word popup**, click **Hover**, **Hover on unknown words**, or **Shift + hover**.
+2. In **Word popup**, click **Hover**, **Hover on unknown words** or **Shift + hover**.
 
 | Mode | The popup opens when |
 | --- | --- |
-| **Hover** | The mouse stops on a word for 0.3 seconds. This is the default. |
-| **Hover on unknown words** | The mouse stops on an unknown word for 0.3 seconds. For other words, hold `Shift`. |
-| **Shift + hover** | You hold `Shift` and the mouse is on a word. |
+| **Hover** | The mouse rests on a word for 0.3 seconds. This is the default. |
+| **Hover on unknown words** | The mouse rests on an unknown word for 0.3 seconds. For other words, hold `Shift`. |
+| **Shift + hover** | You hold `Shift` while the mouse is on a word. |
 
-In all modes, `Shift` opens the popup at once. You can press `Shift` before or after you move the mouse onto the word. If a popup is open, the popup of the next word opens after 0.05 seconds. A quick pass of the mouse over a word does not open a popup. The change applies at once in all tabs.
+In every mode, `Shift` opens the popup immediately, whether you press it before or after moving onto the word. While a popup is open, the next word's popup opens after just 0.05 seconds. Sweeping the mouse quickly across a word doesn't open anything. Changes apply to every tab immediately.
 
 ### Look up selected text
 
-Select text on the page, then press `Alt+S`. Minerr looks up the longest dictionary word at the start of the selection, also in its dictionary form. For example, if you select 食べなかった, the popup shows 食べる. Use this for a word that Minerr cuts in a different way, or for a word in text that Minerr does not underline. If no dictionary has a word at the start of the selection, a short message tells you. When the popup opens, the selection goes away. Thus the status keys change the word of the popup.
+Select text on the page and press `Alt+S`. Minerr looks up the longest dictionary word at the start of the selection, including its dictionary form: select 食べなかった and the popup shows 食べる. This helps with words Minerr splits differently, or text it doesn't underline. If no dictionary has a word at the start of the selection, a short message tells you. The selection clears when the popup opens, so the status keys change the popup's word.
 
 `A` in this popup adds a card with the sentence around the selected word.
 
 ### Word overrides
 
-Minerr uses an old dictionary to cut text into words. Thus it can cut a new word or a slang word in two. For example, in ちょっとはずいね。 Minerr shows ずい, not はずい (恥ずい). To make such a text one word:
+Minerr splits text into words with an old dictionary, so it sometimes cuts a new or slang word in two. In ちょっとはずいね。, for example, it shows ずい instead of はずい (恥ずい). To make such text one word:
 
 1. Select the text on a page or in a subtitle line, for example はずい.
-2. Press `Alt+J`. A short message confirms the change: `はずい is one word now.`
+2. Press `Alt+J`. A short message confirms it: `はずい is one word now.`
 
-The words on the open pages change at once. From then on, Minerr reads each match of the text as one word, with the popup and the status of its dictionary entry.
+The words on open pages update immediately. From then on, Minerr reads every match of that text as one word, with the popup and status of its dictionary entry.
 
-- The text must be one dictionary word. If no dictionary has it, a short message tells you, and Minerr keeps no override.
-- Select the text as it is on the page. Minerr joins only a text that it cuts at the same two ends. It does not cut a word to make the override.
-- An override matches only its exact text. A conjugated form, for example はずかった, keeps the cut of the dictionary.
+- The text has to be one dictionary word. If no dictionary has it, a short message tells you and no override is saved.
+- Select the text exactly as it appears on the page. Minerr only joins text that it already splits at the same two ends; it won't split a word to make an override fit.
+- An override only matches its exact text. A conjugated form such as はずかった keeps the dictionary's split.
 
-To remove an override, select the same text and press `Alt+J` again. Or open the options page, find **Word overrides** in **Dictionaries**, and click **Remove**.
+To remove an override, select the same text and press `Alt+J` again. Or open the options page, find **Word overrides** under **Dictionaries**, and click **Remove**.
 
 ### Popups in a popup
 
-Japanese text in the definitions of a popup is also cut into words. Hold `Shift` and move the mouse onto such a word: a new popup opens over the first one. You can open up to 4 popups in this way. A plain hover in a popup opens nothing, so you can move the mouse over the definitions.
+Japanese text in a popup's definitions is split into words too. Hold `Shift` and hover over one of them to open a new popup on top of the first. You can stack up to 4 popups this way. A plain hover inside a popup opens nothing, so you can move freely over the definitions.
 
-- `Esc` closes the top popup only.
-- A click in a popup closes the popups over it.
-- `A`, `E`, and `V` act on the word of the top popup. A status key acts on the word under the mouse, else on the popup under the mouse. See [Read and set statuses](#read-and-set-statuses).
+- `Esc` closes only the top popup.
+- Clicking in a popup closes the popups above it.
+- `A`, `E` and `V` act on the top popup's word. A status key acts on the word under the mouse, or failing that, the popup under the mouse. See [Read and set statuses](#read-and-set-statuses).
 
 ### Sentence highlight
 
-When you move the mouse onto a word, Minerr gives the sentence of the word a light blue background. While the popup is open, the sentence of its word keeps the background. Minerr cuts the sentence with the same rule as the card sentence.
+When you hover over a word, Minerr gives its sentence a light blue background, which stays while the popup is open. Sentences are cut the same way as card sentences.
 
-To turn the sentence highlight off or on, press `Alt+Shift+S` on a page. Or, on the options page, use **Highlight the sentence of the word under the mouse** in **Word popup**. The highlight is off by default.
+To toggle the sentence highlight, press `Alt+Shift+S` on a page, or use **Highlight the sentence of the word under the mouse** under **Word popup** on the options page. It's off by default.
 
 ### Count on the page
 
-Under the word, the popup shows how many times the word appears on the page, for example `Appears 4 times on this page`. Minerr counts the words with the same status key, so 食べた and 食べなかった both count for 食べる, and ねこ and ネコ both count for 猫.
+Below the word, the popup shows how often it appears on the page, for example `Appears 4 times on this page`. Minerr counts by status key, so 食べた and 食べなかった both count toward 食べる, and ねこ and ネコ both count toward 猫.
 
 ### Is the word in Anki?
 
-Under the word, the popup shows how many notes of the word Anki has, for example `In Anki: 2 notes`, or `Not in Anki`. Minerr searches the word field of your note type: `Expression` for Lapis, `Word` for the classic note type, and the field with `{word}` for your own note type. It finds the notes of all note types that have a field with that name. For a word in kana, Minerr also searches its kanji spelling, so かわいい also finds a note of 可愛い. The field must contain only the word.
+Below the word, the popup shows how many Anki notes the word has, for example `In Anki: 2 notes` or `Not in Anki`. Minerr searches your note type's word field: `Expression` for Lapis, `Word` for the classic note type, and the field with `{word}` for your own note type. It finds notes of any note type with a field of that name. For a kana word, it also searches the kanji spelling, so かわいい also finds a note for 可愛い. The field has to contain only the word.
 
-To see these notes, press `V` or click the line. The Anki browser opens with the search, for example `"Expression:かわいい" OR "Expression:可愛い"`.
+To see those notes, press `V` or click the line. The Anki browser opens with the search, for example `"Expression:かわいい" OR "Expression:可愛い"`.
 
-If Anki is not open, or AnkiConnect does not answer, the popup shows no line. `V` then shows the error in the popup.
+If Anki isn't open or AnkiConnect doesn't respond, the popup shows no line, and `V` shows the error in the popup.
 
 ### How the word is built
 
-If the word on the page is a verb or an i-adjective in an inflected form, the popup shows how the word is built from its dictionary form. Each part has a label in parentheses. For example, the popup of 食べなかった shows this line:
+If the word on the page is an inflected verb or i-adjective, the popup shows how it's built from the dictionary form, with each part labeled in parentheses. For 食べなかった, the line is:
 
 `食べる → 食べ + なかっ (negative) + た (past)`
 
-A word in its dictionary form has no line. If Minerr does not know a part, the line shows the dictionary form of the part as its label. Minerr cuts 勉強した into two words, 勉強 and した, so the popup of した shows the line of する.
+A word in its dictionary form has no such line. If Minerr doesn't recognize a part, it labels it with the part's dictionary form. Minerr splits 勉強した into two words, 勉強 and した, so the popup for した shows the line for する.
 
 ## Furigana
 
-Minerr can show the reading of a word in hiragana over the word. It shows readings only over words with kanji.
+Minerr can show a word's reading in hiragana above it, but only for words with kanji.
 
 1. Open the options page.
-2. In **Furigana**, click **Off**, **Unknown words**, **All words**, or **On hover**.
+2. In **Furigana**, click **Off**, **Unknown words**, **All words** or **On hover**.
 
 | Mode | The reading shows |
 | --- | --- |
 | **Off** | Nowhere. This is the default. |
-| **Unknown words** | Over each word with a red underline. When the status of a word changes, its reading goes away. |
-| **All words** | Over each word with kanji. |
-| **On hover** | Over the word under the mouse, and over the word of the open popup. |
+| **Unknown words** | Above every word with a red underline. When a word's status changes, its reading disappears. |
+| **All words** | Above every word with kanji. |
+| **On hover** | Above the word under the mouse and the word of the open popup. |
 
-The reading comes from the kuromoji tokenizer, so it is the reading of the word on the page, for example たべなかった for 食べなかった. Minerr makes a line taller when a word in it gets a reading, so the reading does not cover the line above. The reading is not page text: when you copy text or add a card, the text has no readings.
+The reading comes from the kuromoji tokenizer, so it's the reading of the word as it appears on the page, for example たべなかった for 食べなかった. Minerr makes a line taller when a word in it gets a reading, so the reading never covers the line above. Readings aren't page text: copied text and card text don't include them.
 
 ## Frequency and pitch accent
 
-Minerr also reads Yomitan frequency dictionaries and pitch accent dictionaries, for example the JPDB frequency list or the Kanjium pitch accents. Import them on the options page in the same way as a term dictionary. The list of dictionaries shows the number of frequency and pitch entries of each one.
+Minerr also reads Yomitan frequency and pitch accent dictionaries, such as the JPDB frequency list or the Kanjium pitch accents. Import them on the options page the same way as a term dictionary. The dictionary list shows how many frequency and pitch entries each one has.
 
-The popup then shows a row under the word:
+The popup then shows an extra row under the word:
 
-- **Stars.** The stars show how common the word is. Minerr uses the best rank from your frequency dictionaries:
+- **Stars** for how common the word is, based on its best rank across your frequency dictionaries:
 
   | Rank | Stars |
   | --- | --- |
@@ -1034,227 +1040,77 @@ The popup then shows a row under the word:
   | 15,001 to 30,000 | 2 |
   | More than 30,000 | 1 |
 
-- **Frequency.** The name of each frequency dictionary and the value from it. Some dictionaries give the number of times that a word occurs, not a rank. These dictionaries give no stars.
-- **Pitch accent.** The reading with a line over each high mora. A vertical line shows where the pitch drops. Then the name of the pattern, with the mora after which the pitch drops: Heiban [0] (no drop), Atamadaka [1], Nakadaka, or Odaka (a drop after the last mora).
+- **Frequency**: each frequency dictionary's name and its value. Some dictionaries give the number of times a word occurs rather than a rank; those give no stars.
+- **Pitch accent**: the reading with a line over each high mora and a vertical line where the pitch drops, followed by the pattern name and the mora after which the pitch drops: Heiban [0] (no drop), Atamadaka [1], Nakadaka, or Odaka (drop after the last mora).
 
-If a word has more than one reading, each reading shows its own frequency and pitch accent.
+If a word has several readings, each one shows its own frequency and pitch accent.
 
 ## Pitch colors
 
-Minerr can color the words on a page by their pitch accent pattern, as Migaku does. You need a pitch accent dictionary for this, see [Frequency and pitch accent](#frequency-and-pitch-accent).
+Minerr can color the words on a page by their pitch accent pattern, as Migaku does. This needs a pitch accent dictionary; see [Frequency and pitch accent](#frequency-and-pitch-accent).
 
 1. Open the options page.
 2. In **Pitch colors**, select **Color the words by pitch accent**.
 
 | Pattern | Color | The pitch |
 | --- | --- | --- |
-| Heiban | Blue | Goes up after the first mora and does not drop. |
+| Heiban | Blue | Rises after the first mora and doesn't drop. |
 | Atamadaka | Red | Drops after the first mora. |
 | Nakadaka | Orange | Drops after a mora in the middle of the word. |
 | Odaka | Green | Drops after the last mora. |
 
-Minerr uses the pitch accent of the dictionary form of the word. If the word has more than one reading, Minerr uses the reading on the page, or else the first reading in the dictionary. A word that is not in a pitch accent dictionary keeps the color of the page. The underline still shows the status of the word.
+Minerr uses the pitch accent of the word's dictionary form. If the word has several readings, it uses the reading on the page, or failing that, the first reading in the dictionary. Words that aren't in any pitch accent dictionary keep the page's color, and the underline still shows the word's status.
 
 ## Word browser
 
-The word browser lists all words with the status learning, known, or ignored. A word that is not in the list is unknown.
+The word browser lists every word marked learning, known or ignored. Anything not in the list is unknown.
 
 1. Click the Minerr button in the Chrome toolbar.
-2. Click **Word browser**. The page opens in a new tab.
+2. Click **Word browser**. It opens in a new tab.
 
-Use the page as follows:
+On that page:
 
-- To find a word, type a part of it in **Search**.
-- To show only one status, select it in **Status**.
-- To sort the list, select **Word** or **Status** in **Sort by**. The word order is the Japanese order of Chrome.
-- To change the status of one word, select the new status in its row.
-- To change the status of many words, select their check boxes, then click a status above the list. The check box in the table header selects all the words that match the search and the status.
-- To remove words, select them and click **Unknown (remove)**. A removed word is unknown again.
+- To find a word, type part of it in **Search**.
+- To show one status only, pick it in **Status**.
+- To sort, pick **Word** or **Status** in **Sort by**. Words sort in Chrome's Japanese order.
+- To change one word's status, pick the new status in its row.
+- To change many at once, tick their boxes and click a status above the list. The box in the table header selects every word that matches the current search and status.
+- To remove words, select them and click **Unknown (remove)**. Removed words are unknown again.
 
-The page shows 200 words at a time. Click **Next** and **Previous** to see the other words. A status change in a different tab updates the list at once.
+The page shows 200 words at a time; use **Next** and **Previous** to page through. Status changes in other tabs update the list immediately.
 
 ### Add words
 
-You can give a status to many words at once, for example the words that you already know.
+You can give many words a status in one go, for example all the words you already know.
 
-1. In **Add words**, paste the words or a text.
-2. Select **One word on each line**, or **Japanese text**. With **Japanese text**, Minerr finds the words in the text and uses their dictionary forms.
-3. Select the status. The default is **Known**.
-4. Click **Preview**. The page shows the number of new words, of words with a different status, and of words that already have this status.
+1. In **Add words**, paste the words or some text.
+2. Pick **One word on each line** or **Japanese text**. With **Japanese text**, Minerr finds the words in the text and uses their dictionary forms.
+3. Pick the status. The default is **Known**.
+4. Click **Preview**. The page shows how many words are new, how many have a different status, and how many already have this status.
 5. Click **Save**.
 
-Minerr does not change a status before you click **Save**.
+Nothing changes until you click **Save**.
 
 ## Theme
 
-The options page, the toolbar menu, the word popup, and the subtitle sidebar have a light theme and a dark theme.
+The options page, the toolbar menu, the word popup and the subtitle sidebar come in a light and a dark theme.
 
 1. Open the options page.
-2. In **Theme**, click **System**, **Light**, or **Dark**.
+2. In **Theme**, click **System**, **Light** or **Dark**.
 
-The change applies at once in all open pages and tabs. **System** is the default. It follows the color setting of your computer, and it changes when that setting changes.
+The change applies immediately to every open page and tab. **System** is the default; it follows your computer's color setting and switches when that setting changes.
 
-The theme does not change the Anki card. The card follows the night mode of Anki.
+The theme doesn't affect Anki cards, which follow Anki's night mode.
 
 ## Development
 
-The code is TypeScript with no framework and no bundler. `npm run build` copies `manifest.json`, the HTML pages, `vendor`, the WhisperX server (`server/whisper_server.py`, `server/media.py`, `server/chrome_start.py`, and the hosts `server/*.cmd`), and the Windows launcher (`*.cmd`) to `dist`. Then `tsc` compiles each `.ts` file to a `.js` file in `dist`. `npm run typecheck` checks the types of the extension, the tests, and the scripts.
-
-### Code map
-
-The extension code is in `src/`, with one folder for each concern. The extension pages are in `pages/`. Of the extension files, only `manifest.json`, `background.ts`, and `content.ts` stay at the top, because Chrome starts there.
-
-| Folder | What it holds |
-| --- | --- |
-| `pages/` | The extension pages: the toolbar popup, the options, the video player, the subtitle sidebar, the reader, the word browser, and the offscreen document that parses text. Each page is an `.html` file and a `.ts` file. |
-| `src/text/` | Japanese text to words: kuromoji tokens to words, the dictionary entry of each word, inflections, sentences, and the word spans of parsed text, on a page and in a subtitle line. |
-| `src/dictionary/` | The Yomitan dictionaries: the zip reader, the import, the IndexedDB storage, the frequency and pitch data, and the tag colors. |
-| `src/page-text/` | The page text of a website: the parse of the page, the switch for each site, furigana, pitch colors, the i+1 highlight, and the sentence highlight. |
-| `src/popup/` | The word popup, its card form, the rule for when it opens, and the keys of the page and the popup. |
-| `src/video/` | The subtitles of a video: the overlay, the subtitle files, the play modes, the video keys and settings, the audio record, and the client of the Minerr server. `sidebar/` holds the subtitle sidebar. `youtube/` and `netflix/` hold the parts that only YouTube or Netflix uses. |
-| `src/anki/` | The AnkiConnect client, the note types (Lapis), and the sentence audio and word audio of a card. |
-| `src/reader/` | The text files and EPUB files of the reader page. |
-| `src/status/` | The word statuses, the list of the word browser, and the comprehension score. |
-| `src/shared/` | Code that all parts use: the messages, the settings, the type guards for data from outside, the DOM helpers, the theme, and the design tokens. |
-
-The path of a word from a page to a card:
-
-1. `content.ts` loads `src/page-text/`, `src/popup/`, `src/status/stats.ts`, and the subtitle overlay of `src/video/` into each tab.
-2. A module sends a message (`src/shared/rpc.ts`) to the service worker, `background.ts`.
-3. The service worker sends the text to the offscreen document, `pages/offscreen.ts`. It parses the text with kuromoji and finds the words in the dictionaries.
-4. When you add a card, the service worker sends the note to Anki through AnkiConnect (`src/anki/anki.ts`).
-
-### Files
-
-| Path | Purpose |
-| --- | --- |
-| `manifest.json` | The Manifest V3 declaration. Its paths are the `.js` files in `dist`. |
-| `background.ts` | The service worker. It routes messages and calls AnkiConnect and the WhisperX server. |
-| `pages/offscreen.ts` | Runs kuromoji and the dictionary lookups in an offscreen document. |
-| `src/shared/rpc.ts` | The messages between the parts of the extension, and the type of the reply to each message. |
-| `src/page-text/page.ts` | Finds Japanese text on the page and wraps each word. After a change of the word overrides, it parses the blocks with that text again. |
-| `src/popup/popup.ts` | The dictionary popup: when it opens, its keys, and the card that it adds. |
-| `src/popup/popup-view.ts` | The content of the popup and its position. |
-| `src/text/word-spans.ts` | The word spans of parsed text. A word that crosses text nodes gets one span for each part. |
-| `src/page-text/furigana.ts` | The furigana setting, and the CSS that shows the reading over a word. |
-| `src/page-text/pitch-colors.ts` | The pitch colors of the words on a page. |
-| `src/page-text/sentence-hover.ts` | The highlight of the sentence of the word under the mouse. |
-| `src/text/sentence-text.ts` | The text of the sentence around a word on the page, for the highlight and the card. The walk stops at the sentence ends and at a `<br>`. |
-| `src/page-text/site.ts` | The page text on or off for each site, and the state of a page: Minerr off, the video subtitles only, or the page text too. |
-| `src/popup/keys.ts`, `src/popup/chord.ts` | The keys that work on a page without a popup, the browser shortcuts that the service worker sends to the tab, and the names of the keys. |
-| `src/dictionary/meta.ts` | The frequency and pitch accent data of Yomitan dictionaries, the stars, and the pitch patterns. |
-| `src/video/youtube/youtube-overlay.ts` | The subtitle overlay on YouTube. |
-| `src/video/youtube/youtube-captions.ts` | The YouTube captions with times, read in the tab without the server, and the choice of the caption track. |
-| `src/video/youtube/youtube-main.ts` | Runs in the page of YouTube: it tells `src/video/youtube/youtube-captions.ts` the caption tracks and the token of the player. |
-| `src/video/ask-page.ts` | A question to the script of Minerr in the page itself (YouTube, Netflix), and its reply. |
-| `src/video/netflix/netflix-overlay.ts` | The subtitle overlay on Netflix: the Japanese track of the title with times, read in the tab. |
-| `src/video/netflix/netflix-captions.ts` | The subtitle list of a Netflix title, the choice of the track, and the TTML reader. |
-| `src/video/netflix/netflix-main.ts` | Runs in the page of Netflix: it keeps the subtitle list that the player reads, asks for WebVTT, and seeks through the player. |
-| `src/status/status.ts` | The word statuses, their colors, and their storage. |
-| `src/dictionary/tags.ts` | The colors of the dictionary tags, for the popup and the card. |
-| `src/anki/anki.ts` | The AnkiConnect client, the note types, and the note draft of a card. |
-| `src/anki/lapis.ts` | The pure parts of the Lapis fields: the furigana, the frequency rank, and the pitch accent. |
-| `src/anki/wordaudio.ts` | The word audio from JapanesePod101, and the check for its placeholder clip. |
-| `src/popup/cardform.ts` | The card form of the popup (`E`). |
-| `src/video/whisper.ts` | The client for the WhisperX server, and `currentPlace`: Windows or not, and the install of Minerr from `chrome.management.getSelf`. |
-| `src/anki/lineaudio.ts`, `src/video/record.ts` | The sentence audio of a card: the server cuts it, or the tab records the line. |
-| `src/dictionary/db.ts` | The dictionary storage in IndexedDB. |
-| `src/text/entry.ts` | The dictionary entry and the status key of each word, and the join of word overrides and compound nouns. |
-| `src/text/group.ts`, `src/text/sentence.ts`, `src/dictionary/yomitan.ts`, `src/dictionary/zip.ts` | Pure functions for the parse, the sentence, the dictionary format, and the zip reader. |
-| `src/text/inflection.ts` | Pure function: the parts of an inflected word and their labels, for the popup line. |
-| `src/shared/theme.ts`, `src/shared/design-tokens.ts` | The theme setting, and the design tokens of every surface (see `docs/design.md`). The build writes the tokens and the base rules of the pages (`PAGE_CSS`) to `dist/theme.css`. |
-| `src/popup/hover.ts` | The word popup setting, and the rule that decides when the popup opens. |
-| `pages/action.html`, `pages/action.ts` | The toolbar popup. |
-| `pages/player.html`, `pages/player.ts` | The video player page. Content scripts do not run on extension pages, so the page loads `src/page-text/page.ts`, `src/popup/popup.ts`, `src/page-text/iplusone.ts`, and `src/status/stats.ts` itself. |
-| `src/page-text/iplusone.ts` | The i+1 highlight. The pure part is `iPlusOneSentences` in `src/text/sentence.ts`. |
-| `src/video/video.ts` | The video, its subtitle lines, and the overlay over it. YouTube, the player, and other sites use it. |
-| `src/video/overlay.ts` | The subtitle overlay line, for YouTube and the player. |
-| `src/video/playback.ts`, `src/video/videokeys.ts` | Pure rules for timed lines (jumps, play modes, gaps, text clean-up), and the table of the video keys. |
-| `src/video/videosettings.ts`, `src/video/videooptions.ts` | The video settings, and their part of the options page. |
-| `src/video/other-sites.ts` | The subtitle overlay on the largest video of a page that is not YouTube, with its buttons. |
-| `pages/sidepanel.html`, `pages/sidepanel.ts` | The subtitle sidebar page, in the side panel of Chrome next to the tab of the video. The service worker opens it for the `G` key. The page connects a port to the tab for the lines and the current line. It loads `src/page-text/page.ts`, `src/popup/popup.ts`, and `src/page-text/iplusone.ts` itself. |
-| `src/video/sidebar/sidebar.ts` | The subtitle sidebar: a card for each line, the word list of **+**, and the bookmark stars. |
-| `src/video/sidebar/sidebar-port.ts` | The messages between the tab and the sidebar page: the lines, the current line, and the line of the open popup. |
-| `src/video/sidebar/bookmarks.ts` | The bookmarked lines of each video, in the storage. |
-| `src/video/sidebar/sidebar-filter.ts` | The filters of the subtitle sidebar. |
-| `src/video/sidebar/sidebar-select.ts` | The selection of lines in the subtitle sidebar and **Create N cards**. |
-| `src/video/autopause.ts` | The pauses of Minerr: while the mouse is on the line or a popup is open, and after a pause of the play mode. |
-| `src/video/captions.ts` | The subtitle segments, the `.srt` and `.vtt` reader, and the `.srt` writer. |
-| `server/whisper_server.py`, `server/media.py` | The local server: WhisperX jobs and the HTTP routes, and the video side (cache keys, `yt-dlp`, `ffmpeg`, the audio cache, and line clips). The server uses `yt-dlp` and `ffmpeg` from the `PATH`, else the `yt-dlp` package and the `ffmpeg` of `imageio-ffmpeg`. |
-| `Start WhisperX server (Windows).cmd` | Starts the WhisperX server on Windows, after `server/chrome_start.py` sets up the Start button of the popup. It downloads uv when it finds none, and it gets the newest `yt-dlp` at each start. Git writes the `.cmd` files with CRLF line ends (`.gitattributes`), because they are Windows batch files. |
-| `server/chrome_start.py` | Writes the manifest of the native messaging host `com.minerr.whisperx` to `%LOCALAPPDATA%\Minerr` and the registry value that points at it. The manifest lets Minerr from the Chrome Web Store use the host (`STORE_EXTENSION_ID`), and the unpacked extension in this folder, if the folder has `manifest.json`. The folder of the add-on has no `manifest.json`. The Windows launcher runs it with Python of Windows. |
-| `server/start-from-chrome-windows.cmd` | The native messaging host of the Windows launcher. Chrome runs the registered host when you click **Start the server**. The host opens its launcher in a window of its own and exits. |
-| `scripts/logo.py`, `docs/logo.svg`, `icons/` | `scripts/logo.py` draws the logo and the extension icons as pixel art in one palette. It writes `docs/logo.svg` and `icons/icon-16.png`, `-32`, `-48`, and `-128`, a 16 x 16 pickaxe at a whole scale. Run `python3 scripts/logo.py`. |
-| `scripts/package.ts` | Packs `dist` into three zips in `release`, each with a `.sha256` file: `minerr-whisperx-v<version>.zip` (the WhisperX add-on, the server and its launcher), `minerr-v<version>.zip` (the whole extension in the top folder `minerr`, for Load unpacked), and `minerr-store-v<version>.zip` (the extension without the add-on, with `manifest.json` at the root, for the Chrome Web Store). |
-| `LICENSE`, `PRIVACY.md` | The MIT License, and the privacy policy that the Chrome Web Store listing links to. |
-| `.github/workflows/release.yml`, `docs/release-notes.md` | For a pushed tag such as `v0.2.0`, the workflow builds and packs the extension. It makes a draft GitHub release with the WhisperX add-on, the zip for Load unpacked, and the text of `docs/release-notes.md`, and it keeps the store zip on the page of the run. |
-| `src/video/server-status.ts` | Pure functions: the status of the WhisperX server as the toolbar popup shows it, from the last health check and the last click on **Start the server**, and the text and the buttons of each status. `serverHint` gives the help to start the server where the popup is not, for example in the error of **Generate with WhisperX**. The texts and the buttons depend on the platform and on the install. Load unpacked has the Minerr folder, which holds the add-on. Other installs, such as the Chrome Web Store, get the add-on from GitHub. |
-| `src/status/stats.ts` | The comprehension score of a tab, for the toolbar popup. |
-| `src/status/score.ts` | Pure functions for the score and its label. |
-| `pages/words.html`, `pages/words.ts` | The word browser page. |
-| `src/status/wordlist.ts` | Pure functions for the search, the filter, and the sort of the word browser, and for the pasted words. |
-| `pages/reader.html`, `pages/reader.ts` | The reader page for files and pasted text. It loads `src/page-text/page.ts`, `src/popup/popup.ts`, `src/page-text/iplusone.ts`, and `src/status/stats.ts` itself. |
-| `src/reader/epub.ts` | The EPUB reader. It makes new DOM nodes from an allowlist of tags, with no attributes from the file. |
-| `src/reader/book.ts` | Pure functions of the reader: the text parts, the page keys, the page turn, and the saved place. |
-
-### Tests
-
-Node.js runs the `.ts` test files directly, without a build. To run the tests:
-
-1. Run `npm ci`.
-2. Download `JMdict_english.zip` to `test/fixtures/JMdict_english.zip`.
-3. Run `npm run build`. The browser tests load the extension from `dist`.
-4. Run `node test/unit.ts`, `node test/entry-unit.ts`, `node test/card-unit.ts`, `node test/video-unit.ts`, and `node test/netflix-unit.ts`.
-5. Close Anki, because the next test uses port 8765.
-6. Run `node test/e2e.ts`. It loads the extension in Chromium with Playwright and uses a mock AnkiConnect. Then run `node test/spelling.ts`, which tests the shared status of the spellings of a word, and `node test/card.ts`. It tests the Lapis note type, the word audio, and the card form, with a mock AnkiConnect and a mock JapanesePod101.
-7. Run `node test/subtitles.ts`. It tests the subtitle overlay and the toolbar popup on a fake YouTube page. It uses port 8765 and port 8766, and `ffmpeg` to make a test video. Stop the WhisperX server before you run it. Then run `node test/line-audio.ts`, `node test/media.ts`, `node test/player.ts`, `node test/sites.ts`, and `node test/netflix.ts`, which use the same ports. `node test/line-audio.ts` tests the sentence and the sentence audio of a card from a long YouTube line. `node test/netflix.ts` tests the overlay on a fake Netflix watch page, with the subtitle list of the player, and the card of a protected video.
-8. Run `python3 -I -B -m unittest discover -s server` to test the WhisperX server. This test does not need WhisperX.
-
-`npm test` does steps 3 to 7 in one command, after a type check.
-
-More scripts:
-
-- `node test/screenshots.ts` saves a light and a dark screenshot of each surface to `/tmp/minerr-ui`: the page, the popup, the card form, the toolbar popup, the options page, the video player, the subtitle sidebar, the reader, and the word browser. Set `OUT_DIR` for a different folder, `EXTENSION_DIR` for a different build, and `SUFFIX` to add a suffix to the file names, for example `SUFFIX=before`.
-- `node test/card-preview.ts` saves screenshots of the card to `/tmp/minerr-card`.
-- `node test/page-perf.ts [paragraphs] [runs]` measures the first parse of a long article, 2000 paragraphs and 3 runs by default: the time until the first word in the viewport shows, with the viewport at the top and in the middle of the page, the time until all the words show, and the longest tasks. With `test/fixtures/JMdict_english.zip` it installs JMdict and uses distinct words. It fails when the first word in the viewport takes more than 400 ms after the page load on a warm run.
-- `node test/parse-time.ts` imports the real JMdict and prints the parse time of a long page. To time a different build, set `EXTENSION_DIR`.
-- `STORE=1 node test/screenshots.ts` takes the reader (in vertical text) and the word browser at 1280 x 800, the size of a Chrome Web Store screenshot. `node test/store-tiles.ts` renders the two promo tiles of the store listing from `docs/logo.svg` to `/tmp/minerr-store`. See [docs/chrome-web-store.md](docs/chrome-web-store.md).
-- `node test/readme-shots.ts` saves screenshots of a Japanese Wikipedia article and a YouTube video to `docs/page.png` and `docs/video.png`. It needs the network and a WhisperX server that has the subtitles of the video. `node test/readme-shots.ts page` saves only `docs/page.png`, and needs no server.
-- If the system has no Japanese font, set `CJK_FONT_DIR` to a folder that contains one. Put an emoji font in the same folder, for example `seguiemj.ttf` from Windows. Without it, the `⭐` tag shows as a box.
-- If Chromium cannot start because a library such as `libnss3.so` is missing, set `LD_LIBRARY_PATH` to a folder with the missing libraries.
-- If you update kuromoji, run `npm run vendor` and commit the `vendor/kuromoji` folder.
-
-The WhisperX server has two endpoints for the player:
-
-- `POST /files` takes the file as the request body, with `Content-Type: application/octet-stream` and the URL-encoded file name in `X-Filename`. It returns the job ID and the SHA-256 of the file.
-- `GET /files/<sha256>` returns the cached subtitles of a file.
-- `POST /jobs` takes `{"url": ...}` and starts a WhisperX job for the video at the URL. A URL that is not a YouTube URL gets the SHA-256 of the URL as its cache key.
-- `POST /captions` takes `{"url": ..., "lang": "ja"}`. It returns the subtitles of the site in that language as `{"ext": ..., "text": ...}`, or 404 if the video has none. `ext` is `json3`, `vtt`, or `srt`.
-- `POST /clip` takes `{"url": ..., "start": ..., "end": ...}` or `{"sha256": ..., "start": ..., "end": ...}`, with the times in seconds. It returns an MP3 of the audio between the two times. The server downloads the audio of a URL one time, to `~/.cache/minerr/audio/`. While the download runs, the reply is 404, and the extension records the line in the tab. The server keeps the audio of an uploaded file after the WhisperX job for the file.
-
-`node test/media.ts` tests the i+1 highlight and the player, with a mock AnkiConnect and a mock WhisperX server. It uses port 8765 and port 8766. `npm test` runs it after `node test/subtitles.ts`.
-
-`node test/pages-unit.ts` tests the pure functions of the comprehension score, the word browser, and the reader. `node test/pages.ts` tests the comprehension score in the toolbar popup, the word browser, and the reader in Chromium. `npm test` runs both after `node test/media.ts`.
-
-`node test/sidebar.ts` tests the subtitle sidebar of the player: the `G` key opens and closes the side panel of Chrome, and in the sidebar page, when the list follows the video, and **Create N cards**. The tests open the sidebar page in a tab of its own, because Playwright cannot reach the side panel of Chrome. It uses port 8765 and `ffmpeg`. `npm test` runs it after `node test/player.ts`.
-
-### Make a release
-
-1. Set the new version in `manifest.json` and in `package.json`.
-2. Run all tests. Then commit, and push to `main`.
-3. Run `git tag v<version>`, then `git push origin v<version>`.
-4. Open the [Releases](https://github.com/haziqhilmismail/minerr/releases) page. In about 2 minutes, GitHub Actions makes a draft release with `minerr-whisperx-v<version>.zip`, `minerr-v<version>.zip`, and their `.sha256` files. The text of the draft is `docs/release-notes.md`, the install guide of the WhisperX add-on.
-5. Add what changed to the text of the draft, then click **Publish release**.
-
-The workflow stops when the tag is not the version in `manifest.json` and `package.json`. Each zip works on all platforms, because the extension has no native code, and uv installs the packages of the WhisperX server for the platform at the first start. To make the zips on your computer, run `npm run build`, then `node scripts/package.ts`. The zips go to the `release` folder.
-
-To publish Minerr in the Chrome Web Store, see [docs/chrome-web-store.md](docs/chrome-web-store.md).
+See [docs/development.md](docs/development.md) for the code map, the tests and the release steps.
 
 ## License
 
-Minerr is under the MIT License. See [LICENSE](LICENSE). The privacy policy is in [PRIVACY.md](PRIVACY.md).
+Minerr is under the MIT License; see [LICENSE](LICENSE). The privacy policy is in [PRIVACY.md](PRIVACY.md).
 
 ## Third-party data
 
-- `vendor/kuromoji` contains kuromoji.js and its dictionary, built from mecab-ipadic. The license and the notice are in that folder (Apache License 2.0 and the mecab-ipadic notice).
-- Minerr does not include a dictionary for definitions. JMdict is the property of the [Electronic Dictionary Research and Development Group](https://www.edrdg.org/edrdg/licence.html) and has its own license.
+- `vendor/kuromoji` contains kuromoji.js and its dictionary, built from mecab-ipadic. The license and notice are in that folder (Apache License 2.0 and the mecab-ipadic notice).
+- Minerr doesn't ship a dictionary for definitions. JMdict is the property of the [Electronic Dictionary Research and Development Group](https://www.edrdg.org/edrdg/licence.html) and has its own license.
