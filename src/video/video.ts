@@ -15,6 +15,7 @@ import {
 import { recordPart } from './record.ts';
 import { call, messageOf, serve } from '../shared/rpc.ts';
 import { isIPlusOne } from '../text/sentence.ts';
+import { watchActive } from '../page-text/site.ts';
 import { setTrack } from '../status/stats.ts';
 import { type VideoAction, videoKey } from './videokeys.ts';
 import {
@@ -355,9 +356,11 @@ const ACTIONS: Record<VideoAction, () => boolean | void> = {
 };
 
 // Capture on window, so the keys of the site (YouTube binds c, j, l, ., and the arrows) do not also fire.
-// The overlay takes a key only while it has lines; a key that needs times gets a hint on mirrored captions, once per video.
+// The overlay takes a key only while Minerr is on and it has lines; a key that needs times gets a hint on mirrored captions, once per video.
+let minerrOn = false;
+watchActive(value => { minerrOn = value !== 'off'; });
 window.addEventListener('keydown', event => {
-  if (event.ctrlKey || event.metaKey || isEditable(event) || !video()) return;
+  if (!minerrOn || event.ctrlKey || event.metaKey || isEditable(event) || !video()) return;
   const entry = videoKey(event);
   if (!entry || lines.kind === 'none' || target.blocked?.() || (event.key.toLowerCase() === 'a' && isPopupOpen())) return;
   if (entry.timed && !timed()) {

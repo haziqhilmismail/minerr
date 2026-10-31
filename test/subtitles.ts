@@ -404,6 +404,14 @@ try {
   assert.deepEqual(await pageKeys(), ['ArrowRight', 'Shift', 'N'], 'YouTube gets Shift+N (next video) while no popup is open');
   assert.equal(await popup.isVisible(), false);
   console.log('YouTube keys: the line keys go to YouTube during an ad, and Shift+N always goes to YouTube without a popup');
+  await options.evaluate(() => chrome.storage.local.set({ enabled: false }));
+  await tab.waitForFunction(() => document.documentElement.hasAttribute('data-minerr-off'));
+  await tab.keyboard.press('ArrowLeft');
+  assert.deepEqual((await pageKeys()).at(-1), 'ArrowLeft', 'Minerr off: YouTube gets the line keys');
+  assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 2, 'Minerr off: a line key does not move the video');
+  await options.evaluate(() => chrome.storage.local.set({ enabled: true }));
+  await tab.waitForFunction(() => !document.documentElement.hasAttribute('data-minerr-off'));
+  console.log('Minerr off: the video keys go to YouTube');
   await tab.hover('.minerr-subs-line .ml-word[data-ml-lemma="雨"]');
   await popup.locator('.add').waitFor();
   await tab.keyboard.press('a');
