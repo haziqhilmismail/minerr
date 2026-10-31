@@ -49,6 +49,10 @@ async function start(): Promise<void> {
   enabledSites.onChange(value => { sites = value; update(); });
 }
 
+// False in a content script that an extension reload left in an open tab: its listeners still run, but no storage event reaches it.
+// Needs a watchActive caller to get a value; popup.ts is that caller.
+export const minerrIsOn = (): boolean => active !== null && active !== 'off' && chrome.runtime?.id !== undefined;
+
 // Calls listener with what Minerr shows on this page, and again on each change.
 export function watchActive(listener: (active: Active) => void): void {
   if (!listeners.size) start();

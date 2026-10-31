@@ -282,6 +282,7 @@ try {
   await off.waitFor({ state: 'hidden' });
   console.log('Minerr off: YouTube captions back, overlay hidden, the sidebar says that Minerr is off; on: both back');
 
+  await tab.evaluate(() => { const player = document.querySelector<HTMLElement>('#movie_player'); if (player) { player.tabIndex = -1; player.focus(); } });
   await tab.hover('.minerr-subs-line .ml-word[data-ml-lemma="食べる"]');
   const popup = tab.locator('minerr-popup .popup');
   await popup.locator('li', { hasText: 'to eat (fixture)' }).waitFor();
@@ -291,6 +292,7 @@ try {
   console.log('card sentence from the overlay:', sentence);
   assert.equal(sentence, '猫が魚を<b>食べなかった</b>魚が好き', 'the rows of mirrored captions are one sentence');
   await tab.keyboard.press('Escape');
+  assert.equal(await tab.evaluate(() => document.activeElement?.id), 'movie_player', 'the player gets the focus back after a click in a popup, so its volume keys work');
   await tab.mouse.move(0, 0);
 
   await tab.evaluate(() => document.documentElement.classList.add('full'));
@@ -345,7 +347,7 @@ try {
   await line.locator('.ml-word[data-ml-lemma="雨"]').waitFor();
   assert.equal(await line.innerText(), '今日は雨が降っています。');
   console.log('WhisperX overlay after a seek to 4 s:', await line.innerText());
-  await tab.keyboard.press('ArrowLeft');
+  await tab.keyboard.press('a');
   await line.locator('.ml-word[data-ml-lemma="食べる"]').waitFor();
   assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 0);
   assert.deepEqual(await tab.evaluate(() => Reflect.get(window, 'seen')), ['d'], 'with timed lines Minerr takes the key, not YouTube');
@@ -377,10 +379,10 @@ try {
   await tab.keyboard.press('Shift+W');
   await tab.locator('.minerr-subs-second', { hasText: 'The cat ate the fish.' }).waitFor();
   console.log('YouTube second track: off by default; Shift+W loads the English subtitles and shows them under the Japanese line');
-  await tab.keyboard.press('ArrowRight');
+  await tab.keyboard.press('d');
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '今日は雨');
   assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 2);
-  console.log('YouTube subtitles with times from the server: the overlay follows them, and ArrowRight goes to the next line');
+  console.log('YouTube subtitles with times from the server: the overlay follows them, and D goes to the next line');
   await tab.mouse.move(0, 0);
   await tab.keyboard.press('a');
   await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べた');
@@ -395,23 +397,38 @@ try {
   });
   const pageKeys = () => tab.evaluate(() => Reflect.get(window, 'pageKeys'));
   await tab.evaluate(() => document.querySelector('#movie_player')?.classList.add('ad-showing'));
-  await tab.keyboard.press('ArrowRight');
-  assert.deepEqual(await pageKeys(), ['ArrowRight'], 'during an ad, YouTube gets the line keys');
+  await tab.keyboard.press('d');
+  assert.deepEqual(await pageKeys(), ['d'], 'during an ad, YouTube gets the line keys');
   assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 2);
   await tab.evaluate(() => document.querySelector('#movie_player')?.classList.remove('ad-showing'));
   await line.locator('.ml-word[data-ml-lemma="雨"]').waitFor();
   await tab.keyboard.press('Shift+N');
-  assert.deepEqual(await pageKeys(), ['ArrowRight', 'Shift', 'N'], 'YouTube gets Shift+N (next video) while no popup is open');
+  assert.deepEqual(await pageKeys(), ['d', 'Shift', 'N'], 'YouTube gets Shift+N (next video) while no popup is open');
   assert.equal(await popup.isVisible(), false);
   console.log('YouTube keys: the line keys go to YouTube during an ad, and Shift+N always goes to YouTube without a popup');
   await options.evaluate(() => chrome.storage.local.set({ enabled: false }));
   await tab.waitForFunction(() => document.documentElement.hasAttribute('data-minerr-off'));
-  await tab.keyboard.press('ArrowLeft');
-  assert.deepEqual((await pageKeys()).at(-1), 'ArrowLeft', 'Minerr off: YouTube gets the line keys');
+  await tab.keyboard.press('a');
+  assert.deepEqual((await pageKeys()).at(-1), 'a', 'Minerr off: YouTube gets the line keys');
   assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 2, 'Minerr off: a line key does not move the video');
   await options.evaluate(() => chrome.storage.local.set({ enabled: true }));
   await tab.waitForFunction(() => !document.documentElement.hasAttribute('data-minerr-off'));
   console.log('Minerr off: the video keys go to YouTube');
+  await tab.keyboard.press('ArrowRight');
+  assert.equal((await pageKeys()).at(-1), 'ArrowRight', 'with the WASD set, YouTube gets the arrows');
+  assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 2);
+  await options.evaluate(() => chrome.storage.local.set({ keySet: 'arrows' }));
+  await tab.waitForTimeout(300);
+  await tab.keyboard.press('a');
+  assert.equal((await pageKeys()).at(-1), 'a', 'with the arrow set, YouTube gets A');
+  await tab.keyboard.press('ArrowLeft');
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '猫が魚を食べた');
+  assert.equal((await pageKeys()).at(-1), 'a', 'with the arrow set, Minerr takes the arrows');
+  await tab.keyboard.press('ArrowRight');
+  await tab.waitForFunction(() => document.querySelector<HTMLElement>('.minerr-subs-line')?.innerText === '今日は雨');
+  await options.evaluate(() => chrome.storage.local.set({ keySet: 'wasd' }));
+  await tab.waitForTimeout(300);
+  console.log('key sets: Minerr takes A and D or the arrows, and YouTube gets the other pair');
   await tab.hover('.minerr-subs-line .ml-word[data-ml-lemma="雨"]');
   await popup.locator('.add').waitFor();
   await tab.keyboard.press('a');
@@ -581,7 +598,7 @@ try {
   assert.equal(await tab.evaluate(() => localStorage.getItem('yt-player-caption-sticky-language')), JSON.stringify({ data: 'en' }),
     'the caption language of the user stays English after Minerr made the player show the Japanese track');
   console.log('server stopped: the overlay shows the YouTube captions with times that the tab read through the player, and the English translation');
-  await tab.keyboard.press('ArrowRight');
+  await tab.keyboard.press('d');
   await lineText('魚を食べた');
   assert.equal(await tab.evaluate(() => document.querySelector('video')?.currentTime), 3);
   const panelAgain = await openSidebar(context, worker, extensionId, tab);
@@ -599,7 +616,7 @@ try {
     `the tab recorded the line audio: ${String(at(tabNote, 'SentenceAudio'))}`);
   await tab.keyboard.press('Escape');
   await tab.mouse.move(0, 0);
-  console.log('server stopped: ArrowRight, the sidebar, and a card with the line audio that the tab recorded');
+  console.log('server stopped: D, the sidebar, and a card with the line audio that the tab recorded');
 
   await openVideo('englishvideo');
   await lineText('猫が魚を食べなかった今日は雨');
@@ -760,6 +777,24 @@ try {
   console.log('Generate without the server: the error of the service worker tells an unpacked install to run uv');
 
   assert.deepEqual(failures, [], 'no uncaught page errors');
+
+  // Last, because the reload ends the service worker and the extension pages of this test.
+  await tab.bringToFront();
+  await tab.evaluate(() => {
+    const keys: string[] = [];
+    Object.assign(window, { keysAtEnd: keys });
+    document.addEventListener('keydown', event => keys.push(event.key));
+  });
+  await tab.keyboard.press('w');
+  assert.deepEqual(await tab.evaluate(() => Reflect.get(window, 'keysAtEnd')), [], 'Minerr takes W before the extension reload');
+  const extensionsPage = await context.newPage();
+  await extensionsPage.goto('chrome://extensions');
+  await extensionsPage.evaluate(id => Reflect.get(chrome, 'developerPrivate').reload(id, { failQuietly: true }), extensionId);
+  await tab.bringToFront();
+  await tab.waitForTimeout(1000);
+  await tab.keyboard.press('w');
+  assert.deepEqual(await tab.evaluate(() => Reflect.get(window, 'keysAtEnd')), ['w'], 'the content script that the reload left behind takes no key');
+  console.log('extension reload: the old content script of an open tab gives the keys to the page');
   console.log('SUBTITLES E2E PASS');
 } finally {
   await context.close();

@@ -235,6 +235,16 @@
     <h3 id="video-keys-heading">Video keys</h3>
     <p class="help">These keys work on a video with the Minerr subtitle overlay: on YouTube, in the video player, and on other sites. They do not work in a text field. On YouTube, Minerr takes a key only while the overlay shows subtitles. Some keys need subtitles with times, for example from WhisperX or a subtitle file.</p>
     <div class="group">
+      <div class="field">
+        <p id="key-set-heading" class="label">Keys for the previous and next line</p>
+        <div class="segmented" role="radiogroup" aria-labelledby="key-set-heading" aria-describedby="key-set-help">
+          <label><input type="radio" name="keySet" value="wasd">A and D</label>
+          <label><input type="radio" name="keySet" value="arrows">← and →</label>
+        </div>
+        <p id="key-set-help" class="help">Minerr uses one pair at a time. The other pair goes to the site, so with A and D, YouTube keeps its ← and → seek. ↑ and ↓ always go to the player, for the volume.</p>
+      </div>
+    </div>
+    <div class="group">
       <table aria-labelledby="video-keys-heading">
         <thead><tr><th scope="col">Key</th><th scope="col">Action</th><th scope="col">Note</th></tr></thead>
         <tbody id="video-keys"></tbody>

@@ -5,7 +5,7 @@ import { choices, FILTER_NAMES, type LineState, shownLines, targetWord } from '.
 import { summary } from '../src/video/sidebar/sidebar-select.ts';
 import { autoPause, cleanSegments, cleanText, gapEnd, jumpTarget, lastStarted, onLine } from '../src/video/playback.ts';
 import { isStatus } from '../src/status/status.ts';
-import { keyLabel, keyName, videoKey } from '../src/video/videokeys.ts';
+import { type KeySet, keyLabel, keyName, videoKey } from '../src/video/videokeys.ts';
 import { isNoHostError, type Place, serverHint, serverStatus, serverView } from '../src/video/server-status.ts';
 
 const LINES = [{ start: 1, end: 3, text: '一' }, { start: 3, end: 5, text: '二' }, { start: 8, end: 10, text: '三' }];
@@ -34,13 +34,15 @@ test('keyName names keys as the key table writes them, with Alt from the code', 
     press('d', 'KeyD'), press('D', 'KeyD', false, true), press('ArrowLeft', 'ArrowLeft'), press('ø', 'KeyO', true),
     press('=', 'Equal', true), press('–', 'Minus', true), press('.', 'Period'), press('>', 'Period', false, true), press('W', 'KeyW', false, true),
   ], ['d', 'shift+d', 'ArrowLeft', 'alt+o', 'alt+=', 'alt+-', '.', '>', 'shift+w']);
-  assert.equal(videoKey({ key: 'ArrowRight', code: 'ArrowRight', altKey: false, shiftKey: false })?.action, 'next');
-  const action = (key: string, code: string, shiftKey = false) => videoKey({ key, code, altKey: false, shiftKey })?.action;
+  const action = (key: string, code: string, shiftKey = false, set: KeySet = 'wasd') => videoKey({ key, code, altKey: false, shiftKey }, set)?.action;
+  assert.deepEqual([action('ArrowLeft', 'ArrowLeft'), action('ArrowRight', 'ArrowRight')], [undefined, undefined], 'with the WASD set, the page gets the arrows');
+  assert.deepEqual(['ArrowLeft', 'ArrowRight', 'a', 'd', 's', 'w'].map(key => action(key, key, false, 'arrows')),
+    ['previous', 'next', undefined, undefined, 'replay', 'obscure'], 'with the arrow set, the page gets A and D; S and W have no arrow');
   assert.deepEqual([action('a', 'KeyA'), action('s', 'KeyS'), action('d', 'KeyD'), action('w', 'KeyW'), action('W', 'KeyW', true)],
     ['previous', 'replay', 'next', 'obscure', 'second'], 'the Migaku keys: A, S, D, W');
   assert.deepEqual([action('ArrowUp', 'ArrowUp'), action('ArrowDown', 'ArrowDown'), action('ArrowUp', 'ArrowUp', true)], [undefined, undefined, undefined],
     'the up and down arrows go to the player, for the volume');
-  assert.equal(videoKey({ key: 'a', code: 'KeyA', altKey: true, shiftKey: false })?.action, 'back5');
+  assert.equal(videoKey({ key: 'a', code: 'KeyA', altKey: true, shiftKey: false }, 'wasd')?.action, 'back5');
 });
 
 test('keyLabel writes keys for people', () => {

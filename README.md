@@ -600,7 +600,7 @@ A play mode pauses the video for you. Open the options page, go to **Video** and
 | **Pause after each line** | At the end of each line. The line stays on screen. |
 | **Pause after i+1 lines** | At the end of each line with exactly one unknown word. |
 
-Play modes need subtitles with times. Press `S` to hear the line again, or `→` or `D` to go to the next line.
+Play modes need subtitles with times. Press `S` to hear the line again, or `D` to go to the next line.
 
 Other settings under **Video**:
 
@@ -684,8 +684,8 @@ These keys work on any video with the Minerr subtitle overlay: on YouTube, in th
 
 | Key | Action | Note |
 | --- | --- | --- |
-| `→` or `D` | Go to the next line. | Needs subtitles with times. |
-| `←` or `A` | Go to the previous line. If a word popup is open, `A` adds the word's card instead. | Needs subtitles with times. |
+| `D` | Go to the next line. | Needs subtitles with times. |
+| `A` | Go to the previous line. If a word popup is open, `A` adds the word's card instead. | Needs subtitles with times. |
 | `S` | Replay the current line. | Needs subtitles with times. |
 | `Alt+A` | Go back 5 seconds. | |
 | `Alt+D` | Go forward 5 seconds. | |
@@ -704,7 +704,9 @@ These keys work on any video with the Minerr subtitle overlay: on YouTube, in th
 
 Subtitles with times come from WhisperX, from a subtitle file, or from YouTube subtitles that Minerr reads in the tab or that the server downloads. Captions that Minerr copies from the YouTube player have no times; with those, a key that needs times shows a hint and YouTube gets the key.
 
-YouTube uses some of these keys too, such as `C`, `J`, `.`, `,` and the arrow keys. While the overlay is showing subtitles, Minerr's action wins. `C` only copies a line when the overlay is showing one; otherwise YouTube gets `C` and toggles its captions.
+Minerr uses `A` and `D` for the lines by default, so YouTube keeps `←` and `→` to seek. If you prefer the arrows, choose `←` and `→` under **Video keys** in the options; then the site gets `A` and `D`. `↑` and `↓` always go to the player for the volume.
+
+YouTube uses some of these keys too, such as `C`, `J`, `.` and `,`. While the overlay is showing subtitles, Minerr's action wins. `C` only copies a line when the overlay is showing one; otherwise YouTube gets `C` and toggles its captions.
 
 The offset applies to the open video until you open another one. The text size applies to all videos and is saved.
 
