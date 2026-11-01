@@ -2,7 +2,7 @@ import {
   BUILTIN, DEFAULT_DECK, DEFAULT_KNOWN_QUERY, definitionHtml, getDeck, getNoteType, LAPIS, markerValues, NOTE_TYPE, type NoteType,
   renderField, setNoteType, suggestFields, unknownMarkers, wordField,
 } from '../src/anki/anki.ts';
-import { deleteDictionary, importDictionary, listDictionaries } from '../src/dictionary/db.ts';
+import { deleteDictionary, importDictionary, listDictionaries, moveDictionary, setDictionaryDisabled } from '../src/dictionary/db.ts';
 import { byId } from '../src/shared/dom.ts';
 import { furiganaMode } from '../src/page-text/furigana.ts';
 import { hoverMode } from '../src/popup/hover.ts';
@@ -43,9 +43,28 @@ function showStatus(node: HTMLElement, text: string, kind = ''): void {
 const dictList = byId('dict-list', HTMLElement);
 const metaText = (meta = 0) => (meta ? `, ${meta} frequency and pitch entries` : '');
 
-async function showDictionaries(): Promise<void> {
+// A render replaces the rows, so focus names the control that keeps the keyboard focus after it.
+async function showDictionaries(focus?: { title: string; control: 'use' | 'up' | 'down' }): Promise<void> {
   const dictionaries = await listDictionaries();
-  const items = dictionaries.map(({ title, count, tags, meta: metaCount, entries }) => {
+  let focused = null as HTMLElement | null;
+  const items = dictionaries.map(({ title, count, tags, meta: metaCount, entries, disabled }, index) => {
+    const use = el('input', { type: 'checkbox', role: 'switch', checked: !disabled, ariaLabel: `Use ${title}` });
+    use.onchange = async () => {
+      await setDictionaryDisabled(title, !use.checked);
+      await showDictionaries({ title, control: 'use' });
+    };
+    const arrow = (control: 'up' | 'down', step: -1 | 1, textContent: string, edge: boolean) => {
+      // aria-disabled, not disabled: a disabled button loses the focus, and a key press on the next arrow would undo the move.
+      const button = el('button', { type: 'button', className: 'move', textContent, ariaLabel: `Move ${title} ${control}`, ariaDisabled: String(edge) });
+      button.onclick = async () => {
+        await moveDictionary(title, step);
+        await showDictionaries({ title, control });
+      };
+      return button;
+    };
+    const up = arrow('up', -1, '↑', index === 0);
+    const down = arrow('down', 1, '↓', index === dictionaries.length - 1);
+    if (focus?.title === title) focused = { use, up, down }[focus.control];
     const remove = el('button', { type: 'button', className: 'delete', textContent: 'Delete' });
     remove.onclick = async () => {
       if (!confirm(`Delete the dictionary "${title}"?`)) return;
@@ -60,12 +79,15 @@ async function showDictionaries(): Promise<void> {
       : !tags ? `${count} terms. Import again to show tags.`
       : noEntries ? `${count} terms${metaText(metaCount)}. Import again so that the spellings of a word share one status.`
       : `${count} terms${metaText(metaCount)}`;
-    return el('li', { className: count === null || !tags || noEntries ? 'warn' : '' },
-      el('div', {}, el('span', { className: 'name', textContent: title }), el('span', { className: 'meta', textContent: meta })),
-      remove);
+    return el('li', { className: `${count === null || !tags || noEntries ? 'warn' : ''} ${disabled ? 'off' : ''}` },
+      use,
+      el('span', { className: 'rank' }),
+      el('div', {}, el('span', { className: 'name', textContent: title }), el('span', { className: 'meta', textContent: disabled ? `Off. ${meta}` : meta })),
+      up, down, remove);
   });
   dictList.replaceChildren(...(items.length ? items
     : [el('li', { className: 'empty', textContent: 'No dictionary installed. Import one to see definitions in the popup.' })]));
+  focused?.focus();
 }
 
 const fileInput = byId('dict-file', HTMLInputElement);

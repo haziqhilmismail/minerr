@@ -9,7 +9,7 @@ const tokenizer = new Promise<kuromoji.Tokenizer>((resolve, reject) => {
     .build((error, built) => (error ? reject(error) : resolve(built)));
 });
 
-// The entry cache lives as long as the installed dictionaries stay the same.
+// The entry cache lives as long as the installed dictionaries, their order, and their switches stay the same.
 let cache: { dictionaries: string; words: Words } | null = null;
 async function dictionaryWordsNow(): Promise<Words> {
   const dictionaries = JSON.stringify(await listDictionaries());

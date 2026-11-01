@@ -275,7 +275,7 @@ export function render(box: HTMLDivElement, view: View, { addCard, editCard, bro
         metaRow(group)),
       senseList(group.senses),
     ])]
-    : [el('p', { className: 'empty', textContent: 'No dictionary entry. Import a dictionary in the options page.' })];
+    : [el('p', { className: 'empty', textContent: 'No dictionary entry. Import or turn on a dictionary in the options page.' })];
   const addButton = el('button', { className: 'add primary', onclick: addCard }, ...addLabel());
   const editButton = el('button', { className: 'edit', title: 'Edit the card before Minerr sends it', onclick: editCard }, 'Edit ', el('kbd', { textContent: 'E' }));
   const message = el('div', { className: 'message', role: 'status' });
