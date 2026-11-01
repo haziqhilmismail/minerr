@@ -9,7 +9,7 @@ import { definitionHtml } from '../src/anki/anki.ts';
 import { groupTokens } from '../src/text/group.ts';
 import { iPlusOneSentences, isIPlusOne, type Piece, sentenceAround } from '../src/text/sentence.ts';
 import type { Status } from '../src/status/status.ts';
-import { type DictTerm, flattenGlossaryItem, groupTerms, readYomitan } from '../src/dictionary/yomitan.ts';
+import { type DictTerm, flattenGlossaryItem, groupTerms, readYomitan, type TermRow, toTerms } from '../src/dictionary/yomitan.ts';
 import { unzip } from '../src/dictionary/zip.ts';
 
 const here = import.meta.dirname;
@@ -134,6 +134,60 @@ test('structured-content glossary flattens to plain text lines', () => {
     { tag: 'tr', content: [{ tag: 'th', content: 'いく' }, { tag: 'td', content: '★' }, { tag: 'td', content: '🅁' }] },
   ] } };
   assert.equal(flattenGlossaryItem(formsTable), '行く 往く\nいく ★ 🅁');
+});
+
+// The entry of Jitendex 2026.10.03.0, with the data that Minerr does not read taken out.
+const posTag = (code: string, content: string, title: string) => ({ tag: 'span', title, data: { class: 'tag', code, content: 'part-of-speech-info' }, content });
+const BOUKEN: TermRow = ['冒険', 'ぼうけん', '★', '', 200, [{ type: 'structured-content', content: [
+  { tag: 'ul', data: { content: 'sense-groups' }, content: [
+    { tag: 'li', style: { listStyleType: '"①"' }, data: { content: 'sense-group' }, content: [
+      posTag('n', 'noun', 'noun (common)'), posTag('vs', 'suru', 'takes suru'), posTag('vi', 'intransitive', 'intransitive verb'),
+      { tag: 'div', data: { content: 'sense' }, content: [
+        { tag: 'ul', data: { content: 'glossary' }, content: [{ tag: 'li', content: 'adventure' }, { tag: 'li', content: 'venture' }] },
+        { tag: 'div', data: { content: 'extra-info' }, content: { tag: 'div', data: { class: 'extra-box', content: 'example-sentence' }, content: [
+          { tag: 'div', data: { content: 'example-sentence-a' }, content: ['何の', { tag: 'span', data: { content: 'example-keyword' }, content: '冒険' }, 'もしないなら。'] },
+          { tag: 'div', data: { content: 'example-sentence-b' }, content: 'Nothing ventured, nothing gained.' },
+        ] } },
+      ] },
+    ] },
+    { tag: 'li', style: { listStyleType: '"②"' }, data: { content: 'sense-group' }, content: [
+      posTag('n', 'noun', 'noun (common)'), posTag('adj-na', 'na-adj', 'adjectival noun'),
+      { tag: 'div', data: { content: 'sense' }, content: { tag: 'ul', data: { content: 'glossary' }, content: { tag: 'li', content: 'risky attempt' } } },
+    ] },
+  ] },
+  { tag: 'div', data: { content: 'attribution' }, content: [{ tag: 'a', href: 'https://www.edrdg.org/', content: 'JMdict' }, ' | ', { tag: 'a', href: 'https://tatoeba.org/', content: 'Tatoeba' }] },
+] }], 1519830, ''];
+
+test('a Jitendex row becomes one term per sense, with tags and notes apart from the definitions', () => {
+  const n = { name: 'n', category: 'partOfSpeech', notes: 'noun (common)' };
+  const common = { expression: '冒険', reading: 'ぼうけん', termTags: ['★'], score: 200, sequence: 1519830 };
+  assert.deepEqual(toTerms(BOUKEN), [
+    { ...common, definitionTags: ['n', 'vs', 'vi'], inlineTags: [n, { name: 'vs', category: 'partOfSpeech', notes: 'takes suru' }, { name: 'vi', category: 'partOfSpeech', notes: 'intransitive verb' }],
+      glossary: ['adventure', 'venture'], notes: ['何の冒険もしないなら。', 'Nothing ventured, nothing gained.'] },
+    { ...common, definitionTags: ['n', 'adj-na'], inlineTags: [n, { name: 'adj-na', category: 'partOfSpeech', notes: 'adjectival noun' }],
+      glossary: ['risky attempt'], notes: ['JMdict | Tatoeba'] },
+  ]);
+});
+
+test('Jitendex spellings are a forms sense, the senses of one group share its tags, and a redirect stays one term', () => {
+  const tag = { tag: 'span', title: 'noun', data: { class: 'tag', code: 'n', content: 'part-of-speech-info' }, content: 'noun' };
+  const sense = (word: string, extra: unknown[] = []) => ({ tag: 'li', data: { content: 'sense' }, content: [{ tag: 'ul', data: { content: 'glossary' }, content: { tag: 'li', content: word } }, ...extra] });
+  const xref = { tag: 'div', data: { content: 'extra-info' }, content: { tag: 'div', data: { content: 'xref-content' }, content: [
+    { tag: 'span', data: { content: 'reference-label' }, content: 'See also' }, { tag: 'a', content: { tag: 'ruby', content: ['猫', { tag: 'rt', content: 'ねこ' }] } },
+  ] } };
+  const terms = toTerms(['猫', 'ねこ', '', '', 0, [{ type: 'structured-content', content: [
+    { tag: 'div', data: { content: 'sense-group' }, content: [tag, { tag: 'span', content: '〔' }, { tag: 'span', content: '猫 only〕' }, { tag: 'ol', content: [sense('cat', [xref]), sense('shamisen')] }] },
+    { tag: 'div', data: { content: 'forms' }, content: [{ tag: 'span', data: { content: 'forms-label' }, content: 'Forms' }, { tag: 'ul', content: [{ tag: 'li', content: '猫' }, { tag: 'li', content: 'ネコ' }] }] },
+  ] }], 1467640, '']);
+  assert.deepEqual(terms.map(({ inlineTags, glossary, notes }) => [inlineTags?.map(({ name }) => name), glossary, notes]), [
+    [['n'], ['cat'], ['〔猫 only〕', 'See also 猫']],
+    [['n'], ['shamisen'], ['〔猫 only〕']],
+    [['forms'], ['猫', 'ネコ'], undefined],
+  ]);
+  const [onlyNote] = toTerms(['片肌脱ぐ', '', '', '', 0, [{ type: 'structured-content', content: { tag: 'div', data: { content: 'sense-group' }, content: { tag: 'div', data: { content: 'sense' }, content: { tag: 'div', data: { content: 'extra-info' }, content: 'to bare one shoulder' } } } }], 1, '']);
+  assert.deepEqual([onlyNote?.glossary, onlyNote?.notes], [['to bare one shoulder'], undefined]);
+  const [redirect] = toTerms(['Ｎ響', 'エヌきょう', '', '', 0, [{ type: 'structured-content', content: { tag: 'div', data: { content: 'redirect-glossary' }, content: ['⟶', { tag: 'a', content: 'NHK交響楽団' }] } }], 1, '']);
+  assert.deepEqual(redirect?.glossary, ['⟶NHK交響楽団']);
 });
 
 const NEKO_TAGS = [

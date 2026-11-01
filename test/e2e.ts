@@ -13,7 +13,13 @@ const work = mkdtempSync(join(tmpdir(), 'ml-e2e-'));
 const fixture = makeDictionary(join(work, 'fixture.zip'), 'Fixture', [
   ['食べる', 'たべる', '1 v1 vt', 'v1', 100, [{ type: 'structured-content', content: { tag: 'ul', content: [{ tag: 'li', content: 'to eat (fixture)' }] } }], 1, '⭐ ichi'],
   ['猫', 'ねこ', 'n', '', 100, ['cat (fixture)'], 2, ''],
-  ['魚', 'さかな', 'n', '', 100, ['fish (fixture)'], 3, ''],
+  ['魚', 'さかな', '', '', 100, [{ type: 'structured-content', content: [
+    { tag: 'div', data: { content: 'sense-group' }, content: [
+      { tag: 'span', title: 'noun', data: { class: 'tag', code: 'n', content: 'part-of-speech-info' }, content: 'noun' },
+      { tag: 'div', data: { content: 'sense' }, content: { tag: 'ul', data: { content: 'glossary' }, content: { tag: 'li', content: 'fish (fixture)' } } },
+    ] },
+    { tag: 'div', data: { content: 'attribution' }, content: 'Source (fixture)' },
+  ] }], 3, ''],
 ], [
   ['⭐', 'popular', -10, 'high priority term', 10],
   ['v1', 'partOfSpeech', -3, 'Ichidan verb', 0],
@@ -343,6 +349,7 @@ try {
   await noPopupAfterRest('hover mode: a quick pass over a word opens no popup');
   await tab.hover('#line .ml-word[data-ml-lemma="魚"]');
   await popup.locator('.lemma', { hasText: '魚' }).waitFor();
+  assert.equal(await popup.locator('.definitions li').first().innerText(), 'n fish (fixture)\nSource (fixture)\nFixture', 'a note shows under its definition');
   console.log('hover mode: a quick pass opens no popup, a rest opens it');
 
   await tab.keyboard.press('Escape');
