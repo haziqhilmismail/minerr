@@ -91,16 +91,17 @@ export async function listDictionaries(): Promise<Dictionary[]> {
   return inRankOrder((await db()).transaction('dicts').objectStore('dicts'));
 }
 
-// One read-write transaction, so two quick moves cannot both start from the same order.
-export async function moveDictionary(title: string, step: -1 | 1): Promise<void> {
+// One read-write transaction, and target gets the current position, so two quick moves cannot both start from the same order.
+export async function moveDictionary(title: string, target: (from: number) => number): Promise<void> {
   const tx = (await db()).transaction('dicts', 'readwrite');
   const dicts = tx.objectStore('dicts');
   const rows = await inRankOrder(dicts);
   const from = rows.findIndex(row => row.title === title);
-  const [row, neighbour] = [rows[from], rows[from + step]];
-  if (!row || !neighbour) return;
-  rows[from] = neighbour;
-  rows[from + step] = row;
+  const to = target(from);
+  const row = rows[from];
+  if (!row || to < 0 || to >= rows.length) return;
+  rows.splice(from, 1);
+  rows.splice(to, 0, row);
   rows.forEach((item, rank) => dicts.put({ ...item, rank }));
   await finished(tx);
 }

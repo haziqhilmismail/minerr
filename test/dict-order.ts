@@ -264,6 +264,31 @@ try {
   await importZip(last, 'Last');
   assert.deepEqual((await rows()).map(([title]) => title), ['Alpha', 'Big', 'Zeta', 'Gamma', 'Last'], 'a new import after an upgrade goes last');
 
+  const titles = async () => (await rows()).map(([title]) => title);
+  const dragOnto = async (title: string, target: string, part: 'upper' | 'lower') => {
+    const box = await row(target).boundingBox();
+    if (!box) throw new Error(`no row ${target}`);
+    await row(title).locator('.name').dragTo(row(target), { targetPosition: { x: box.width / 2, y: part === 'upper' ? 4 : box.height - 4 } });
+    await options.evaluate(() => new Promise(done => setTimeout(done, 200)));
+  };
+  await dragOnto('Last', 'Alpha', 'upper');
+  assert.deepEqual(await titles(), ['Last', 'Alpha', 'Big', 'Zeta', 'Gamma'], 'a drop on the upper half of a row goes before it');
+  await dragOnto('Last', 'Big', 'lower');
+  assert.deepEqual(await titles(), ['Alpha', 'Big', 'Last', 'Zeta', 'Gamma'], 'a drop on the lower half of a row goes after it, also when the row moves down');
+  await dragOnto('Gamma', 'Big', 'upper');
+  assert.deepEqual(await titles(), ['Alpha', 'Gamma', 'Big', 'Last', 'Zeta'], 'a row moves up');
+  await dragOnto('Big', 'Big', 'lower');
+  await dragOnto('Big', 'Last', 'upper');
+  assert.deepEqual(await titles(), ['Alpha', 'Gamma', 'Big', 'Last', 'Zeta'], 'a drop next to its own place changes nothing');
+  assert.equal(await options.locator('#dict-list .drop-before, #dict-list .drop-after, #dict-drop.over').count(), 0, 'no drop mark stays');
+  await dragOnto('Alpha', 'Zeta', 'lower');
+  await options.reload();
+  await row('Alpha').waitFor();
+  assert.deepEqual(await titles(), ['Gamma', 'Big', 'Last', 'Zeta', 'Alpha'], 'a drag survives a reload and can end on the last place');
+  await options.$eval('[aria-label="Move Alpha up"]', (up: HTMLElement) => { up.click(); up.click(); });
+  await options.waitForFunction(() => document.querySelectorAll('#dict-list li .name')[2]?.textContent === 'Alpha');
+  assert.deepEqual(await titles(), ['Gamma', 'Big', 'Alpha', 'Last', 'Zeta'], 'two quick presses are two moves');
+
   assert.deepEqual(failures, []);
   console.log('dict-order: rank and on/off drive the popup, Alt+S, joins, and pitch; statuses stay; the options list keeps focus');
 } finally {

@@ -102,7 +102,7 @@ Minerr shows the tags from all the dictionaries you have turned on.
 
 #### Rank and turn off dictionaries
 
-The list in **Dictionaries** is a ranking. Definitions, frequencies and pitch accents appear in that order, so the dictionary at the top comes first. If a word has several readings, the ranking orders the definitions of each reading, and the dictionaries' scores still decide which reading comes first. Use the ↑ and ↓ buttons on a row to move it. A new dictionary goes to the bottom, and importing a dictionary again keeps its place and its switch.
+The list in **Dictionaries** is a ranking. Definitions, frequencies and pitch accents appear in that order, so the dictionary at the top comes first. If a word has several readings, the ranking orders the definitions of each reading, and the dictionaries' scores still decide which reading comes first. Drag a row to move it, or use its ↑ and ↓ buttons. A new dictionary goes to the bottom, and importing a dictionary again keeps its place and its switch.
 
 The switch on a row turns a dictionary on or off. Minerr doesn't use a dictionary that's off for definitions, frequencies, pitch accents or joined words, but it keeps the data, so you can turn it back on without importing again.
 
