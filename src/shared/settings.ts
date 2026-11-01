@@ -1,4 +1,4 @@
-import { isStringList } from './guards.ts';
+import { isString, isStringList } from './guards.ts';
 
 // A setting in chrome.storage.local that every tab follows. A missing or invalid value reads as the fallback.
 export function setting<T>(key: string, isValue: (value: unknown) => value is T, fallback: T) {
@@ -37,3 +37,6 @@ export const wordJoins = setting('wordJoins', isStringList, []);
 
 // The word audio from JapanesePod101 (src/anki/wordaudio.ts). When off, a card sends no request to JapanesePod101 and has no word audio.
 export const wordAudioEnabled = setting('wordAudio', isBoolean, true);
+
+// The last version that the toolbar popup saw (pages/action.ts). The popup tells the user once when the version changes.
+export const lastSeenVersion = setting('lastSeenVersion', isString, '');
