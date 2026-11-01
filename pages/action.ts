@@ -4,7 +4,7 @@ import type { PageStats } from '../src/status/stats.ts';
 import { STATUS_NAMES, STATUSES } from '../src/status/status.ts';
 import type { Snapshot, Source } from '../src/video/youtube/youtube-overlay.ts';
 import { applyTheme } from '../src/shared/theme.ts';
-import { iPlusOne, minerrEnabled } from '../src/shared/settings.ts';
+import { iPlusOne, lastSeenVersion, minerrEnabled } from '../src/shared/settings.ts';
 import { enabledSites, siteIsOn, siteOf, toggleSiteOf } from '../src/page-text/site.ts';
 import { currentPlace, type JobStatus } from '../src/video/whisper.ts';
 import { CLICK_KEY, type HealthCheck, isNoHostError, type ServerFacts, serverStatus, type ServerView, serverView } from '../src/video/server-status.ts';
@@ -14,7 +14,8 @@ applyTheme();
 
 const POLL_MS = 2000;
 const HOST = 'com.minerr.whisperx';
-const ADD_ON_RELEASE = 'https://github.com/haziqhilmismail/minerr/releases/latest';
+const RELEASES = 'https://github.com/haziqhilmismail/minerr/releases';
+const ADD_ON_RELEASE = `${RELEASES}/latest`;
 const HINT: Record<Source, string> = {
   youtube: 'Minerr shows the Japanese captions of YouTube. If the overlay stays empty, turn on CC in the YouTube player.',
   whisperx: 'The subtitles come from the WhisperX server on this computer.',
@@ -240,6 +241,16 @@ byId('options', HTMLAnchorElement).addEventListener('click', event => {
   event.preventDefault();
   chrome.runtime.openOptionsPage();
 });
+
+const { version } = chrome.runtime.getManifest();
+const seenVersion = await lastSeenVersion.get();
+if (seenVersion !== '' && seenVersion !== version) {
+  const updateNote = byId('update-note', HTMLElement);
+  updateNote.prepend(`Updated to ${version}. `);
+  byId('update-link', HTMLAnchorElement).href = `${RELEASES}/tag/v${version}`;
+  updateNote.hidden = false;
+}
+lastSeenVersion.set(version);
 
 showTabStats();
 showServer();

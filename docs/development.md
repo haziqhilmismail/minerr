@@ -89,7 +89,7 @@ How a word gets from a page to a card:
 | `scripts/logo.py`, `docs/logo.svg`, `icons/` | `scripts/logo.py` draws the logo and the extension icons as pixel art in one palette: `docs/logo.svg` and `icons/icon-16.png`, `-32`, `-48` and `-128`, a 16 x 16 pickaxe at whole-number scales. Run `python3 scripts/logo.py`. |
 | `scripts/package.ts` | Packs `dist` into three zips in `release`, each with a `.sha256` file: `minerr-whisperx-v<version>.zip` (the WhisperX add-on: the server and its launcher), `minerr-v<version>.zip` (the whole extension inside a `minerr` folder, for Load unpacked), and `minerr-store-v<version>.zip` (the extension without the add-on, with `manifest.json` at the root, for the Chrome Web Store). |
 | `LICENSE`, `PRIVACY.md` | The MIT License, and the privacy policy that the Chrome Web Store listing links to. |
-| `.github/workflows/release.yml`, `docs/release-notes.md` | When you push a tag such as `v0.3.0`, the workflow builds and packs the extension. It creates a draft GitHub release with the WhisperX add-on, the Load unpacked zip and the text of `docs/release-notes.md`, and keeps the store zip on the run's page. |
+| `.github/workflows/release.yml`, `docs/release-notes.md` | When you push a tag such as `v0.3.0`, the workflow builds and packs the extension. It creates a draft GitHub release with the WhisperX add-on, the Load unpacked zip, the list of merged PRs and the text of `docs/release-notes.md`, and keeps the store zip on the run's page. |
 | `src/video/server-status.ts` | Pure functions: the WhisperX server status shown in the toolbar menu, worked out from the last health check and the last click on **Start the server**, plus the text and buttons for each status. `serverHint` gives instructions for starting the server in places other than the toolbar menu, for example in the **Generate with WhisperX** error. The text and buttons depend on the platform and the install: Load unpacked has the Minerr folder, which already contains the add-on, while other installs, such as the Chrome Web Store, get the add-on from GitHub. |
 | `src/status/stats.ts` | A tab's comprehension score, for the toolbar menu. |
 | `src/status/score.ts` | Pure functions for the score and its label. |
@@ -142,11 +142,13 @@ Other scripts:
 
 ## Make a release
 
+Put `Fixes #N` in each PR, so that the issue closes at merge. Release after about 3 fixes, or at once for a bug that breaks Minerr. Use x.y.Z+1 for fixes and x.Y+1.0 for features.
+
 1. Set the new version in `manifest.json` and `package.json`.
-2. Run all the tests, then commit and push to `main`.
-3. Run `git tag v<version>`, then `git push origin v<version>`.
-4. Open the [Releases](https://github.com/haziqhilmismail/minerr/releases) page. About 2 minutes later, GitHub Actions creates a draft release with `minerr-whisperx-v<version>.zip`, `minerr-v<version>.zip` and their `.sha256` files. The draft's text is `docs/release-notes.md`, the install guide for the WhisperX add-on.
-5. Add what changed to the draft, then click **Publish release**.
+2. Run all the tests, then merge the version change through a PR. Don't push it to `main`.
+3. Run `git tag v<version>` on the merged commit, then `git push origin v<version>`.
+4. Open the [Releases](https://github.com/haziqhilmismail/minerr/releases) page. About 2 minutes later, GitHub Actions creates a draft release with `minerr-whisperx-v<version>.zip`, `minerr-v<version>.zip` and their `.sha256` files. The draft's text starts with the list of merged PRs, followed by `docs/release-notes.md`, the install guide for the WhisperX add-on. Commits that had no PR aren't in the list, so add those by hand.
+5. Click **Publish release**. Do this before you submit the store update: the popup links to the release page, and a draft shows only the tag, without the list of changes.
 
 The workflow stops if the tag doesn't match the version in `manifest.json` and `package.json`. Each zip works on every platform: the extension has no native code, and uv installs the right server packages for the platform on first start. To build the zips locally, run `npm run build`, then `node scripts/package.ts`. The zips go to the `release` folder.
 

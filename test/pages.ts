@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, statSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Page } from 'playwright';
 import { at } from '../src/shared/guards.ts';
-import { launch, listen } from './harness.ts';
+import { launch, listen, until } from './harness.ts';
 
 const work = mkdtempSync(join(tmpdir(), 'ml-pages-'));
 
@@ -91,6 +91,25 @@ try {
   }
   await emptyPopup.close();
   console.log('video score from the seen subtitle lines; a page without Japanese has no score');
+
+  const { version } = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'manifest.json'), 'utf8'));
+  const versionStored = async () => at(await worker.evaluate(() => chrome.storage.local.get('lastSeenVersion')), 'lastSeenVersion') === version;
+  await worker.evaluate(() => chrome.storage.local.set({ lastSeenVersion: '0.0.1' }));
+  const updated = await toolbarPopup(`${origin}/empty`);
+  assert.equal(await updated.isVisible('#update-note'), true);
+  assert.equal(await updated.textContent('#update-note'), `Updated to ${version}. See what changed.`);
+  assert.equal(await updated.getAttribute('#update-link', 'href'), `https://github.com/haziqhilmismail/minerr/releases/tag/v${version}`);
+  await until(versionStored, 'the popup stores the version after the note');
+  await updated.close();
+  const seen = await toolbarPopup(`${origin}/empty`);
+  assert.equal(await seen.isVisible('#update-note'), false, 'the note shows one time');
+  await seen.close();
+  await worker.evaluate(() => chrome.storage.local.remove('lastSeenVersion'));
+  const installed = await toolbarPopup(`${origin}/empty`);
+  assert.equal(await installed.isVisible('#update-note'), false, 'a new install has no note');
+  await until(versionStored, 'the popup stores the version of a new install');
+  await installed.close();
+  console.log('update note: one time after an update, not after a new install');
 
   const many = Object.fromEntries(Array.from({ length: 20000 }, (_, i) => [`w:語${String(i).padStart(5, '0')}`, i % 3 ? 'known' : 'learning']));
   await worker.evaluate(words => chrome.storage.local.set(words), many);

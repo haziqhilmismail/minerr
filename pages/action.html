@@ -29,6 +29,7 @@
   #setup .muted { font-size: var(--text-caption); }
   code { font: var(--text-caption)/1.4 var(--font-mono); overflow-wrap: anywhere; }
   #enabled-hint { margin: calc(-1 * var(--space-2)) var(--space-1) var(--space-3); font-size: var(--text-caption); }
+  #update-note { margin: calc(-1 * var(--space-2)) var(--space-1) var(--space-3); font-size: var(--text-footnote); }
   /* What Minerr does on the site of the tab: video subtitles always, the words of the page only with the switch. */
   #site-toggle { margin: 0 0 var(--space-2); padding-bottom: var(--space-1); }
   #site-toggle h2 { margin-bottom: 0; }
@@ -69,6 +70,7 @@
   <a href="options.html" id="options">Options</a>
 </header>
 <p class="muted" id="enabled-hint">In all tabs.</p>
+<p id="update-note" hidden><a id="update-link" target="_blank">See what changed.</a></p>
 <section id="site-toggle" aria-labelledby="site-title" hidden>
   <h2 id="site-title">On <span id="site-name"></span></h2>
   <p id="minerr-off" hidden>Minerr is off in all tabs.</p>

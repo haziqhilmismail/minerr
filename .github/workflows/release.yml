@@ -1,6 +1,6 @@
 # Makes a draft GitHub release with the WhisperX add-on and the packed extension when a tag such as v0.2.0 is pushed.
 # The zip for the Chrome Web Store goes to the page of the run, not to the release.
-# Tag only a commit of main that passed all tests (README: Make a release).
+# Tag only a commit of main that passed all tests (docs/development.md: Make a release).
 name: Release
 
 on:
@@ -34,8 +34,13 @@ jobs:
       - name: Make the draft release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >
-          gh release create "$GITHUB_REF_NAME"
-          "release/minerr-whisperx-$GITHUB_REF_NAME.zip" "release/minerr-whisperx-$GITHUB_REF_NAME.zip.sha256"
-          "release/minerr-$GITHUB_REF_NAME.zip" "release/minerr-$GITHUB_REF_NAME.zip.sha256"
-          --draft --verify-tag --title "Minerr $GITHUB_REF_NAME" --notes-file docs/release-notes.md
+        run: |
+          {
+            gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$GITHUB_REF_NAME" --jq .body
+            printf '\n---\n\n'
+            cat docs/release-notes.md
+          } > "$RUNNER_TEMP/notes.md"
+          gh release create "$GITHUB_REF_NAME" \
+            "release/minerr-whisperx-$GITHUB_REF_NAME.zip" "release/minerr-whisperx-$GITHUB_REF_NAME.zip.sha256" \
+            "release/minerr-$GITHUB_REF_NAME.zip" "release/minerr-$GITHUB_REF_NAME.zip.sha256" \
+            --draft --verify-tag --title "Minerr $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"

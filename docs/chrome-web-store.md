@@ -143,8 +143,7 @@ The store version has a different extension ID from the folder version, so it st
 
 ## 8. Update the store version
 
-1. Set a higher version in `manifest.json` and `package.json`, and run all tests.
-2. Make the store ZIP again (step 2).
+1. Do all the steps of docs/development.md: Make a release. Publish the GitHub release before you submit the store update. The popup links to the GitHub release, and a draft shows only the tag, without the list of changes.
+2. Download the store ZIP from the page of the release run (step 2).
 3. In the dashboard, open Minerr, open the **Package** tab, and upload the new ZIP.
 4. Click **Submit for review**.
-5. Push the version tag for the GitHub release too (docs/development.md: Make a release), so both releases have the same version.
