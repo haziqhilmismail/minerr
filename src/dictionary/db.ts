@@ -6,7 +6,7 @@ import type { Bytes } from './zip.ts';
 
 // Stores: dicts {title, revision, count, tags, meta, entries} (count is null while an import is unfinished; tags is true
 // for an import that stored tags; meta counts the meta rows; entries counts the terms with a sequence), terms {dict, id,
-// expression, reading, definitionTags, termTags, glossary, score, sequence} keyed by [dict, id], tags {dict, name, category,
+// expression, reading, definitionTags, termTags, glossary, score, sequence, notes} keyed by [dict, id], tags {dict, name, category,
 // notes} keyed by [dict, name], and meta (a TermMeta with its dict) keyed by [dict, id].
 // The [dict, ...] keys let one key range delete a dictionary.
 function open(): Promise<IDBDatabase> {
@@ -54,7 +54,7 @@ export interface Dictionary {
 
 // Earlier versions of Minerr wrote some of the rows, so the rows are checked as they are read.
 const hasString = (row: unknown, key: string) => typeof at(row, key) === 'string';
-const hasTagNames = (row: unknown, key: string) => at(row, key) === undefined || isStringList(at(row, key));
+const hasStrings = (row: unknown, key: string) => at(row, key) === undefined || isStringList(at(row, key));
 
 const isDictionary = (row: unknown): row is Dictionary => hasString(row, 'title')
   && (at(row, 'count') === null || typeof at(row, 'count') === 'number')
@@ -64,7 +64,7 @@ const isDictionary = (row: unknown): row is Dictionary => hasString(row, 'title'
 
 const isDictTerm = (row: unknown): row is DictTerm => ['dict', 'expression', 'reading'].every(key => hasString(row, key))
   && typeof at(row, 'score') === 'number' && isStringList(at(row, 'glossary'))
-  && hasTagNames(row, 'definitionTags') && hasTagNames(row, 'termTags');
+  && hasStrings(row, 'definitionTags') && hasStrings(row, 'termTags') && hasStrings(row, 'notes');
 
 const isEntryRow = (row: unknown): row is EntryRow => ['dict', 'expression', 'reading'].every(key => hasString(row, key))
   && typeof at(row, 'score') === 'number' && typeof at(row, 'sequence') === 'number';
@@ -112,11 +112,17 @@ export async function importDictionary(bytes: Bytes, onProgress: (progress: Impo
   await finished(tagTx);
   let count = 0;
   let entries = 0;
+  const inlineNames = new Set<string>();
   for (const [index, load] of banks.entries()) {
     const terms = await load();
-    const tx = (await db()).transaction('terms', 'readwrite');
+    const tx = (await db()).transaction(['terms', 'tags'], 'readwrite');
     const store = tx.objectStore('terms');
-    for (const term of terms) {
+    for (const { inlineTags = [], ...term } of terms) {
+      for (const tag of inlineTags) {
+        if (inlineNames.has(tag.name)) continue;
+        inlineNames.add(tag.name);
+        tx.objectStore('tags').put({ ...tag, dict: title });
+      }
       store.put({ ...term, dict: title, id: count++ });
       if (term.sequence !== undefined) entries++;
     }

@@ -55,6 +55,7 @@ const STYLE = `
   ol { margin: 0; padding-left: 22px; }
   li { margin-bottom: var(--space-3); white-space: pre-line; }
   li::marker { color: var(--accent); font-size: var(--text-caption); font-weight: 700; }
+  .notes { margin-top: var(--space-1); color: var(--muted); font-size: var(--text-caption); }
   .group { margin: var(--space-1) 0 var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--separator); }
   .group .word { font: 700 var(--text-headline)/1.5 var(--font-jp); }
   .group .reading { margin: 0 var(--space-2) 0 6px; font-size: var(--text-body); }
@@ -208,6 +209,7 @@ const chips = (tags: Tag[]) => tags.flatMap(({ name, category, notes }) => [el('
 
 // One dictionary label closes each run of senses from the same dictionary.
 const senseList = (senses: Sense[]) => el('ol', {}, ...senses.map((sense, i) => el('li', {}, ...chips(sense.tags), sense.glossary.join('\n'),
+  sense.notes ? el('div', { className: 'notes', textContent: sense.notes.join('\n') }) : '',
   sense.dict === senses[i + 1]?.dict ? '' : el('div', { className: 'dict', textContent: sense.dict }))));
 
 const starText = (count: number) => '★'.repeat(count) + '☆'.repeat(5 - count);

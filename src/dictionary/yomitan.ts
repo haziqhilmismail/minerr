@@ -22,6 +22,10 @@ export interface Term {
   score: number;
   // The entry of the term in a sequenced dictionary (JMdict): the terms of one word share it.
   sequence?: number;
+  // The tags of definitionTags that a Jitendex entry writes in its own content. The import moves them to the tags store.
+  inlineTags?: Tag[];
+  // Examples, cross-references and sources: they show in the popup, but not on a card.
+  notes?: string[];
 }
 
 // A term of one dictionary. A term imported before Minerr stored tags has no tag names.
@@ -31,6 +35,7 @@ export interface Sense {
   dict: string;
   tags: Tag[];
   glossary: string[];
+  notes?: string[];
 }
 
 // One (expression, reading) with its senses.
@@ -59,6 +64,9 @@ const isTermRow = (row: unknown): row is TermRow => isList(row) && typeof row[0]
 const isTagRow = (row: unknown): row is TagRow => isList(row) && typeof row[0] === 'string' && typeof row[1] === 'string'
   && typeof row[3] === 'string';
 
+const roleOf = (node: unknown) => at(at(node, 'data'), 'content');
+const isTagNode = (node: unknown) => at(at(node, 'data'), 'class') === 'tag';
+
 function flattenContent(content: unknown): string {
   if (typeof content === 'string') return content;
   if (isList(content)) return content.map(flattenContent).join('');
@@ -67,7 +75,8 @@ function flattenContent(content: unknown): string {
   if (tag === 'br') return '\n';
   if (tag === 'rt' || tag === 'rp') return '';
   const inner = flattenContent(at(content, 'content'));
-  if (tag === 'td' || tag === 'th') return `${inner} `;
+  // A label is a span next to other text, and only CSS keeps them apart. A span inside a sentence must stay joined.
+  if (tag === 'td' || tag === 'th' || isTagNode(content) || roleOf(content) === 'reference-label') return `${inner} `;
   return typeof tag === 'string' && BLOCK_TAGS.has(tag) ? `\n${inner}\n` : inner;
 }
 
@@ -87,8 +96,60 @@ const splitTags = (names: string | null | undefined) => (names ?? '').split(' ')
 // A dictionary without entries writes 0 or no sequence.
 const entryOf = (sequence: unknown) => (typeof sequence === 'number' && Number.isSafeInteger(sequence) && sequence !== 0 ? Math.abs(sequence) : undefined);
 
+const FORMS_TAG: Tag = { name: 'forms', category: '', notes: '' };
+
+const childrenOf = (node: unknown): unknown[] => {
+  const content = at(node, 'content');
+  return isList(content) ? content : content === undefined ? [] : [content];
+};
+
+// The outermost nodes with one of the roles, in document order.
+const withRole = (node: unknown, roles: string[]): unknown[] => (isList(node) ? node : [node]).flatMap(child => {
+  const role = roleOf(child);
+  return typeof role === 'string' && roles.includes(role) ? [child] : child && typeof child === 'object' ? withRole(childrenOf(child), roles) : [];
+});
+
+const linesOf = (content: unknown) => flattenContent(content).split('\n').map(line => line.trim()).filter(Boolean);
+
+// The code is the JMdict name of the tag (n, v5r): the Lapis pitch categories read it.
+function inlineTag(node: unknown): Tag {
+  const code = at(at(node, 'data'), 'code');
+  const title = at(node, 'title');
+  return {
+    name: typeof code === 'string' ? code : flattenContent(node).trim(),
+    category: roleOf(node) === 'part-of-speech-info' ? 'partOfSpeech' : '',
+    notes: typeof title === 'string' ? title : '',
+  };
+}
+
+type EntrySense = Required<Pick<Term, 'inlineTags' | 'glossary' | 'notes'>>;
+
+// A Jitendex entry holds all senses of a word in one row. An entry without sense groups returns no senses.
+function jitendexSenses(content: unknown): EntrySense[] {
+  const parts = withRole(content, ['sense-group', 'forms', 'attribution']);
+  if (!parts.some(part => roleOf(part) === 'sense-group')) return [];
+  const senses = parts.flatMap((part): EntrySense[] => {
+    if (roleOf(part) === 'attribution') return [];
+    if (roleOf(part) === 'forms') {
+      return [{ inlineTags: [FORMS_TAG], glossary: linesOf(childrenOf(part).filter(child => roleOf(child) !== 'forms-label')), notes: [] }];
+    }
+    const shared = childrenOf(part).filter(isTagNode).map(inlineTag);
+    // A group can say which spellings it applies to: 〔物作り only〕.
+    const sharedNotes = linesOf(childrenOf(part).filter(child => !isTagNode(child) && !withRole(child, ['sense']).length));
+    return withRole(part, ['sense']).map(sense => {
+      const glossary = withRole(sense, ['glossary']).flatMap(list => childrenOf(list).flatMap(linesOf));
+      const notes = [...sharedNotes, ...linesOf(childrenOf(sense).filter(child => !isTagNode(child) && roleOf(child) !== 'glossary'))];
+      const inlineTags = [...shared, ...childrenOf(sense).filter(isTagNode).map(inlineTag)];
+      // A few senses have only an explanation ("Literally ..."), and a card needs a definition.
+      return glossary.length ? { inlineTags, glossary, notes } : { inlineTags, glossary: notes, notes: [] };
+    });
+  });
+  senses.at(-1)?.notes.push(...withRole(parts, ['attribution']).flatMap(linesOf));
+  return senses;
+}
+
 // An empty reading means the expression is its own reading.
-export function toTerm([expression, reading, definitionTags, , score, glossary, sequence, termTags]: TermRow): Term {
+function toTerm([expression, reading, definitionTags, , score, glossary, sequence, termTags]: TermRow): Term {
   const entry = entryOf(sequence);
   return {
     expression,
@@ -99,6 +160,21 @@ export function toTerm([expression, reading, definitionTags, , score, glossary, 
     score,
     ...(entry ? { sequence: entry } : {}),
   };
+}
+
+// One row of the term bank -> one term per sense, the shape of JMdict. The tags of the row belong to the word.
+export function toTerms(row: TermRow): Term[] {
+  const term = toTerm(row);
+  const senses = row[5].flatMap(item => (at(item, 'type') === 'structured-content' ? jitendexSenses(at(item, 'content')) : []));
+  if (!senses.length) return [term];
+  return senses.map(({ inlineTags, glossary, notes }) => ({
+    ...term,
+    definitionTags: inlineTags.map(({ name }) => name),
+    termTags: [...term.definitionTags, ...term.termTags],
+    inlineTags,
+    glossary,
+    ...(notes.length ? { notes } : {}),
+  }));
 }
 
 export const toTag = ([name, category, , notes]: TagRow): Tag => ({ name, category, notes });
@@ -133,7 +209,7 @@ export function groupTerms(rows: DictTerm[], tags: DictTag[]): Group[] {
       senses = [];
       group.byDict.set(row.dict, senses);
     }
-    senses.push({ dict: row.dict, tags: senseTags, glossary });
+    senses.push({ dict: row.dict, tags: senseTags, glossary, ...(row.notes ? { notes: row.notes } : {}) });
   }
   return [...groups.values()].map(({ byDict, ...group }) => ({ ...group, senses: [...byDict.values()].flat() }));
 }
@@ -172,7 +248,7 @@ export async function readYomitan(bytes: Bytes): Promise<YomitanDictionary> {
   }
   const named = (pattern: RegExp) => [...members].filter(([name]) => pattern.test(name));
   const banks = named(/^term_bank_\d+\.json$/)
-    .map(([name, read]) => async () => rowsOf(name, await readJson(read), isTermRow).map(toTerm));
+    .map(([name, read]) => async () => rowsOf(name, await readJson(read), isTermRow).flatMap(toTerms));
   const tagBanks = await Promise.all(named(/^tag_bank_\d+\.json$/)
     .map(async ([name, read]) => rowsOf(name, await readJson(read), isTagRow)));
   const metaBanks = named(/^term_meta_bank_\d+\.json$/)

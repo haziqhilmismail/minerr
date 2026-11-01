@@ -96,7 +96,7 @@ AnkiConnect accepts requests from browser extensions by default. If the popup sh
 3. In **Dictionaries**, select the zip file or drop it on the import area.
 4. Wait for `Imported JMdict [...]: ... terms`. The import takes about a minute.
 
-You can import other Yomitan term dictionaries the same way. Importing a dictionary with the same title again replaces the old copy.
+You can import other Yomitan term dictionaries the same way, such as [Jitendex](https://jitendex.org). Minerr shows their text in its own style, not the dictionary's. Importing a dictionary with the same title again replaces the old copy.
 
 Minerr shows the tags from all your dictionaries.
 
@@ -109,6 +109,7 @@ To check the Anki side, click **Check connection** in the **Anki** section of th
 Most updates need nothing from you. A few changes do:
 
 - **Dictionaries imported before spellings shared a status.** Import JMdict again. The new import keeps each word's entry number, which lets the spellings of a word share one status. Until you do, its row on the options page says `Import again so that the spellings of a word share one status.` See [Spellings of one word](#spellings-of-one-word).
+- **Jitendex imported before its senses were split.** The popup joins its tags and shows the whole entry as one definition. Import the zip again to fix this.
 - **Dictionaries imported before tags were shown.** These have no tags, and their row says `Import again to show tags.` Import the zip again to get them.
 - **Statuses stored under a kana spelling.** Older versions stored a status under the spelling of the dictionary form, for example ねこ. After a dictionary import finishes, Minerr moves each status to its word's key, for example from ねこ to 猫. It does this once per set of dictionaries.
 - **Page text that was on everywhere.** Older versions had page text on for every site and kept a list of sites where it was off. Minerr ignores that list now, so every site starts with page text off.
