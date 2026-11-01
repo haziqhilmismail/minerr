@@ -1,5 +1,6 @@
 // The settings of the subtitle overlay, for every video page.
 import { isGapMode, isPlayMode } from './playback.ts';
+import { KEY_SETS, type KeySet } from './videokeys.ts';
 import { setting } from '../shared/settings.ts';
 
 const isScale = (value: unknown): value is number => typeof value === 'number' && value >= 0.5 && value <= 3;
@@ -22,6 +23,9 @@ export const subObscured = setting('subObscured', isBoolean, false);
 
 // Remove bracketed text such as （笑） from the lines.
 export const cleanSubs = setting('cleanSubs', isBoolean, false);
+
+// Which keys go through the lines: A and D, or the left and right arrows.
+export const keySet = setting('keySet', (value: unknown): value is KeySet => KEY_SETS.some(set => set === value), 'wasd');
 
 // How the video crosses a long part with no line.
 export const gapMode = setting('gapMode', isGapMode, 'off');

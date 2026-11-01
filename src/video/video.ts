@@ -15,11 +15,11 @@ import {
 import { recordPart } from './record.ts';
 import { call, messageOf, serve } from '../shared/rpc.ts';
 import { isIPlusOne } from '../text/sentence.ts';
-import { watchActive } from '../page-text/site.ts';
+import { minerrIsOn } from '../page-text/site.ts';
 import { setTrack } from '../status/stats.ts';
-import { type VideoAction, videoKey } from './videokeys.ts';
+import { type KeySet, type VideoAction, videoKey } from './videokeys.ts';
 import {
-  cleanSubs, gapMode, pauseOnHover, pauseOnSidebar, playMode, type SecondDisplay, secondDisplay, type SubEffect, subEffect, subObscured, subScale,
+  cleanSubs, gapMode, keySet, pauseOnHover, pauseOnSidebar, playMode, type SecondDisplay, secondDisplay, type SubEffect, subEffect, subObscured, subScale,
 } from './videosettings.ts';
 import type { AudioSource } from './whisper.ts';
 
@@ -63,6 +63,7 @@ let given: Lines = { kind: 'none' };
 let lines: Lines = given;
 let clean = false;
 let gap: GapMode = 'off';
+let keys: KeySet = 'wasd';
 // The speed of the video before a gap made it faster, while it is faster.
 let gapRate: number | null = null;
 // True while the tab records a line: no gap rule, play-mode pause, line change, or hold changes the playback.
@@ -355,14 +356,12 @@ const ACTIONS: Record<VideoAction, () => boolean | void> = {
   },
 };
 
-// Capture on window, so the keys of the site (YouTube binds c, j, l, ., and the arrows) do not also fire.
+// Capture on window, so the keys of the site (YouTube binds c, j, l, and .) do not also fire.
 // The overlay takes a key only while Minerr is on and it has lines; a key that needs times gets a hint on mirrored captions, once per video.
-let minerrOn = false;
-watchActive(value => { minerrOn = value !== 'off'; });
 window.addEventListener('keydown', event => {
-  if (!minerrOn || event.ctrlKey || event.metaKey || isEditable(event) || !video()) return;
-  const entry = videoKey(event);
-  if (!entry || lines.kind === 'none' || target.blocked?.() || (event.key.toLowerCase() === 'a' && isPopupOpen())) return;
+  if (!minerrIsOn() || event.ctrlKey || event.metaKey || isEditable(event) || !video()) return;
+  const entry = videoKey(event, keys);
+  if (!entry || lines.kind === 'none' || target.blocked?.() || (entry.key === 'a' && isPopupOpen())) return;
   if (entry.timed && !timed()) {
     if (lines.kind === 'mirror' && !hinted) toast(TIMED_HINT);
     hinted = true;
@@ -430,6 +429,7 @@ cleanSubs.watch(value => {
   useLines(cleaned(given));
 });
 gapMode.watch(value => { gap = value; });
+keySet.watch(value => { keys = value; });
 playMode.watch(value => { mode = value; });
 secondDisplay.watch(value => {
   secondShown = value;

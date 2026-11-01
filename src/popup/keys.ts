@@ -4,7 +4,7 @@ import { toast } from './popup-view.ts';
 import { call, messageOf, serve } from '../shared/rpc.ts';
 import { sentenceHighlight } from '../page-text/sentence-hover.ts';
 import { wordJoins } from '../shared/settings.ts';
-import { isMinerrPage, siteOf, toggleSiteOf, watchActive } from '../page-text/site.ts';
+import { isMinerrPage, minerrIsOn, siteOf, toggleSiteOf } from '../page-text/site.ts';
 import { setStatus, setStatuses, type Status, STATUS_NAMES, STATUSES, type WordId } from '../status/status.ts';
 import { sameWord, wordOf } from '../text/word-spans.ts';
 
@@ -98,9 +98,6 @@ async function toggleWordJoin(text: string): Promise<void> {
 const report = (work: Promise<void>) => { work.catch((error: unknown) => toast(messageOf(error))); };
 
 export function installKeys(popup: PopupKeys): void {
-  let active = false;
-  watchActive(value => { active = value !== 'off'; });
-
   // A status key changes the words of a text selection, else the word that the user points at. Else the page gets the key,
   // so a status key on YouTube seeks when the mouse is on no word.
   const statusKey = (status: Status) => () => {
@@ -147,7 +144,7 @@ export function installKeys(popup: PopupKeys): void {
   window.addEventListener('keydown', event => {
     if (event.ctrlKey || event.metaKey || isEditable(event)) return;
     const name = chord(event);
-    if (!active || (popup.isEditing() && name !== 'Escape') || !bindings[name]?.(event)) return;
+    if (!minerrIsOn() || (popup.isEditing() && name !== 'Escape') || !bindings[name]?.(event)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   }, true);
@@ -165,7 +162,7 @@ export function installKeys(popup: PopupKeys): void {
   serve({
     command: ({ command }) => {
       // When Minerr is off, toggle-site still turns the page text of the site on or off.
-      if ((!active && command !== 'toggle-site') || popup.isEditing() || isField(focused())) return;
+      if ((!minerrIsOn() && command !== 'toggle-site') || popup.isEditing() || isField(focused())) return;
       commands[command]();
     },
   }, target => target === undefined && document.hasFocus());

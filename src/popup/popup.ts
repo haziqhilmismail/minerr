@@ -64,6 +64,8 @@ let keyed: Layer | null = null;
 let opening: View | null = null;
 // The popup with the open card form (E). While it is open, no other popup opens, and Esc closes the form.
 let editing: Layer | null = null;
+// Where the focus was before the first popup. A click in a popup takes the focus, and on YouTube ↑ and ↓ change the volume only while the player has it.
+let focusBefore: Element | null = null;
 
 const top = () => layers.at(-1) ?? null;
 const spanOf = (layer: Layer | undefined) => (layer?.view.anchor.kind === 'word' ? layer.view.anchor.span : null);
@@ -94,6 +96,10 @@ function closeFrom(depth: number): void {
   if (editing && layers.indexOf(editing) >= depth) stopEdit();
   for (const layer of layers.splice(depth)) hideBox(layer.box);
   markActive();
+  if (layers.length) return;
+  // Only when the focus has no other place: a user who clicked another field keeps it.
+  if (focusBefore instanceof HTMLElement && document.activeElement === document.body) focusBefore.focus({ preventScroll: true });
+  focusBefore = null;
 }
 
 // Closes the top popup, or every popup from depth; a hover or lookup that still waits does not open one after it.
@@ -144,6 +150,7 @@ async function open(
   mount();
   showBox(box);
   const layer = render(box, view, { addCard, editCard, browseAnki, close: () => close() });
+  if (!layers.length) focusBefore = document.activeElement;
   layers.push(layer);
   countInAnki(layer);
   if (by === 'key') keyed = layer;

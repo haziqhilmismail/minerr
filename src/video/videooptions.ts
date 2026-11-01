@@ -1,9 +1,9 @@
 // The video part of the options page: the table of the overlay keys and the video settings.
 import { byId } from '../shared/dom.ts';
 import type { Setting } from '../shared/settings.ts';
-import { keyLabel, VIDEO_KEYS } from './videokeys.ts';
+import { keyLabel, keysOf } from './videokeys.ts';
 import {
-  audioPadding, autoLookup, autoResume, cleanSubs, gapMode, pauseOnHover, pauseOnSidebar, playMode, secondDisplay, subEffect, subObscured, subScale,
+  audioPadding, autoLookup, autoResume, cleanSubs, gapMode, keySet, pauseOnHover, pauseOnSidebar, playMode, secondDisplay, subEffect, subObscured, subScale,
 } from './videosettings.ts';
 
 // bindRadios of pages/options.ts, which binds a radio group to a setting.
@@ -15,12 +15,11 @@ const cell = (...children: (Node | string)[]) => {
   return td;
 };
 
-byId('video-keys', HTMLElement).append(...VIDEO_KEYS.map(({ keys, label, timed }) => {
+keySet.watch(set => byId('video-keys', HTMLElement).replaceChildren(...keysOf(set).map(({ key, label, timed }) => {
   const row = document.createElement('tr');
-  const names = keys.flatMap((key, i) => [i ? ' or ' : '', Object.assign(document.createElement('kbd'), { textContent: keyLabel(key) })]);
-  row.append(cell(...names), cell(label), cell(timed ? 'Needs subtitles with times' : ''));
+  row.append(cell(Object.assign(document.createElement('kbd'), { textContent: keyLabel(key) })), cell(label), cell(timed ? 'Needs subtitles with times' : ''));
   return row;
-}));
+})));
 
 // watch, so a key on a video page (W) also changes the box here.
 function bindCheckbox(id: string, { watch, set }: Setting<boolean>): void {
@@ -52,6 +51,6 @@ export async function bindVideoOptions(bindRadios: BindRadios): Promise<void> {
   bindCheckbox('pause-on-sidebar', pauseOnSidebar);
   await Promise.all([
     bindRadios('subEffect', subEffect), bindRadios('gapMode', gapMode), bindRadios('playMode', playMode), bindRadios('autoResume', autoResume),
-    bindRadios('secondDisplay', secondDisplay),
+    bindRadios('secondDisplay', secondDisplay), bindRadios('keySet', keySet),
   ]);
 }

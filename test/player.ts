@@ -37,8 +37,13 @@ try {
   await options.setInputFiles('#dict-file', dictionary);
   await options.waitForFunction(() => document.querySelector('#dict-status')?.textContent?.startsWith('Imported'));
   const keyRows = await options.locator('#video-keys tr').evaluateAll(rows => rows.map(row => (row as HTMLElement).innerText.replace(/\s+/g, ' ').trim()));
-  assert.equal(keyRows[0], '→ or D Go to the next line Needs subtitles with times');
+  assert.equal(keyRows[0], 'D Go to the next line Needs subtitles with times');
   assert.ok(keyRows.includes('Alt+O Show the subtitles 0.1 seconds later Needs subtitles with times'), 'the options page lists the video keys');
+  await options.locator('input[name="keySet"][value="arrows"]').check({ force: true });
+  await options.waitForFunction(() => document.querySelector('#video-keys kbd')?.textContent === '→');
+  assert.equal(await options.locator('#video-keys tr', { hasText: 'Go to the next line' }).count(), 1, 'the table shows the keys of the chosen set only');
+  await options.locator('input[name="keySet"][value="wasd"]').check({ force: true });
+  await options.waitForFunction(() => document.querySelector('#video-keys kbd')?.textContent === 'D');
   assert.equal(await options.inputValue('#audio-padding'), '500');
   await options.fill('#audio-padding', '250');
   await options.press('#audio-padding', 'Tab');
@@ -108,9 +113,9 @@ try {
   await player.keyboard.press('d');
   await line.locator('.ml-word[data-ml-lemma="雨"]').waitFor();
   assert.equal(await videoTime(), 3, 'D goes to the next line');
-  await player.keyboard.press('ArrowLeft');
+  await player.keyboard.press('a');
   await line.locator('.ml-word[data-ml-lemma="食べる"]').waitFor();
-  assert.equal(await videoTime(), 0, 'ArrowLeft goes to the previous line');
+  assert.equal(await videoTime(), 0, 'A goes to the previous line');
   await player.keyboard.press('c');
   await toast.filter({ hasText: 'Copied the line.' }).waitFor();
   assert.deepEqual(await player.evaluate(() => Reflect.get(window, 'copied')), ['猫が魚を食べた']);
