@@ -17,7 +17,8 @@ export interface EntryIndex {
   byExpression(text: string): Promise<EntryRow[]>;
   byReading(text: string): Promise<EntryRow[]>;
   bySequence(dict: string, sequence: number): Promise<EntryRow[]>;
-  // The texts that are an expression of a term.
+  // The texts that are an expression of a term in a dictionary that is on. The other reads use all dictionaries,
+  // so that the switch of a dictionary does not change a status key.
   headwords(texts: string[]): Promise<Set<string>>;
 }
 

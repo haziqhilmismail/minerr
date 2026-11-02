@@ -74,6 +74,15 @@
   .rows .meta { font-size: var(--text-footnote); color: var(--muted); }
   .rows .warn .meta { color: var(--warn); font-weight: 600; }
   .rows .empty { color: var(--muted); }
+  #dict-list { counter-reset: dict; }
+  #dict-list li:not(.empty) { counter-increment: dict; }
+  #dict-list .rank::before { content: counter(dict); color: var(--muted); font-variant-numeric: tabular-nums; }
+  #dict-list [draggable] { cursor: grab; }
+  #dict-list .drop-before { box-shadow: inset 0 2px 0 var(--accent); }
+  #dict-list .drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
+  #dict-list .off .name { color: var(--muted); font-weight: 400; }
+  .move { min-width: 40px; padding: 0; }
+  .move[aria-disabled="true"] { opacity: .5; pointer-events: none; }
   .delete { color: var(--error); }
   .delete:hover:not(:disabled) { background: color-mix(in srgb, var(--error) 14%, transparent); }
 
@@ -102,6 +111,7 @@
 
   <section id="dictionaries" aria-labelledby="dict-heading">
     <h2 id="dict-heading">Dictionaries</h2>
+    <p class="help">Minerr shows definitions, frequencies, and pitch accents in the order of this list. Drag a row or use its arrows to change the order. On a Lapis card, the MainDefinition comes from the first dictionary that has the word. If you turn off a dictionary, Minerr does not use it, and word statuses do not change. An open page keeps its old word joins and pitch colors until you reload it.</p>
     <div class="group">
       <label class="drop" id="dict-drop">
         <input id="dict-file" type="file" accept=".zip">
@@ -110,7 +120,7 @@
       </label>
       <progress id="dict-progress" hidden></progress>
       <p id="dict-status" class="status" role="status"></p>
-      <ul id="dict-list" class="rows"></ul>
+      <ol id="dict-list" class="rows"></ol>
     </div>
     <h3 id="joins-heading">Word overrides</h3>
     <p class="help">If Minerr cuts a word in two, select the word on a page and press Alt+J. Minerr then reads that text as one word. The text must be a dictionary word.</p>

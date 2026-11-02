@@ -95,7 +95,7 @@ try {
     await options.locator('#dict-status', { hasText: message ?? '' }).waitFor();
   }
   assert.deepEqual(await options.$$eval('#dict-list li', (items: HTMLElement[]) => items.map(li => li.innerText.split('\n')[1])), [
-    '5 terms', '1 terms. Import again so that the spellings of a word share one status.',
+    '1 terms. Import again so that the spellings of a word share one status.', '5 terms',
     '0 terms, 3 frequency and pitch entries', '0 terms, 3 frequency and pitch entries',
   ]);
   console.log('import: version 2 dictionary kept and told to import again for entries, frequency and pitch dictionaries counted');

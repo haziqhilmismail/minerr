@@ -111,8 +111,8 @@ try {
   console.log('options import status:', imported);
   assert.equal(imported, 'Imported Fixture: 3 terms');
   assert.deepEqual(await options.$$eval('#dict-list li', (items: HTMLElement[]) => items.map(li => li.innerText.split('\n'))), [
-    ['Fixture', '3 terms', 'Delete'],
-    ['Old', '1 terms. Import again to show tags.', 'Delete'],
+    ['Old', '1 terms. Import again to show tags.', '↑', '↓', 'Delete'],
+    ['Fixture', '3 terms', '↑', '↓', 'Delete'],
   ]);
   const shown = () => options.evaluate(() => ['input[value="blur"]', '#auto-resume-heading', '#pitch-legend']
     .map(selector => document.querySelector(selector)?.checkVisibility()));

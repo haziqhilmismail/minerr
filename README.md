@@ -98,7 +98,15 @@ AnkiConnect accepts requests from browser extensions by default. If the popup sh
 
 You can import other Yomitan term dictionaries the same way, such as [Jitendex](https://jitendex.org). Minerr shows their text in its own style, not the dictionary's. Importing a dictionary with the same title again replaces the old copy.
 
-Minerr shows the tags from all your dictionaries.
+Minerr shows the tags from all the dictionaries you have turned on.
+
+#### Rank and turn off dictionaries
+
+The list in **Dictionaries** is a ranking. Definitions, frequencies and pitch accents appear in that order, so the dictionary at the top comes first. If a word has several readings, the ranking orders the definitions of each reading, and the dictionaries' scores still decide which reading comes first. Drag a row to move it, or use its ↑ and ↓ buttons. A new dictionary goes to the bottom, and importing a dictionary again keeps its place and its switch.
+
+The switch on a row turns a dictionary on or off. Minerr doesn't use a dictionary that's off for definitions, frequencies, pitch accents or joined words, but it keeps the data, so you can turn it back on without importing again.
+
+Neither one changes your word statuses. A page you already have open keeps its old word joins and pitch colors until you reload it. The popup updates right away.
 
 To check the Anki side, click **Check connection** in the **Anki** section of the options page. It should say `Connected (AnkiConnect version 6)`.
 
@@ -792,13 +800,13 @@ Minerr fills the fields the same way as the Yomitan setup in the [Lapis README](
 | `ExpressionReading` | The reading in hiragana, for example たべる. |
 | `ExpressionAudio` | The word's audio. See [Word audio](#word-audio). |
 | `SelectionText` | The selected text, if you opened the popup with `Alt+S`. Otherwise empty. |
-| `MainDefinition` | The definitions from the first dictionary that has the word. |
+| `MainDefinition` | The first definition from the highest-ranked dictionary that has the word. See [Rank and turn off dictionaries](#rank-and-turn-off-dictionaries). |
 | `DefinitionPicture` | Empty. |
 | `Sentence` | The sentence from the page, with the word in `<b>`. |
 | `SentenceFurigana` | Empty, as the Lapis README recommends. |
 | `SentenceAudio` | The subtitle line's audio. See [Sentence audio](#sentence-audio). |
 | `Picture` | The screenshot of the tab. |
-| `Glossary` | The tags and definitions from all dictionaries, as in the classic note type's `Definition` field. |
+| `Glossary` | Empty. Minerr only fills in the main meaning for now. |
 | `Hint`, `IsWordAndSentenceCard`, `IsClickCard`, `IsSentenceCard`, `IsAudioCard` | Empty, so Lapis makes a word card. |
 | `PitchPosition` | The pitch accent positions from your pitch dictionaries, for example `[0]`. Several positions make a list. |
 | `PitchCategories` | The pitch patterns, comma-separated: `heiban`, `atamadaka`, `nakadaka`, `odaka` or `kifuku`. A verb or i-adjective with a drop is `kifuku`. |
