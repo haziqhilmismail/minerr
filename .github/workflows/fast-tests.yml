@@ -1,0 +1,29 @@
+# Runs the tests that need no browser. All tests (npm test) still run on the local machine before a push.
+# The skip pattern removes the tests that read test/fixtures/JMdict_english.zip, which is not in git.
+name: Fast tests
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  fast-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: node --test-skip-pattern='^real JMdict' test/unit.ts
+      - run: node --test-skip-pattern='^real JMdict' test/entry-unit.ts
+      - run: node test/card-unit.ts
+      - run: node test/reading-unit.ts
+      - run: node test/video-unit.ts
+      - run: node test/netflix-unit.ts
+      - run: node test/pages-unit.ts
